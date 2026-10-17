@@ -11,5 +11,5 @@
     "files.exclude": {
         "**/.pio": true
     },
-    "C_Cpp.default.compilerPath": "/Users/iiemb/.platformio/packages/toolchain-riscv32-esp/bin/riscv32-esp-elf-gcc"
+    "C_Cpp.default.compilerPath": "clang-cl"
 }
