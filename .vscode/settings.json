@@ -11,5 +11,7 @@
     "files.exclude": {
         "**/.pio": true
     },
-    "C_Cpp.default.compilerPath": "clang-cl"
+    "C_Cpp.default.compilerPath": "clang-cl",
+	"platformio-ide.useBuiltinPIOCore": false,
+    "platformio-ide.customPATH": "C:\\pio\\penv\\Scripts"
 }

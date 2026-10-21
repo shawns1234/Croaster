@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "esp32s3",
+			"path": "../../boards/esp32s3"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.xml": "xml",
+			"*.arb": "json",
+			"ostream": "cpp",
+			"print": "cpp",
+			"cmath": "cpp",
+			"new": "cpp"
+		}
+	}
+}

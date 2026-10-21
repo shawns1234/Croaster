@@ -35,8 +35,7 @@ static void splashBarAnimCb(void* var, int32_t v) {
 
 bool LvglUi::begin() {
     // Backlight via LEDC PWM (IO45) so brightness can be dimmed (0-100%).
-    ledcSetup(LCD_BL_CHANNEL, 5000, 8); // 5 kHz, 8-bit resolution (0-255)
-    ledcAttachPin(LCD_BL_PIN, LCD_BL_CHANNEL);
+	ledcAttach(LCD_BL_PIN, 5000, 8); // 5 kHz, 8-bit resolution (0-255)
     ledcWrite(LCD_BL_CHANNEL, dutyFromPct(brightnessPct));
 
     tft = new Adafruit_ILI9341(LCD_CS_PIN, LCD_DC_PIN, LCD_MOSI_PIN, LCD_SCLK_PIN, LCD_RST_PIN, LCD_MISO_PIN);

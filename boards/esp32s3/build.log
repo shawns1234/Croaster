@@ -1,0 +1,748 @@
+Processing esp32s3 (board: esp32-s3-devkitm-1; framework: arduino; platform: espressif32)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s3-devkitm-1.html
+PLATFORM: Espressif 32 (8.0.0) > Espressif ESP32-S3-DevKitM-1
+HARDWARE: ESP32S3 240MHz, 320KB RAM, 8MB Flash
+DEBUG: Current (esp-builtin) On-board (esp-builtin) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 4.30312.261016 (3.3.12) 
+ - framework-arduinoespressif32-esp32s3-libs @ 3.3.12 
+ - tool-esptool @ 2.50400.0 (5.4.0) 
+ - tool-mkfatfs @ 2.0.1 
+ - tool-mklittlefs @ 1.203.210628 (2.3) 
+ - tool-mkspiffs @ 2.230.0 (2.30) 
+ - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
+ - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
+ - toolchain-riscv32-esp @ 14.2.0+20260121 
+ - toolchain-xtensa-esp-elf @ 14.2.0+20260121
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 58 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- Croaster @ 0.62.0
+|-- WebSockets @ 2.7.3
+|-- ArduinoJson @ 7.4.3
+|-- Adafruit ILI9341 @ 1.7.0
+|-- MAX6675_Thermocouple @ 2.0.2
+|-- WiFiManager @ 2.0.17
+|-- lvgl @ 9.6.0
+|-- WiFi @ 3.3.12
+|-- Wire @ 3.3.12
+Building in release mode
+Compiling .pio\build\esp32s3\src\CroasterDisplayS3.cpp.o
+Compiling .pio\build\esp32s3\src\main.cpp.o
+Compiling .pio\build\esp32s3\src\ui\LvglTouch.cpp.o
+Compiling .pio\build\esp32s3\src\ui\LvglUi.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_group.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_class.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_draw.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_event.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_id_builtin.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_pos.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_property.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_scroll.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_style.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_style_gen.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_tree.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_observer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_refr.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\monkey\lv_monkey.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\profiler\lv_profiler_builtin.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\profiler\lv_profiler_builtin_posix.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\sysmon\lv_sysmon.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_display.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_display_egl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_fs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_helpers.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_indev.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_indev_gesture.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\test\lv_test_screenshot_compare.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\vg_lite_tvg\vg_lite_matrix.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\debugging\vg_lite_tvg\vg_lite_tvg.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\display\lv_display.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\convert\helium\lv_draw_buf_convert_helium.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\convert\lv_draw_buf_convert.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\convert\neon\lv_draw_buf_convert_neon.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\dma2d\lv_draw_dma2d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\dma2d\lv_draw_dma2d_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\dma2d\lv_draw_dma2d_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\espressif\ppa\lv_draw_ppa.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\espressif\ppa\lv_draw_ppa_buf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\espressif\ppa\lv_draw_ppa_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\espressif\ppa\lv_draw_ppa_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_letter.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_ram_g.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_draw_eve_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\eve\lv_eve.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_3d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_blur.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_buf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_mask.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_rect.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\lv_draw_vector.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_3d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_blur.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_border.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_box_shadow.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_grad.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_layer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_mask_rect.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_draw_nanovg_vector.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_nanovg_fbo_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_nanovg_image_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nanovg\lv_nanovg_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_border.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_layer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_stm32_hal.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_draw_nema_gfx_vector.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nema_gfx\lv_nema_gfx_path.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\g2d\lv_draw_buf_g2d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\g2d\lv_draw_g2d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\g2d\lv_draw_g2d_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\g2d\lv_draw_g2d_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\g2d\lv_g2d_buf_map.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\g2d\lv_g2d_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_draw_buf_pxp.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_draw_pxp.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_draw_pxp_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_draw_pxp_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_draw_pxp_layer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_pxp_cfg.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_pxp_osa.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\nxp\pxp\lv_pxp_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\opengles\lv_draw_opengles.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_border.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_mask_rectangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\renesas\dave2d\lv_draw_dave2d_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sdl\lv_draw_sdl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_buf_sifli_epic.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_sifli_epic.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_sifli_epic_border.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_sifli_epic_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_sifli_epic_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_sifli_epic_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_draw_sifli_epic_layer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_sifli_epic_cfg.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_sifli_epic_osa.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sifli\epic\lv_sifli_epic_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\snapshot\lv_snapshot.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\arm2d\lv_blend_arm2d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\helium\lv_blend_helium.S.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_a8.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_al88.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_argb8888.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_argb8888_premultiplied.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_i1.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_l8.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_rgb565.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_rgb565_swapped.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\lv_draw_sw_blend_to_rgb888.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\neon\lv_draw_sw_blend_neon_to_rgb565.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\neon\lv_draw_sw_blend_neon_to_rgb888.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\riscv_v\lv_draw_sw_blend_riscv_v_to_rgb888.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\blend\sve2\lv_draw_sw_blend_sve2_to_rgb888.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_blur.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_border.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_box_shadow.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_grad.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_letter.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_mask.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_mask_rect.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_transform.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\sw\lv_draw_sw_vector.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_buf_vg_lite.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_border.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_box_shadow.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_fill.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_img.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_layer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_mask_rect.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_triangle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_draw_vg_lite_vector.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_bitmap_font_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_decoder.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_grad.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_math.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_path.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_pending.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_stroke.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\draw\vg_lite\lv_vg_lite_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\drm\lv_linux_drm.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\drm\lv_linux_drm_common.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\drm\lv_linux_drm_egl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\fb\lv_linux_fbdev.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\ft81x\lv_ft81x.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\lovyan_gfx\lv_lovyan_gfx.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\mipi\lv_ili9341.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\mipi\lv_lcd_generic_mipi.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\mipi\lv_nv3007.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\mipi\lv_st7735.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\mipi\lv_st7789.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\mipi\lv_st7796.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\nxp_elcdif\lv_nxp_elcdif.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\renesas_glcdc\lv_renesas_glcdc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\st_ltdc\lv_st_ltdc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\display\tft_espi\lv_tft_espi.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\draw\eve\lv_draw_eve_display.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\evdev\lv_evdev.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\libinput\lv_libinput.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\libinput\lv_xkb.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_entry.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_fbdev.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_image_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_lcd.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_libuv.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_mouse.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_profiler.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\nuttx\lv_nuttx_touchscreen.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\assets\lv_opengles_shader.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\glad\src\egl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\glad\src\gl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\glad\src\gles2.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\lv_opengles_debug.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\lv_opengles_driver.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\lv_opengles_egl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\lv_opengles_glfw.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\lv_opengles_pbuffer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\lv_opengles_texture.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\opengl_shader\lv_opengl_shader_manager.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\opengles\opengl_shader\lv_opengl_shader_program.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\qnx\lv_qnx.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_egl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_keyboard.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_mouse.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_mousewheel.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_sw.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_texture.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\sdl\lv_sdl_window.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\uefi\lv_uefi_context.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\uefi\lv_uefi_display.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\uefi\lv_uefi_indev_keyboard.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\uefi\lv_uefi_indev_pointer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\uefi\lv_uefi_indev_touch.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\uefi\lv_uefi_private.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_backend.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_backend_dmabuf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_backend_egl.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_backend_g2d.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_backend_shm.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_dmabuf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_keyboard.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_pointer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_seat.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_touch.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_window.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\wayland\lv_wayland_xdg_shell.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\windows\lv_windows_context.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\windows\lv_windows_display.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\windows\lv_windows_input.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\x11\lv_x11_display.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\drivers\x11\lv_x11_input.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\binfont_loader\lv_binfont_loader.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\fmt_txt\lv_font_fmt_txt.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\font_manager\lv_font_manager.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\font_manager\lv_font_manager_recycle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\freetype\lv_freetype.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\freetype\lv_freetype_glyph.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\freetype\lv_freetype_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\freetype\lv_freetype_outline.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\freetype\lv_ftsystem.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\imgfont\lv_imgfont.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_dejavu_16_persian_hebrew.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_10.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_12.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_14.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_14_aligned.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_16.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_18.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_20.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_22.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_24.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_26.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_28.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_28_compressed.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_30.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_32.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_34.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_36.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_38.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_40.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_42.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_44.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_46.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_48.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_montserrat_8.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_source_han_sans_sc_14_cjk.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_source_han_sans_sc_16_cjk.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_unscii_16.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\lv_font_unscii_8.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\font\tiny_ttf\lv_tiny_ttf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_arduino_esp_littlefs.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_arduino_sd.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_fatfs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_frogfs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_littlefs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_memfs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_posix.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_stdio.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_uefi.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\fs\lv_fs_win32.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_bin_decoder.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_bmp.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_image_decoder.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_libjpeg_turbo.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_libpng.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_libwebp.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_lodepng.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\lv_tjpgd.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\svg\lv_svg.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\svg\lv_svg_decoder.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\svg\lv_svg_parser.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\svg\lv_svg_render.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\image\svg\lv_svg_token.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\indev\lv_gridnav.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\indev\lv_indev.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\indev\lv_indev_gesture.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\indev\lv_indev_scroll.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\layouts\flex\lv_flex.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\layouts\grid\lv_grid.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\layouts\lv_layout.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\FT800-FT813\EVE_commands.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\FT800-FT813\EVE_supplemental.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\barcode\code128.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\frogfs\src\decomp_raw.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\frogfs\src\frogfs.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gif\gif.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_animations.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_cache.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_injest.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_mesh.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_primitive.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_shader.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_skin.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_data_texture.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_model_loader.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_model_node.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_data\lv_gltf_uniform_locations.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_environment\lv_gltf_ibl_sampler.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_view\assets\chromatic.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_view\assets\lv_gltf_view_shader.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_view\lv_gltf_view.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_view\lv_gltf_view_render.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\gltf_view\lv_gltf_view_shader.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\math\lv_3dmath.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\gltf\math\lv_gltf_math.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\lodepng\lodepng.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\lz4\lz4.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\nanovg\nanovg.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\qrcode\qrcodegen.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\rle\lv_rle.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\rlottie\lv_rlottie.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgAccessor.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgAnimation.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgCanvas.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgCapi.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgCompressor.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgFill.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgGlCanvas.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgInitializer.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLoader.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieAnimation.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieBuilder.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieExpressions.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieInterpolator.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieLoader.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieModel.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieModifier.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieParser.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgLottieParserHandler.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgMath.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgPaint.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgPicture.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgRawLoader.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgRender.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSaver.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgScene.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgShape.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgStr.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSvgCssStyle.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSvgLoader.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSvgPath.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSvgSceneBuilder.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSvgUtil.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwCanvas.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwFill.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwImage.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwMath.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwMemPool.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwPostEffect.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwRaster.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwRenderer.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwRle.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwShape.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgSwStroke.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgTaskScheduler.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgText.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgWgCanvas.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\thorvg\tvgXmlParser.cpp.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\tjpgd\tjpgd.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\VGLiteKernel\vg_lite_kernel.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\VGLite\vg_lite.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\VGLite\vg_lite_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\VGLite\vg_lite_matrix.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\VGLite\vg_lite_path.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\VGLite\vg_lite_stroke.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\lv_vg_lite_hal\lv_vg_lite_hal.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\libs\vg_lite_driver\lv_vg_lite_hal\vg_lite_os.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\logging\lv_log.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\lv_init.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\class\lv_cache_lru_ll.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\class\lv_cache_lru_rb.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\class\lv_cache_sc_da.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\instance\lv_image_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\instance\lv_image_header_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\lv_cache.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\cache\lv_cache_entry.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_anim.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_anim_timeline.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_area.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_array.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_async.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_bidi.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_bidi_common.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_circle_buf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_color.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_color_op.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_event.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_grad.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_iter.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_ll.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_lru.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_math.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_matrix.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_palette.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_pending.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_rb.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_style.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_style_gen.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_text.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_text_ap.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_timer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_tree.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_utils.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_cmsis_rtos2.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_freertos.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_linux.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_mqx.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_os.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_os_none.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_pthread.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_rtthread.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_sdl2.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\osal\lv_windows.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\others\file_explorer\lv_file_explorer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\others\fragment\lv_fragment.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\others\fragment\lv_fragment_manager.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\others\translation\lv_translation.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\builtin\lv_mem_core_builtin.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\builtin\lv_sprintf_builtin.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\builtin\lv_string_builtin.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\builtin\lv_tlsf.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\clib\lv_mem_core_clib.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\clib\lv_sprintf_clib.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\clib\lv_string_clib.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\lv_mem.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\micropython\lv_mem_core_micropython.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\rtthread\lv_mem_core_rtthread.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\rtthread\lv_sprintf_rtthread.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\rtthread\lv_string_rtthread.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\uefi\lv_mem_core_uefi.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\themes\default\lv_theme_default.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\themes\lv_theme.c.o
+.pio\libdeps\esp32s3\lvgl\src\stdlib\builtin\lv_tlsf.c:11:6: warning: #warning LV_MEM_POOL_EXPAND_SIZE is deprecated and will be removed in the next release. Use LV_MEM_SIZE to define LVGL pool size. [-Wcpp]
+   11 |     #warning LV_MEM_POOL_EXPAND_SIZE is deprecated and will be removed in the next release. Use LV_MEM_SIZE to define LVGL pool size.
+      |      ^~~~~~~
+Compiling .pio\build\esp32s3\libdd5\lvgl\themes\mono\lv_theme_mono.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\themes\simple\lv_theme_simple.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\tick\lv_tick.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\3dtexture\lv_3dtexture.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\animimage\lv_animimage.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\arc\lv_arc.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\arclabel\lv_arclabel.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\bar\lv_bar.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\barcode\lv_barcode.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\button\lv_button.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\buttonmatrix\lv_buttonmatrix.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\calendar\lv_calendar.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\calendar\lv_calendar_chinese.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\calendar\lv_calendar_header_arrow.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\calendar\lv_calendar_header_dropdown.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\canvas\lv_canvas.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\chart\lv_chart.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\checkbox\lv_checkbox.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\dropdown\lv_dropdown.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\ffmpeg\lv_ffmpeg.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\gif\lv_gif.c.o
+.pio\libdeps\esp32s3\lvgl\src\widgets\calendar\lv_calendar.c:63:2: warning: #warning "LV_CALENDAR_DEFAULT_DAY_NAMES is deprecated and will be removed in the next release. Use LV_MONDAY_STR, LV_TUESDAY_STR,... to set each week day name" [-Wcpp]
+   63 | #warning "LV_CALENDAR_DEFAULT_DAY_NAMES is deprecated and will be removed in the next release. Use LV_MONDAY_STR, LV_TUESDAY_STR,... to set each week day name"
+      |  ^~~~~~~
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\gstreamer\lv_gstreamer.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\image\lv_image.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\imagebutton\lv_imagebutton.c.o
+.pio\libdeps\esp32s3\lvgl\src\widgets\calendar\lv_calendar_header_arrow.c:42:2: warning: #warning "LV_CALENDAR_DEFAULT_MONTH_NAMES is deprecated and will be removed in the next release. Use LV_JANUARY_STR, LV_FEBRUARY_STR,... to set each month name" [-Wcpp]
+   42 | #warning "LV_CALENDAR_DEFAULT_MONTH_NAMES is deprecated and will be removed in the next release. Use LV_JANUARY_STR, LV_FEBRUARY_STR,... to set each month name"
+      |  ^~~~~~~
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\ime\lv_ime_pinyin.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\keyboard\lv_keyboard.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\label\lv_label.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\led\lv_led.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\line\lv_line.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\list\lv_list.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\lottie\lv_lottie.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\menu\lv_menu.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\msgbox\lv_msgbox.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_animimage_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_arc_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_bar_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_buttonmatrix_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_chart_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_checkbox_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_dropdown_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_image_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_keyboard_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_label_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_led_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_line_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_menu_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_obj_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_roller_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_scale_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_slider_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_span_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_spinbox_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_spinner_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_style_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_switch_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_table_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_tabview_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_textarea_properties.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\qrcode\lv_qrcode.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\roller\lv_roller.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\scale\lv_scale.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\slider\lv_slider.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\span\lv_span.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\spinbox\lv_spinbox.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\spinner\lv_spinner.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\switch\lv_switch.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\table\lv_table.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\tabview\lv_tabview.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\textarea\lv_textarea.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\tileview\lv_tileview.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\win\lv_win.c.o
+Linking .pio\build\esp32s3\firmware.elf
+Retrieving maximum program size .pio\build\esp32s3\firmware.elf
+Checking size .pio\build\esp32s3\firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [===       ]  32.1% (used 105144 bytes from 327680 bytes)
+Flash: [====      ]  38.4% (used 2516822 bytes from 6553600 bytes)
+Building .pio\build\esp32s3\firmware.bin
+esptool v5.4.0
+Creating ESP32-S3 image...
+Merged 3 ELF sections.
+Successfully created ESP32-S3 image.
+Configuring upload protocol...
+AVAILABLE: cmsis-dap, esp-bridge, esp-builtin, esp-prog, espota, esptool, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa
+CURRENT: upload_protocol = esptool
+Looking for upload port...
+Auto-detected: COM8
+Uploading .pio\build\esp32s3\firmware.bin
+esptool v5.4.0
+Serial port COM8:
+Connecting...
+Connected to ESP32-S3 on COM8:
+Chip type:          ESP32-S3 (QFN56) (revision v0.2)
+Features:           Wi-Fi, BT 5 (LE), Dual Core + LP Core, 240MHz, Embedded PSRAM 8MB (AP_3v3)
+Crystal frequency:  40MHz
+USB mode:           USB-Serial/JTAG
+MAC:                e8:f6:0a:a3:9b:44
+
+Uploading stub flasher...
+Running stub flasher...
+Stub flasher running.
+Changing baud rate to 921600...
+Changed.
+
+Configuring flash size...
+
+Writing 'W:\GitHub\Croaster\boards\esp32s3\.pio\build\esp32s3\bootloader.bin' at 0x00000000...
+SHA digest in image updated.
+Flash will be erased from 0x00000000 to 0x00004fff...
+Compressed 19968 bytes to 12994...
+Writing at 0x00004e00 ============================== 100.0% 12.69kB/12.69kB [0s] 
+Wrote 19968 bytes (12994 compressed) at 0x00000000 in 0.3 seconds (585.1 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Writing 'W:\GitHub\Croaster\boards\esp32s3\.pio\build\esp32s3\partitions.bin' at 0x00008000...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Compressed 3072 bytes to 146...
+Writing at 0x00008c00 ============================== 100.0% 146B/146B [0s] 
+Wrote 3072 bytes (146 compressed) at 0x00008000 in 0.1 seconds (234.0 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Writing 'C:\pio\packages\framework-arduinoespressif32\tools\partitions\boot_app0.bin' at 0x0000e000...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+Compressed 8192 bytes to 47...
+Writing at 0x00010000 ============================== 100.0% 47B/47B [0s] 
+Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.1 seconds (624.1 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Writing '.pio\build\esp32s3\firmware.bin' at 0x00010000...
+Flash will be erased from 0x00010000 to 0x00285fff...
+Compressed 2579808 bytes to 1286193...
+Writing at 0x000181a0                                  1.3% 16.00kB/1.23MB [0s] 
+Writing at 0x00020a0f >                                2.5% 32.00kB/1.23MB [0s] 
+Writing at 0x0002b472 =                                3.8% 48.00kB/1.23MB [0s] 
+Writing at 0x00037279 =>                               5.1% 64.00kB/1.23MB [0s] 
+Writing at 0x000422db =>                               6.4% 80.00kB/1.23MB [0s] 
+Writing at 0x0004eb53 ==                               7.6% 96.00kB/1.23MB [1s] 
+Writing at 0x000567f8 ==>                              8.9% 112.00kB/1.23MB [1s] 
+Writing at 0x00060475 ===                             10.2% 128.00kB/1.23MB [1s] 
+Writing at 0x0006a689 ===                             11.5% 144.00kB/1.23MB [1s] 
+Writing at 0x000787a6 ===>                            12.7% 160.00kB/1.23MB [2s] 
+Writing at 0x0007e887 ====                            14.0% 176.00kB/1.23MB [2s] 
+Writing at 0x00085ee8 ====>                           15.3% 192.00kB/1.23MB [2s] 
+Writing at 0x0008f58f ====>                           16.6% 208.00kB/1.23MB [2s] 
+Writing at 0x0009930e =====                           17.8% 224.00kB/1.23MB [3s] 
+Writing at 0x000a43f5 =====>                          19.1% 240.00kB/1.23MB [3s] 
+Writing at 0x000af151 ======                          20.4% 256.00kB/1.23MB [3s] 
+Writing at 0x000b94a8 ======                          21.7% 272.00kB/1.23MB [3s] 
+Writing at 0x000c2a43 ======>                         22.9% 288.00kB/1.23MB [4s] 
+Writing at 0x000cbe34 =======                         24.2% 304.00kB/1.23MB [4s] 
+Writing at 0x000d6096 =======>                        25.5% 320.00kB/1.23MB [4s] 
+Writing at 0x000e097a ========                        26.8% 336.00kB/1.23MB [4s] 
+Writing at 0x000e9dc7 ========                        28.0% 352.00kB/1.23MB [4s] 
+Writing at 0x000f2f82 ========>                       29.3% 368.00kB/1.23MB [5s] 
+Writing at 0x000fbf4b =========                       30.6% 384.00kB/1.23MB [5s] 
+Writing at 0x00104c72 =========>                      31.8% 400.00kB/1.23MB [5s] 
+Writing at 0x0010e815 =========>                      33.1% 416.00kB/1.23MB [5s] 
+Writing at 0x00118dff ==========                      34.4% 432.00kB/1.23MB [5s] 
+Writing at 0x001248fb ==========>                     35.7% 448.00kB/1.23MB [6s] 
+Writing at 0x00135849 ===========                     36.9% 464.00kB/1.23MB [6s] 
+Writing at 0x001421ce ===========                     38.2% 480.00kB/1.23MB [6s] 
+Writing at 0x0014e23f ===========>                    39.5% 496.00kB/1.23MB [6s] 
+Writing at 0x00157870 ============                    40.8% 512.00kB/1.23MB [7s] 
+Writing at 0x0015dffd ============>                   42.0% 528.00kB/1.23MB [7s] 
+Writing at 0x0016384c ============>                   43.3% 544.00kB/1.23MB [7s] 
+Writing at 0x00169012 =============                   44.6% 560.00kB/1.23MB [7s] 
+Writing at 0x0016e1f7 =============>                  45.9% 576.00kB/1.23MB [7s] 
+Writing at 0x001737c1 ==============                  47.1% 592.00kB/1.23MB [8s] 
+Writing at 0x00178975 ==============>                 48.4% 608.00kB/1.23MB [8s] 
+Writing at 0x0017dde1 ==============>                 49.7% 624.00kB/1.23MB [8s] 
+Writing at 0x00183542 ===============                 51.0% 640.00kB/1.23MB [8s] 
+Writing at 0x00188b0b ===============>                52.2% 656.00kB/1.23MB [8s] 
+Writing at 0x0018de18 ================                53.5% 672.00kB/1.23MB [9s] 
+Writing at 0x00193108 ================                54.8% 688.00kB/1.23MB [9s] 
+Writing at 0x00198d15 ================>               56.0% 704.00kB/1.23MB [9s] 
+Writing at 0x0019e5ab =================               57.3% 720.00kB/1.23MB [9s] 
+Writing at 0x001a3fda =================>              58.6% 736.00kB/1.23MB [9s] 
+Writing at 0x001a99ec =================>              59.9% 752.00kB/1.23MB [10s] 
+Writing at 0x001af08d ==================              61.1% 768.00kB/1.23MB [10s] 
+Writing at 0x001b457d ==================>             62.4% 784.00kB/1.23MB [10s] 
+Writing at 0x001b9c5a ===================             63.7% 800.00kB/1.23MB [10s] 
+Writing at 0x001bedf1 ===================             65.0% 816.00kB/1.23MB [10s] 
+Writing at 0x001c4078 ===================>            66.2% 832.00kB/1.23MB [10s] 
+Writing at 0x001c97f8 ====================            67.5% 848.00kB/1.23MB [11s] 
+Writing at 0x001ceec5 ====================>           68.8% 864.00kB/1.23MB [11s] 
+Writing at 0x001d42f4 =====================           70.1% 880.00kB/1.23MB [11s] 
+Writing at 0x001d96d9 =====================           71.3% 896.00kB/1.23MB [11s] 
+Writing at 0x001dec95 =====================>          72.6% 912.00kB/1.23MB [11s] 
+Writing at 0x001e4e97 ======================          73.9% 928.00kB/1.23MB [12s] 
+Writing at 0x001ea6fa ======================>         75.2% 944.00kB/1.23MB [12s] 
+Writing at 0x001f198a ======================>         76.4% 960.00kB/1.23MB [12s] 
+Writing at 0x001fb6fd =======================         77.7% 976.00kB/1.23MB [12s] 
+Writing at 0x00205674 =======================>        79.0% 992.00kB/1.23MB [12s] 
+Writing at 0x00210fb5 ========================        80.3% 1008.00kB/1.23MB [13s] 
+Writing at 0x0021c958 ========================        81.5% 1.00MB/1.23MB [13s] 
+Writing at 0x00226bd2 ========================>       82.8% 1.02MB/1.23MB [13s] 
+Writing at 0x0022c758 =========================       84.1% 1.03MB/1.23MB [13s] 
+Writing at 0x00232400 =========================>      85.3% 1.05MB/1.23MB [13s] 
+Writing at 0x00237d23 =========================>      86.6% 1.06MB/1.23MB [14s] 
+Writing at 0x0023e546 ==========================      87.9% 1.08MB/1.23MB [14s] 
+Writing at 0x00247e21 ==========================>     89.2% 1.09MB/1.23MB [14s] 
+Writing at 0x00250b05 ===========================     90.4% 1.11MB/1.23MB [14s] 
+Writing at 0x0025de28 ===========================>    91.7% 1.12MB/1.23MB [14s] 
+Writing at 0x00266768 ===========================>    93.0% 1.14MB/1.23MB [15s] 
+Writing at 0x0026b864 ============================    94.3% 1.16MB/1.23MB [15s] 
+Writing at 0x0027143c ============================>   95.5% 1.17MB/1.23MB [15s] 
+Writing at 0x00276dc1 =============================   96.8% 1.19MB/1.23MB [15s] 
+Writing at 0x0027c919 =============================   98.1% 1.20MB/1.23MB [15s] 
+Writing at 0x00282bbb =============================>  99.4% 1.22MB/1.23MB [16s] 
+Writing at 0x00285d60 ============================== 100.0% 1.23MB/1.23MB [16s] 
+Wrote 2579808 bytes (1286193 compressed) at 0x00010000 in 16.2 seconds (1271.8 kbit/s).
+Verifying written data...
+Hash of data verified.
+
+Hard resetting via RTS pin...
+========================= [SUCCESS] Took 56.45 seconds =========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+esp32s3        SUCCESS   00:00:56.448
+========================= 1 succeeded in 00:00:56.448 =========================

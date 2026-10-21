@@ -9,7 +9,7 @@
 // ============================================================================
 
 // Use dummy sensor data (no real thermocouples required).
-const bool dummyMode = false;
+const bool dummyMode = true;
 
 // Thermocouple (MAX6675) pin layout for the ES3C28P.
 // SCK=2, SO=3, CS_BT=14, CS_ET=21

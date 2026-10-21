@@ -21,13 +21,14 @@
 #if  0 && defined(__ASSEMBLY__)
 #include "my_include.h"
 #endif
-
+#define LV_DISABLE_ASSERT_HANDLER_INCLUDE_WARNING 1
 /*====================
    COLOR SETTINGS
  *====================*/
 
 /** Color depth: 1 (I1), 8 (L8), 16 (RGB565), 24 (RGB888), 32 (XRGB8888) */
-#define LV_COLOR_DEPTH 16
+/*#define LV_COLOR_DEPTH 16*deprecated**/
+#define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_RGB565
 
 /*=========================
    STDLIB WRAPPER SETTINGS
