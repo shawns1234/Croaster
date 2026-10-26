@@ -107,7 +107,7 @@ Board folder `boards/esp32s3-flex/`:
 | `src/config.h` | new | The one master file for pins, chips, drivers and limits (D2). Croaster boards set pins in `main.cpp`. |
 | `src/ConfigCheck.h` | new | Compile-time checks on `config.h` (reserved pins, duplicates, ranges). |
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
-| `esp32s3-sdkconfig.defaults` | duplicates | Same content as `boards/esp32s3/`'s (line endings differ). Used only by the pioarduino env. Sharing it is part of D10. |
+| `esp32s3-sdkconfig.defaults` | duplicates | Same content as `boards/esp32s3/`'s (line endings differ). Set as `board_build.sdkconfig_path`, as in Croaster's esp32s3 board. Sharing it is part of D10. |
 | `artisan/croaster-flex.aset` | new | Artisan settings for heater, fan, PID and the data request. |
 | `test/test_core/test_main.cpp` | new | Host tests for `control-core`. |
 | `README.md`, `.gitignore` | new | Wiring, settings and generated-file ignores. |
@@ -168,12 +168,15 @@ tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
 | `CroasterCommandHandler::lastCommandMillis()` | needed for the comms watchdog | Lets an add-on see client traffic on Croaster's own WebSocket/BLE path, built-in commands included. Additive getter; `handle()` stores `millis()` when it accepts a message. See D6. |
 | `CroasterCommandHandler::onOtherJson(fn)` | needed for yaeger wire compatibility | Messages without `"command"` (yaeger's `{"BurnerVal":60}`) were dropped. Additive fallback, called only when no other branch matched; WebSocket and BLE. See D8. |
+| `CroasterBleManager` initializer order, `CroasterDeviceIdentity` `PRIX32` + `snprintf` | warning fixes | `-Wreorder` and `-Wformat` on ESP32 builds. No behaviour change; the chip id string is identical. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
-Existing boards still build: `esp32c3` built with every change above,
-`lastCommandMillis()` included (2026-10-26, its unpinned `espressif32`, which
-resolves to pioarduino 55.03.312 on this machine: RAM 47 136 B, flash
-1 505 073 B = 79.2 %; release and debug both SUCCESS).
+Existing boards still build with every change above (2026-10-26, temporary
+copies pinned to `espressif32 @ 8.0.0`; esp8266 on its own platform). Release
+sizes: `esp32c3` RAM 44 728 B, flash 1 742 297 B (91.7 %); `esp32s3` RAM
+105 184 B, flash 2 519 034 B; `esp8266` RAM 36 484 B, flash 415 739 B. The
+`esp32s3` copy also needed the T13 flag fix (`-Wno-deprecated-declarations`),
+since its ini's `-W no-deprecated-declarations` fails at link time.
 
 ## Decisions where Croaster's rules and Shawn's goals rub
 
@@ -241,7 +244,7 @@ because Shawn asked for compile-time selection with static checks.
 ### D5. Board id — resolved: `esp32s3-flex`, chosen by Shawn 2026-10-26
 Ids must be lowercase and match ICRM's `CroasterBoardTypes`
 (`esp32s3`/`esp32c3`/`esp8266`/`unknown`). Folder `boards/esp32s3-flex/`,
-envs `esp32s3-flex[-debug|-pioarduino|-pioarduino-sdkconfig]`, board id
+envs `esp32s3-flex[-debug|-pioarduino]`, board id
 `"esp32s3-flex"`. "roaster" was dropped
 because the whole project is a roaster, so it told you nothing. Options that
 were considered:
@@ -352,10 +355,10 @@ board json, platform, framework, flash size, upload and monitor options, and com
 
 **What flex and his esp32s3 actually have in common:** the chip and module (ESP32-S3 N16R8,
 `esp32-s3-devkitm1-n16r8.json`), 16 MB flash, USB-CDC flags, `BOARD_HAS_PSRAM`, and the
-upload and monitor speeds, and the partition table (`default_16MB.csv`). **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
+upload and monitor speeds, the partition table (`default_16MB.csv`) and `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`. **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
 Adafruit SSD1306 + ControlCore/ControlEsp32), build_flags (his `LV_CONF_PATH` points into his
 `src/ui`; ours does `-include src/config.h`), PSRAM mode (`dio_opi` vs `qio_opi`),
-sdkconfig (his uses `esp32s3-sdkconfig.defaults`; ours is off by default), and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
+and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
 
 | | How | Pros | Cons |
 |---|---|---|---|
@@ -366,14 +369,14 @@ sdkconfig (his uses `esp32s3-sdkconfig.defaults`; ours is off by default), and t
 
 **Throwaway test builds (2026-10-26, espressif32 @ 8.0.0; test folders deleted afterwards):**
 
-- **B builds.** I made a copy of flex with `extra_configs = ../esp32s3/platformio.ini` and
-  `extends = env:esp32s3` plus the overrides above. `pio run` gave SUCCESS: RAM 62,332 B,
+- **B builds.** A copy of flex with `extra_configs = ../esp32s3/platformio.ini` and
+  `extends = env:esp32s3` plus the overrides above built with SUCCESS: RAM 62,332 B,
   flash 1,773,207 B, byte-for-byte the same sizes as standalone A.
   `pio project config` showed sections `env`, `env:esp32s3` and `env:esp32s3-debug` from his
   file inside our project. In a variant without our own lib_deps, the resolved flex env
   inherited his `[env]` lib_deps (Croaster, WebSockets, ArduinoJson, Adafruit ILI9341,
   MAX6675, WiFiManager, lvgl). That confirms the silent-leak risk.
-- **C builds, both sides.** I made a base ini with `[esp32s3_base]`. The flex copy with
+- **C builds, both sides.** The test used a base ini with `[esp32s3_base]`. The flex copy with
   `extends = esp32s3_base` gave SUCCESS: RAM 62,332 B, flash 1,773,207 B (same as A).
   The copy of *his* esp32s3 board with `extends = esp32s3_base` (plus `boards_dir = ..`) also
   built `-e esp32s3`: SUCCESS, RAM 105,184 B, flash 2,518,962 B. Comparing his resolved
@@ -494,6 +497,10 @@ compile time (the linker drops unused code).
   PSRAM malloc on.
 - pioarduino 55.03.312 (same Arduino core) builds too; only it can apply
   `custom_sdkconfig` (recompiles IDF libs).
+- Flex sets `board_build.sdkconfig_path` like Croaster's esp32s3 board
+  (Shawn, 2026-10-26) and has no `custom_sdkconfig` env. To apply the file,
+  add `custom_sdkconfig = file://esp32s3-sdkconfig.defaults` to a pioarduino
+  env; the first build takes about 2 minutes.
 - `esp32s3-sdkconfig.defaults` findings (checked in the generated sdkconfig):
   - `MBEDTLS_EXTERNAL_MEM_ALLOC=y`, WiFi/LwIP in PSRAM, NimBLE 1 connection:
     applied.

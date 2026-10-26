@@ -72,7 +72,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
-  `CroasterCommandHandler::onOtherJson()`.
+  `CroasterCommandHandler::onOtherJson()`, `lastCommandMillis()`, and two
+  warning fixes (`CroasterBleManager` initializer order,
+  `CroasterDeviceIdentity` `PRIX32` format).
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
 - Decisions pending (Shawn), all in design.md: D1 (top-level control libs),

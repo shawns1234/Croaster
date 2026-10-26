@@ -93,7 +93,12 @@ pio test -e native                            # host unit tests (control-core)
 | `esp32s3-flex` | `platformio/espressif32 @ 8.0.0` (Arduino 3.3.12 / IDF 5.5) | release |
 | `esp32s3-flex-debug` | same | `CORE_DEBUG_LEVEL=3` |
 | `esp32s3-flex-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
-| `esp32s3-flex-pioarduino-sdkconfig` | pioarduino + `custom_sdkconfig` | rebuilds IDF with `esp32s3-sdkconfig.defaults` (slow first build; not needed: no TLS) |
+
+Every env sets `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`, as
+Croaster's `boards/esp32s3` does. Arduino builds on these platforms compile
+against prebuilt IDF libraries, so the file documents the intended Kconfig
+rather than changing the build (see `docs/design.md`, "Build platform and
+sdkconfig").
 
 Serial logs: native USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`). Using the other
 (USB-UART) port? Set `ARDUINO_USB_CDC_ON_BOOT=0` in `platformio.ini`.

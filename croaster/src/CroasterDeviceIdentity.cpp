@@ -1,4 +1,7 @@
 #include "CroasterDeviceIdentity.h"
+
+#include <cinttypes>
+
 #if defined(ESP32)
 #    include <WiFi.h>
 #elif defined(ESP8266)
@@ -15,12 +18,12 @@ String s_boardName = "unknown";
 String CroasterDeviceIdentity::uniqueChipId() {
 #if defined(ESP32)
     uint64_t chipId = ESP.getEfuseMac();
-    char idStr[13];
-    sprintf(idStr, "%04X%08X", (uint32_t)(chipId >> 32), (uint32_t)chipId);
+    char idStr[13]; // The MAC is 48 bits: 12 hex digits plus the terminator.
+    snprintf(idStr, sizeof(idStr), "%04" PRIX32 "%08" PRIX32, (uint32_t)(chipId >> 32), (uint32_t)chipId);
     return String(idStr);
 #elif defined(ESP8266)
     char idStr[7];
-    sprintf(idStr, "%06X", ESP.getChipId());
+    snprintf(idStr, sizeof(idStr), "%06" PRIX32, ESP.getChipId());
     return String(idStr);
 #else
     return "UNKNOWN";

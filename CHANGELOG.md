@@ -35,6 +35,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Compiler warnings in the library.** `CroasterBleManager`'s constructor
+  initializes its members in declaration order (`-Wreorder`).
+  `CroasterDeviceIdentity::uniqueChipId()` formats the chip id with `PRIX32`
+  and `snprintf` (`-Wformat` on ESP32, where `uint32_t` is `unsigned long`);
+  the id string is unchanged.
 - **Artisan `.aset`**: BT/ET were swapped (inherited from yaeger); Artisan's
   PC-side PID/Control buttons turned off (our PID is on the ESP32); Heater,
   Fan and SV curves via +WebSocket 34/56; setpoint slider; PID/Manual/
@@ -63,9 +68,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   new `setHeaderText(fn)` so the header shows heater/fan/mode or the trip.
   `RoasterOledDisplay`, the U8g2 dependency and the SH1106 option are gone.
 - **Board renamed `esp32s3-roaster` → `esp32s3-flex`**: folder (history kept
-  via `git mv`), envs `esp32s3-flex[-debug|-pioarduino|-pioarduino-sdkconfig]`,
+  via `git mv`), envs `esp32s3-flex[-debug|-pioarduino]`,
   board id `esp32s3-flex`,
   `artisan/croaster-flex.aset`.
+- Flex env list: the `-pioarduino-sdkconfig` env is gone; every env sets
+  `board_build.sdkconfig_path`, as Croaster's esp32s3 board does.
 - design.md: decisions D11–D15 (MAX31855 decoders, display, OTA, config
   wizard, MAX6675 dependency), D8 rewritten, a file-by-file inventory against
   Croaster, and a table of decisions changed on 2026-10-26.

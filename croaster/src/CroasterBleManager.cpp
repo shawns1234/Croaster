@@ -80,8 +80,8 @@ public:
 
 CroasterBleManager::CroasterBleManager(CroasterCore& croaster, CroasterCommandHandler& commandHandler,
                                        CroasterDisplay* display)
-    : croaster(&croaster)
-    , commandHandler(&commandHandler)
+    : commandHandler(&commandHandler)
+    , croaster(&croaster)
     , display(display) {}
 
 void CroasterBleManager::begin() {
