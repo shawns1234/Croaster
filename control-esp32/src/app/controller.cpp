@@ -1,30 +1,30 @@
-#include "roaster.h"
+#include "controller.h"
 
 #include <Arduino.h>
 #include <Update.h>
 
 #include <cmath>
 
-void Roaster::begin(const PidGains& gains, PidInput input, int core, UBaseType_t prio) {
+void Controller::begin(const PidGains& gains, PidInput input, int core, UBaseType_t prio) {
     pid_.setGains(gains);
     st_.gains = gains;
     st_.pidInput = input;
     queue_ = xQueueCreate(16, sizeof(Command));
-    xTaskCreatePinnedToCore(taskEntry, "roaster", 6144, this, prio, nullptr, core);
+    xTaskCreatePinnedToCore(taskEntry, "control", 6144, this, prio, nullptr, core);
 }
 
-bool Roaster::submit(const Command& c) {
+bool Controller::submit(const Command& c) {
     return queue_ && xQueueSend(queue_, &c, 0) == pdTRUE;
 }
 
-Snapshot Roaster::snapshot() const {
+Snapshot Controller::snapshot() const {
     portENTER_CRITICAL(&mux_);
     Snapshot s = published_;
     portEXIT_CRITICAL(&mux_);
     return s;
 }
 
-bool Roaster::loadProfile(const RoastProfile& p) {
+bool Controller::loadProfile(const RoastProfile& p) {
     // Called from the network task; the control task takes it on StartProfile.
     // A later load before StartProfile replaces the earlier one.
     if (p.size() == 0)
@@ -36,11 +36,11 @@ bool Roaster::loadProfile(const RoastProfile& p) {
     return true;
 }
 
-void Roaster::taskEntry(void* self) {
-    static_cast<Roaster*>(self)->run();
+void Controller::taskEntry(void* self) {
+    static_cast<Controller*>(self)->run();
 }
 
-void Roaster::run() {
+void Controller::run() {
     TickType_t wake = xTaskGetTickCount();
     uint32_t n = 0;
     for (;;) {
@@ -55,7 +55,7 @@ void Roaster::run() {
     }
 }
 
-float Roaster::pidInput(const ThermoSample& s) const {
+float Controller::pidInput(const ThermoSample& s) const {
     switch (st_.pidInput) {
     case PidInput::BT:
         return s.bt;
@@ -66,7 +66,7 @@ float Roaster::pidInput(const ThermoSample& s) const {
     }
 }
 
-void Roaster::setMode(Mode m, float pv) {
+void Controller::setMode(Mode m, float pv) {
     if (m == Mode::Pid || m == Mode::Profile) {
         if (st_.mode == Mode::Manual || st_.mode == Mode::Autotune)
             pid_.reset(st_.setpoint, pv, heater_.requested());
@@ -78,7 +78,7 @@ void Roaster::setMode(Mode m, float pv) {
     st_.mode = m;
 }
 
-void Roaster::apply(const Command& c) {
+void Controller::apply(const Command& c) {
     const float pv = pidInput(last_);
     // A fresh operator action re-arms after a trip; controlStep() re-trips at once if
     // the cause (over-temp, dead probe, no mains) is still present.
@@ -164,7 +164,7 @@ void Roaster::apply(const Command& c) {
     }
 }
 
-void Roaster::controlStep(uint32_t now) {
+void Controller::controlStep(uint32_t now) {
     last_ = tc_.read();
     const float pv = pidInput(last_);
     float out = 0;

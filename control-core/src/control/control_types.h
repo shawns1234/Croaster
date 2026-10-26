@@ -52,7 +52,7 @@ struct Command {
         SetPidInput, // a = (float)PidInput
         SetGains,    // a,b,c = kp,ki,kd
         StartAutotune,
-        StartProfile, // profile must already be loaded via Roaster::loadProfile
+        StartProfile, // profile must already be loaded via Controller::loadProfile
         Stop,         // heater 0, back to Manual (fan unchanged)
         EmergencyOff, // heater 0, fan to cooldown speed, Manual (comms loss / OTA)
         Trip,         // a = (float)SafetyTrip; raised by the network side (comms, OTA)

@@ -5,8 +5,8 @@
 // per conversion). Only the control task calls read(), so it owns the bus.
 #include <cstdint>
 
-#include "core/max31855.h"
-#include "core/moving_average.h"
+#include "control/max31855.h"
+#include "control/moving_average.h"
 
 enum class TcChip : uint8_t { MAX31855, MAX6675 };
 

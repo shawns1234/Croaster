@@ -1,4 +1,4 @@
-# How the roaster firmware works
+# How the flex control firmware works
 
 Plain-language tour of `rework/roaster`, written with the `/how` method:
 overview, key ideas, the flow step by step, where things live, gotchas.
@@ -14,9 +14,9 @@ ESP32 holds it without any PC attached.
 It is built on **Croaster**, an existing open-source thermometer firmware.
 Croaster already does WiFi setup, the WebSocket server Artisan connects to,
 Bluetooth for the ICRM phone app, OTA updates and the display framework. We
-added the roaster parts (heater, fan, PID, autotune, profiles, safety) as
+added the control parts (heater, fan, PID, autotune, profiles, safety) as
 separate libraries that plug into Croaster through hooks. Croaster stays a
-thermometer library, and the roaster logic sits next to it.
+thermometer library, and the control logic sits next to it.
 
 ## Key ideas
 
@@ -34,7 +34,7 @@ thermometer library, and the roaster logic sits next to it.
 - **Trips.** Safety stops: over-temperature, probe fault, no mains for the
   dimmer, OTA in progress, and lost comms. A trip turns the heater off and
   stays latched until `clearTrip`.
-- **RoasterPlugin.** The glue. It registers our JSON commands with Croaster,
+- **ControlPlugin.** The glue. It registers our JSON commands with Croaster,
   adds our fields to the data Croaster sends, runs the comms watchdog and
   saves settings to flash (NVS).
 
@@ -78,13 +78,13 @@ sequenceDiagram
     participant Art as Artisan
     participant WS as Croaster WebSocket :81
     participant H as CroasterCommandHandler
-    participant P as RoasterPlugin
+    participant P as ControlPlugin
     participant Q as command queue
     participant T as control task
     Art->>WS: {"command":{"setpoint":200}}
     WS->>H: parse JSON
     H->>P: onJsonCommand("setpoint")
-    P->>P: roasterproto::parseNested -> Command
+    P->>P: controlproto::parseNested -> Command
     P->>Q: submit
     T->>Q: next tick: take it
     T->>T: PID now aims for 200 C
@@ -116,10 +116,10 @@ Profiles are exempt because they are meant to run on their own.
 | `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
 | `boards/esp32s3-flex/artisan/croaster-flex.aset` | Artisan settings (see `artisan-settings.md`) |
 | `boards/esp32s3-flex/test/` | Host unit tests (`pio test -e native`) |
-| `roaster-core/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding |
-| `roaster-control/src/app/roaster.*` | The control task |
-| `roaster-control/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
-| `roaster-control/src/RoasterPlugin.*` | Commands, data fields, watchdog, ArduinoOTA |
+| `control-core/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding |
+| `control-esp32/src/app/controller.*` | The control task |
+| `control-esp32/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
+| `control-esp32/src/ControlPlugin.*` | Commands, data fields, watchdog, ArduinoOTA |
 | `croaster/src/` | Croaster library (WiFi, WebSocket, BLE, OTA, RoR) |
 
 ## Gotchas
@@ -129,7 +129,7 @@ Profiles are exempt because they are meant to run on their own.
   button). It is turned off in our `.aset`. Ours runs on the ESP32. See
   `control-parity.md`.
 - **Autotune needs a setpoint ≥ 100 °C** and a working probe. It reports progress in
-  `getRoaster` → `autotune`.
+  `getControl` → `autotune`.
 - **Probe faults in Manual don't trip.** As in yaeger, Manual keeps your
   heater %. PID, Profile and Autotune trip after 2 s of bad readings.
 - **`.local` names** don't always resolve on Windows. Use the IP on the OLED.

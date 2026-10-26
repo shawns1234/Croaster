@@ -28,17 +28,17 @@ A board wires it up in `main.cpp`. This is the whole public surface a board sees
 
 ```cpp
 Thermocouples probes(TcChip::MAX31855, SCK, MISO, CS_ET, CS_BT);
-HeaterOutput heater(ROASTER_PIN_HEATER, ROASTER_HEATER_WINDOW_MS, 90, true);
+HeaterOutput heater(FLEX_PIN_HEATER, FLEX_HEATER_WINDOW_MS, 90, true);
 FanDimmer fan(...);                                     // or FanPwm, chosen in config.h
-Roaster roaster(probes, heater, fan, limits());         // control task
+Controller controller(probes, heater, fan, limits()); // control task
 RoasterProbe btProbe(roaster, RoasterProbe::Channel::BT); // Croaster reads the snapshot
 CroasterCore core(false, &btProbe, &etProbe);
-RoasterPlugin plugin(roaster, pluginConfig());          // Croaster glue
+ControlPlugin plugin(roaster, pluginConfig());          // Croaster glue
 
 void setup() {
     heater.begin(); fan.begin(); probes.begin();        // outputs off first
     auto s = ConfigStore::load(defaults());             // NVS
-    roaster.begin(s.gains, s.pidInput, core, prio);
+    controller.begin(s.gains, s.pidInput, core, prio);
     plugin.attach(app, s);                              // registers commands + data hook
     app.begin();                                        // Croaster: WiFi, WS, BLE, display
     plugin.begin();                                     // ArduinoOTA
@@ -63,17 +63,17 @@ flowchart TB
         MAIN[main.cpp]
         OLED[CroasterDisplaySSD1306]
     end
-    subgraph rc["roaster-control (ESP32)"]
-        PLUG[RoasterPlugin]
-        R[Roaster control task]
+    subgraph rc["control-esp32 (ESP32)"]
+        PLUG[ControlPlugin]
+        R[Controller task]
         HW[hw: SSR, dimmer/PWM fan, thermocouples]
         NVS[ConfigStore NVS]
     end
-    subgraph core["roaster-core (pure C++, host-tested)"]
+    subgraph core["control-core (pure C++, host-tested)"]
         PID[Pid]
         AT[RelayAutotune]
         PROF[RoastProfile]
-        PROTO[roasterproto: parse/format JSON]
+        PROTO[controlproto: parse/format JSON]
         DEC[MAX31855/MAX6675 decode]
     end
     subgraph cl["croaster (library)"]
@@ -102,11 +102,11 @@ Load-bearing decisions:
   SPI bus, mode and PID. Everyone else gets a queue for writes and a
   snapshot for reads. No locks spread through the code, and a stalled
   WebSocket can't hold the heater on (*split ownership* avoided).
-- **The wire format lives in one module.** `roasterproto` turns JSON into
+- **The wire format lives in one module.** `controlproto` turns JSON into
   `Command`s and formats data fields. The control task never sees JSON, and
   Croaster never sees `Command` (*information leakage* avoided). It is pure,
   so it is unit-tested on the PC.
-- **Deep control interface.** `Roaster` exposes `begin`, `submit(Command)`,
+- **Deep control interface.** `Controller` exposes `begin`, `submit(Command)`,
   `snapshot()`, `loadProfile`. Mode logic, bumpless transfer, anti-windup,
   interlocks, the SSR window and autotune all sit behind those four calls.
 - **Croaster changes are small additive hooks** (sensor-injection constructor,
@@ -141,18 +141,18 @@ Taken from Croaster: everything about connectivity, display and boards.
 
 | Flag | Where | Verdict |
 |:---|:---|:---|
-| Two ways to do one task | Nested commands (`{"command":{"burner":..}}`) **and** yaeger flat keys (`{"BurnerVal":..}`) | Accepted on purpose for yaeger compatibility. Both end in `roasterproto` → the same `Command`, so the behaviour can't diverge. New clients should use nested. |
-| Hand-synced list | `.aset` command strings vs `roasterproto` keys; `kNestedKeys` vs `parseNested` | Inside the firmware, registration loops over `kNestedKeys`/`kBasicNames`, so it's derived. The `.aset` is a separate file Artisan reads. `artisan-settings.md` documents every key. A future test could parse the `.aset` and run each command through `roasterproto` (ticket T16). |
+| Two ways to do one task | Nested commands (`{"command":{"burner":..}}`) **and** yaeger flat keys (`{"BurnerVal":..}`) | Accepted on purpose for yaeger compatibility. Both end in `controlproto` → the same `Command`, so the behaviour can't diverge. New clients should use nested. |
+| Hand-synced list | `.aset` command strings vs `controlproto` keys; `kNestedKeys` vs `parseNested` | Inside the firmware, registration loops over `kNestedKeys`/`kBasicNames`, so it's derived. The `.aset` is a separate file Artisan reads. `artisan-settings.md` documents every key. A future test could parse the `.aset` and run each command through `controlproto` (ticket T16). |
 | Pass-through | `RoasterProbe` (Croaster `Thermocouple` → snapshot) | An adapter that adds policy (NaN on fault, unit), so not a plain pass-through |
-| Importable internals | Boards can include `app/roaster.h`, `hw/*` | Needed: the board constructs the drivers. Not hidden. |
-| Shallow module | `RoasterPlugin` public API: `attach`/`begin`/`loop` | Deep: hides all JSON routing, NVS, watchdog and OTA |
+| Importable internals | Boards can include `app/controller.h`, `hw/*` | Needed: the board constructs the drivers. Not hidden. |
+| Shallow module | `ControlPlugin` public API: `attach`/`begin`/`loop` | Deep: hides all JSON routing, NVS, watchdog and OTA |
 
 ## Tradeoffs accepted
 - A dedicated control task, in exchange for one more concept (queue/snapshot)
   than Croaster's loop-only style. It is the only way a WiFi stall can't
   freeze the heater.
 - Two new top-level library folders (D1), in exchange for host-testable pure
-  logic and reuse by a future second roaster board.
+  logic and reuse by a future second control board.
 - A force-included `config.h` (D3), in exchange for one master config file.
 - A comms watchdog on traffic, not on disconnect events (D9), in exchange for
   also catching silent WiFi loss. The cost is a 10 s worst case instead of
@@ -169,7 +169,7 @@ Taken from Croaster: everything about connectivity, display and boards.
   (ESP8266 too) would compile heater code (D1).
 
 ## Open questions (DECISIONs for Shawn)
-1. D1: top-level `roaster-core/` + `roaster-control/` folders. OK?
+1. D1: top-level `control-core/` + `control-esp32/` folders. OK?
 2. D3: force-include `config.h` into every unit. OK?
 3. D6/D9: is the 10 s comms watchdog (heater off, fan to cooldown) the
    behaviour you want, or yaeger's instant cut on disconnect as well?

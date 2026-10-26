@@ -1,20 +1,20 @@
 #pragma once
 // Feeds Croaster's display/RoR/Artisan path from the control task's readings.
-// In a roaster build the control task owns the thermocouple SPI bus; CroasterCore
+// In a control build the control task owns the thermocouple SPI bus; CroasterCore
 // is built with CroasterCore(dummy, &btProbe, &etProbe) and reads these instead of
 // touching the chips. Values are the control task's filtered temperatures.
 #include <Thermocouple.h>
 
-#include "app/roaster.h"
+#include "app/controller.h"
 
 class RoasterProbe : public Thermocouple {
 public:
     enum class Channel : uint8_t { ET, BT };
-    RoasterProbe(Roaster& roaster, Channel ch)
-        : roaster_(roaster)
+    RoasterProbe(Controller& controller, Channel ch)
+        : controller_(controller)
         , ch_(ch) {}
     double readCelsius() override {
-        const Snapshot s = roaster_.snapshot();
+        const Snapshot s = controller_.snapshot();
         return ch_ == Channel::BT ? s.bt : s.et; // NaN on fault; Croaster reports it as missing
     }
     double readKelvin() override {
@@ -25,6 +25,6 @@ public:
     }
 
 private:
-    Roaster& roaster_;
+    Controller& controller_;
     Channel ch_;
 };

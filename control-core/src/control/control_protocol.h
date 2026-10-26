@@ -1,8 +1,8 @@
 #pragma once
-// Roaster commands carried by Croaster's command system (CroasterCommandHandler).
+// Control commands carried by Croaster's command system (CroasterCommandHandler).
 // Croaster routes {"command":"name"} to onCommand("name") and
 // {"command":{"key":...}} to onJsonCommand("key"); this module turns those JSON
-// objects into control Commands and formats the roaster's extra data fields.
+// objects into control Commands and formats the control data fields.
 // Pure (ArduinoJson only), so it is host-tested.
 //
 // Nested (values; temperatures in Croaster's current unit, see "temp" in data):
@@ -16,7 +16,7 @@
 //   {"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%},...]}}
 // Basic:
 //   {"command":"startProfile"} {"command":"stop"} {"command":"autotune"}
-//   {"command":"clearTrip"}    {"command":"getRoaster"}
+//   {"command":"clearTrip"}    {"command":"getControl"}
 // Several keys may be combined in one nested object.
 //
 // yaeger compatibility (same wire format as yaeger's CommandLoop.cpp, so its web
@@ -30,10 +30,10 @@
 
 #include <cstddef>
 
+#include "control_types.h"
 #include "roast_profile.h"
-#include "roaster_types.h"
 
-namespace roasterproto {
+namespace controlproto {
 
 // Keys handled by parseNested(); register each one with onJsonCommand().
 extern const char* const kNestedKeys[];
@@ -70,8 +70,8 @@ Parsed parseNested(JsonObjectConst cmd, char unit, const char* onlyKey = nullptr
 // name). Ignores everything else, so it is safe on any message.
 Parsed parseLegacy(JsonObjectConst msg, char unit);
 
-// Maps a basic command name to a control command. "getRoaster" returns false
-// (it is a query, answered with writeRoasterInfo()).
+// Maps a basic command name to a control command. "getControl" returns false
+// (it is a query, answered with writeControlInfo()).
 bool basicCommand(const char* name, Command& out);
 
 // Adds BurnerVal, FanVal, SV (setpoint), Mode, trip and yaeger's Amb, Target,
@@ -81,7 +81,7 @@ void writeDataFields(const Snapshot& s, char unit, JsonObject data);
 // yaeger's preferences reply body: type, pidKp, pidKi, pidKd, cooldownFanSpeed.
 void writePreferences(const PidGains& g, float cooldownFan, JsonObject data);
 
-// Response body for {"command":"getRoaster"}.
-void writeRoasterInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject out);
+// Response body for {"command":"getControl"}.
+void writeControlInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject out);
 
-} // namespace roasterproto
+} // namespace controlproto

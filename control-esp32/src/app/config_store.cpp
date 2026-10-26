@@ -3,12 +3,12 @@
 #include <Preferences.h>
 
 namespace {
-constexpr const char* kNs = "roaster";
+constexpr const char* kNs = "control";
 }
 
-RoasterSettings ConfigStore::load(const RoasterSettings& d) {
+ControlSettings ConfigStore::load(const ControlSettings& d) {
     Preferences p;
-    RoasterSettings s = d;
+    ControlSettings s = d;
     if (!p.begin(kNs, true))
         return s; // namespace absent on first boot
     s.gains.kp = p.getFloat("kp", d.gains.kp);

@@ -11,24 +11,24 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 
-#include "core/pid.h"
-#include "core/relay_autotune.h"
-#include "core/roast_profile.h"
-#include "core/roaster_types.h"
+#include "control/control_types.h"
+#include "control/pid.h"
+#include "control/relay_autotune.h"
+#include "control/roast_profile.h"
 #include "hw/fan_output.h"
 #include "hw/heater_output.h"
 #include "hw/thermocouples.h"
 
-struct RoasterLimits {
+struct SafetyLimits {
     float overTempC = 275;     // any probe -> heater off, fan 100
     float maxSetpointC = 250;  // legacy clamp in Control::setSetpoint
     float minFanWithHeat = 30; // legacy: heater on with fan <= 10 forced fan to 30
     bool requireMains = true;  // refuse heat when the dimmer sees no zero-cross
 };
 
-class Roaster {
+class Controller {
 public:
-    Roaster(Thermocouples& tc, HeaterOutput& heater, FanOutput& fan, RoasterLimits lim)
+    Controller(Thermocouples& tc, HeaterOutput& heater, FanOutput& fan, SafetyLimits lim)
         : tc_(tc)
         , heater_(heater)
         , fan_(fan)
@@ -60,7 +60,7 @@ private:
     Thermocouples& tc_;
     HeaterOutput& heater_;
     FanOutput& fan_;
-    RoasterLimits lim_;
+    SafetyLimits lim_;
     Pid pid_;
     RelayAutotune autotune_;
     RoastProfile profile_, pendingProfile_;

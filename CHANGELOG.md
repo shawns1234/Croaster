@@ -5,16 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — roaster control (branch rework/roaster)
+## [Unreleased] — flex control board (branch rework/roaster)
 
 ### Added
-- **`boards/esp32s3-flex`** ("flex") — roaster control board for the Lonely Binary
+- **`boards/esp32s3-flex`** ("flex") — heater + fan control board for the Lonely Binary
   ESP32-S3 N16R8: PID heater via SSR (time-proportional window), RobotDyn AC
   dimmer or PWM fan, roast profiles, relay autotune, safety trips (over-temp,
   sensor fault, no mains, OTA, comms lost), Croaster's shared SSD1306 screen,
   ArduinoOTA, Artisan settings file. Single master `src/config.h` validated at
   compile time by `src/ConfigCheck.h`.
-- **`roaster-core/`** (pure, host-tested) and **`roaster-control/`** (ESP32)
+- **`control-core/`** (pure, host-tested) and **`control-esp32/`** (ESP32)
   libraries; host tests (`pio test -e native`, 16 now).
 - **MAX31855 support** in the library: `CroasterMAX31855`,
   `CroasterThermocoupleType`, optional third `CroasterCore` constructor argument
@@ -39,6 +39,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Names say flex or control, not roaster** (map in `docs/design.md`, "Names"):
+  `control-core/` (`controlproto`), `control-esp32/` (`Controller`,
+  `ControlPlugin`, `ControlSettings`, `SafetyLimits`), `FLEX_*` macros,
+  `getControl`, task and NVS namespace `control`.
 - **Flex screen is Croaster's `CroasterDisplaySSD1306`** (boards/common), with a
   new `setHeaderText(fn)` so the header shows heater/fan/mode or the trip.
   `RoasterOledDisplay`, the U8g2 dependency and the SH1106 option are gone.
@@ -50,7 +54,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Display default confirmed: 0.96" I2C 128×64 SSD1306.
 - **RoR keeps negative values** (falling temperature was reported as 0).
 - `CROASTER_HAS_BLE` can be preset by a board (`#ifndef`).
-- `format.sh` also formats `roaster-core/` and `roaster-control/`.
+- `format.sh` also formats `control-core/` and `control-esp32/`.
 
 ---
 

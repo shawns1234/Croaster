@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include "roaster_types.h"
+#include "control_types.h"
 
 namespace {
 float ease(float a, float b, float p, Interp k) {

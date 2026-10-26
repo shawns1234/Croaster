@@ -1,4 +1,4 @@
-// Host tests for roaster-core. Run: pio test -e native
+// Host tests for control-core. Run: pio test -e native
 #include <unity.h>
 
 #include <cmath>
@@ -6,14 +6,14 @@
 
 #include <ArduinoJson.h>
 
-#include "core/max31855.h"
-#include "core/max6675.h"
-#include "core/moving_average.h"
-#include "core/pid.h"
-#include "core/relay_autotune.h"
-#include "core/roast_profile.h"
-#include "core/roaster_protocol.h"
-#include "core/time_proportional.h"
+#include "control/control_protocol.h"
+#include "control/max31855.h"
+#include "control/max6675.h"
+#include "control/moving_average.h"
+#include "control/pid.h"
+#include "control/relay_autotune.h"
+#include "control/roast_profile.h"
+#include "control/time_proportional.h"
 
 void setUp() {}
 void tearDown() {}
@@ -191,11 +191,11 @@ void test_profile_in_fahrenheit() {
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 200.0f, p.at(60).setpointC);
 }
 
-// ---------- Roaster protocol (Croaster nested commands) ----------
-static roasterproto::Parsed parse(const char* json, char unit = 'C', const char* only = nullptr) {
+// ---------- Controller protocol (Croaster nested commands) ----------
+static controlproto::Parsed parse(const char* json, char unit = 'C', const char* only = nullptr) {
     JsonDocument d;
     deserializeJson(d, json);
-    return roasterproto::parseNested(d["command"].as<JsonObjectConst>(), unit, only);
+    return controlproto::parseNested(d["command"].as<JsonObjectConst>(), unit, only);
 }
 
 void test_protocol_values() {
@@ -240,11 +240,11 @@ void test_protocol_profile() {
 
 void test_protocol_basic_and_data() {
     Command c;
-    TEST_ASSERT_TRUE(roasterproto::basicCommand("startProfile", c));
+    TEST_ASSERT_TRUE(controlproto::basicCommand("startProfile", c));
     TEST_ASSERT_TRUE(c.kind == Command::Kind::StartProfile);
-    TEST_ASSERT_TRUE(roasterproto::basicCommand("STOP", c));
+    TEST_ASSERT_TRUE(controlproto::basicCommand("STOP", c));
     TEST_ASSERT_TRUE(c.kind == Command::Kind::Stop);
-    TEST_ASSERT_FALSE(roasterproto::basicCommand("getRoaster", c));
+    TEST_ASSERT_FALSE(controlproto::basicCommand("getControl", c));
 
     Snapshot s;
     s.heaterPct = 55;
@@ -253,7 +253,7 @@ void test_protocol_basic_and_data() {
     s.mode = Mode::Pid;
     JsonDocument d;
     JsonObject data = d["data"].to<JsonObject>();
-    roasterproto::writeDataFields(s, 'F', data);
+    controlproto::writeDataFields(s, 'F', data);
     char buf[384];
     serializeJson(d, buf, sizeof buf);
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"Target\":\"ET\""));
@@ -264,15 +264,15 @@ void test_protocol_basic_and_data() {
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"SV\":392"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"Mode\":\"PID\""));
     s.setpoint = NAN;
-    roasterproto::writeDataFields(s, 'C', data);
+    controlproto::writeDataFields(s, 'C', data);
     serializeJson(d, buf, sizeof buf);
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"SV\":null"));
 }
 
-static roasterproto::Parsed parseLegacy(const char* json, char unit = 'C') {
+static controlproto::Parsed parseLegacy(const char* json, char unit = 'C') {
     JsonDocument d;
     deserializeJson(d, json);
-    return roasterproto::parseLegacy(d.as<JsonObjectConst>(), unit);
+    return controlproto::parseLegacy(d.as<JsonObjectConst>(), unit);
 }
 
 void test_protocol_yaeger_compat() {
@@ -305,7 +305,7 @@ void test_protocol_yaeger_compat() {
     TEST_ASSERT_FALSE(p.hasGains || p.hasCooldownFan || p.hasPidInput);
 
     JsonDocument d;
-    roasterproto::writePreferences(PidGains{4, 0.5f, 1}, 70, d.to<JsonObject>());
+    controlproto::writePreferences(PidGains{4, 0.5f, 1}, 70, d.to<JsonObject>());
     char buf[160];
     serializeJson(d, buf, sizeof buf);
     TEST_ASSERT_EQUAL_STRING(R"({"type":"preferences","pidKp":4,"pidKi":0.5,"pidKd":1,"cooldownFanSpeed":70})", buf);

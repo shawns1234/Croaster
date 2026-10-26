@@ -1,4 +1,4 @@
-# Design — Croaster roaster control (ESP32-S3)
+# Design — flex control board on Croaster (ESP32-S3)
 
 Status: skeleton, builds and host-tests pass; not yet run on hardware.
 Owner decisions still open are marked **DECISION**.
@@ -22,38 +22,73 @@ Croaster's library/board split and extension model.
   shared board-side code. `build_all.sh` builds env `<board>`;
   `upload_monitor.sh` builds env `<board>-debug`.
 
+## Names
+
+The whole project is a roaster, so "roaster" in a name says nothing. Rule:
+board-level things say **flex**, control features say **control**, and no
+name starts with `Croaster` (that prefix is the upstream author's). Renamed
+2026-10-26 at Shawn's request:
+
+| Before | After | What it is |
+|:---|:---|:---|
+| `roaster-core/` (lib `RoasterCore`), `src/core/` | `control-core/` (lib `ControlCore`), `src/control/` | Pure, host-tested logic: PID, autotune, profiles, decoders, protocol |
+| `roaster-control/` (lib `RoasterControl`) | `control-esp32/` (lib `ControlEsp32`) | ESP32 side: control task, SSR, fan drivers, probes, NVS, plugin |
+| `roaster_protocol.*`, namespace `roasterproto` | `control_protocol.*`, `controlproto` | JSON commands and data fields |
+| `roaster_types.h` | `control_types.h` | `Command`, `Snapshot`, `Mode`, `SafetyTrip` |
+| `Roaster` (`app/roaster.*`) | `Controller` (`app/controller.*`) | The control task |
+| `RoasterPlugin`, `RoasterPluginConfig` | `ControlPlugin`, `ControlPluginConfig` | Registers commands with `CroasterApp` |
+| `RoasterSettings` | `ControlSettings` | NVS-backed settings |
+| `RoasterLimits` | `SafetyLimits` | Over-temp, max setpoint, min fan, mains check |
+| `RoasterOledDisplay` | removed | The flex board uses Croaster's `CroasterDisplaySSD1306` |
+| `ROASTER_*` macros in `config.h` | `FLEX_*` | Board config |
+| `{"command":"getRoaster"}`, `writeRoasterInfo` | `getControl`, `writeControlInfo` | Status query |
+| FreeRTOS task `"roaster"` | `"control"` | |
+| NVS namespace `"roaster"` | `"control"` | Nothing is deployed, so no settings are lost |
+| `RoasterProbe` | kept | See below |
+
+`RoasterProbe` (`control-esp32/src/RoasterProbe.h`) is a `Thermocouple`
+adapter for the two K-type probes, ET and BT, and nothing else. It does not
+touch the chips. The control task reads both MAX31855s (`hw/thermocouples`)
+and publishes filtered values; each `RoasterProbe` returns one channel of that
+snapshot (NaN on a fault) so `CroasterCore` computes RoR and telemetry from
+the same numbers the PID uses. Shawn keeps the name for the K-type probes.
+
+Still named "roaster": Artisan's `roasterID` field, the branch
+`rework/roaster`, the `roaster-*.zip` file names, and prose about the
+physical machine.
+
 ## Layers
 
 ```
 boards/esp32s3-flex/          board: config.h, ConfigCheck.h, main.cpp
         |  constructs + injects
         v
-roaster-control/  (Arduino/ESP32)   RoasterPlugin  --registers-->  CroasterApp commands / onJsonData
-                                    Roaster (FreeRTOS task)  <-- Command queue
+control-esp32/  (Arduino/ESP32)   ControlPlugin  --registers-->  CroasterApp commands / onJsonData
+                                    Controller (FreeRTOS task) <-- Command queue
                                     HeaterOutput, FanDimmer|FanPwm, Thermocouples, ConfigStore(NVS)
                                     RoasterProbe : Thermocouple  --> CroasterCore (BT/ET)
         |
         v
-roaster-core/     (pure C++, host-tested)  PID, relay autotune, roast profile,
+control-core/     (pure C++, host-tested)  PID, relay autotune, roast profile,
                                     MAX31855/MAX6675 decode, moving average,
                                     time-proportional window, command protocol
 croaster/         (Croaster library) WiFi, WebSocket, BLE, OTA, RoR, display iface
 ```
 
 Rules this keeps: nothing in `croaster/` knows about heaters or fans; board
-config stays in the board; roaster logic is reusable by any future board
-(e.g. a C3 roaster) by adding another `boards/<board>/` folder.
+config stays in the board; control logic is reusable by any future board
+(e.g. a C3 control board) by adding another `boards/<board>/` folder.
 
 ### Where each feature lands
 
 | Feature | Lands in | Why |
 |:---|:---|:---|
 | MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
-| MAX31855/MAX6675 decode for control | `roaster-core/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
-| PID, autotune, profiles | `roaster-core` | Pure logic, unit-tested on the host (16 tests). |
-| SSR, dimmer, PWM fan, probe reading, NVS | `roaster-control/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 roaster board. |
-| Control loop + safety | `roaster-control/app/roaster` | Own FreeRTOS task (see Threading). |
-| Commands, data fields, watchdog, ArduinoOTA | `roaster-control/RoasterPlugin` | Uses only Croaster's public extension points. |
+| MAX31855/MAX6675 decode for control | `control-core/control/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
+| PID, autotune, profiles | `control-core` | Pure logic, unit-tested on the host (16 tests). |
+| SSR, dimmer, PWM fan, probe reading, NVS | `control-esp32/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 control board. |
+| Control loop + safety | `control-esp32/app/controller` | Own FreeRTOS task (see Threading). |
+| Commands, data fields, watchdog, ArduinoOTA | `control-esp32/ControlPlugin` | Uses only Croaster's public extension points. |
 | Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
 
@@ -68,7 +103,7 @@ config stays in the board; roaster logic is reusable by any future board
    and broadcasts JSON; `onJsonData` adds `BurnerVal`, `FanVal`, `SV`, `Mode`,
    `trip`.
 3. Clients (Artisan, ICRM, BLE) send JSON → `CroasterCommandHandler` →
-   `RoasterPlugin` callbacks → `roasterproto` parse → `Command` queue → control
+   `ControlPlugin` callbacks → `controlproto` parse → `Command` queue → control
    task. Gains / PID input / cooldown fan are persisted to NVS by the plugin.
 
 ## Threading
@@ -101,19 +136,19 @@ flash 1 741 985 B = 91.7 %; pinned to espressif32 8.0.0 for the check,
 
 Each lists alternatives; the recommended one is implemented (all reversible).
 
-### D1. Where the roaster libraries live — **DECISION**
+### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
-1. **Top-level `roaster-core/` + `roaster-control/` libs (implemented).**
+1. **Top-level `control-core/` + `control-esp32/` libs (implemented).**
    Clear split: pure logic vs hardware; consumed like `boards/common` via
    `symlink://`. Bends the layout list (two new top-level folders).
-2. Put them in `boards/common-roaster/` (one lib). Matches the "shared board
+2. Put them in `boards/common-control/` (one lib). Matches the "shared board
    code under boards/" precedent, but `build_all.sh` must skip it (it only skips
    `common`), and the pure/hardware split is lost.
 3. Fold into `croaster/src/roaster/`. One library, but every board (ESP8266
    too) compiles heater/fan code and it breaks "monitor library, no board
    specifics" intent.
 4. Keep everything inside `boards/esp32s3-flex/src/`. Zero layout change,
-   but nothing is reusable for a second roaster board and tests live with one board.
+   but nothing is reusable for a second control board and tests live with one board.
 Recommendation: 1; update AGENTS.md's layout section if accepted.
 
 ### D2. One master config vs `config.h` + `pins.h` — resolved
@@ -137,9 +172,9 @@ Recommendation: 1.
 
 ### D4. Compile-time feature selection in `main.cpp`
 AGENTS.md: "no board-specific compile-time guards" (meaning: the library never
-`#ifdef`s on a board). Our `#if ROASTER_FAN == ...` are feature selections inside
+`#ifdef`s on a board). Our `#if FLEX_FAN == ...` are feature selections inside
 one board, which the rule does not forbid, but they are guards. Alternatives:
-separate board folders per variant (monitor / roaster; duplicates main.cpp),
+separate board folders per variant (monitor / control; duplicates main.cpp),
 runtime selection (all drivers linked, invalid configs only caught at boot),
 or templates (more C++ than the codebase uses). Kept `#if` + `ConfigCheck.h`
 because Shawn asked for compile-time selection with static checks.
@@ -165,7 +200,7 @@ inside Croaster and boards cannot see it.
 1. **`getData` alias (implemented):** plugin registers `getData`, marks
    activity, returns `core().getJsonData(id)`. Artisan polls `getData`
    (the provided `.aset` does). No core change; ICRM/BLE traffic that does not
-   use it counts only via roaster commands.
+   use it counts only via control commands.
 2. Add `CroasterCommandHandler::onAnyCommand(fn)` hook. Clean, small core change;
    counts every client.
 3. Use WebSocket client count (`connected()` in `CroasterWebSocketManager`):
@@ -193,7 +228,7 @@ no core change. Flat keys don't.
    files silently do nothing.
 2. **`onOtherJson(fn)` fallback in `CroasterCommandHandler` (implemented).**
    About 5 lines, additive, called only for JSON objects without `"command"`,
-   and works over WebSocket and BLE. Parsing stays in `roasterproto::parseLegacy`.
+   and works over WebSocket and BLE. Parsing stays in `controlproto::parseLegacy`.
 3. Pre-parse in `CroasterWebSocketManager` before the handler. WebSocket
    only (BLE misses out), and it touches transport code.
 4. Fork/replace the handler in the plugin. No upstream change, but it
@@ -217,7 +252,7 @@ and fan 100. No protection in PID, and none for silent WiFi loss.
    protects. That is how a standalone PID controller behaves, but it is unsafe
    for Manual.
 Recommendation: 1; add 2 later if a faster cut on clean disconnects is
-wanted. Set `ROASTER_COMMS_TIMEOUT_S 0` to disable it.
+wanted. Set `FLEX_COMMS_TIMEOUT_S 0` to disable it.
 
 ### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made)**
 
@@ -236,7 +271,7 @@ board json, platform, framework, flash size, upload and monitor options, and com
 **What flex and his esp32s3 actually have in common:** the chip and module (ESP32-S3 N16R8,
 `esp32-s3-devkitm1-n16r8.json`), 16 MB flash, USB-CDC flags, `BOARD_HAS_PSRAM`, and the
 upload and monitor speeds. **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
-SSD1306/U8g2 + RoasterCore/RoasterControl), build_flags (his `LV_CONF_PATH` points into his
+SSD1306/U8g2 + ControlCore/ControlEsp32), build_flags (his `LV_CONF_PATH` points into his
 `src/ui`; ours does `-include src/config.h`), PSRAM mode (`dio_opi` vs `qio_opi`),
 sdkconfig (his uses `esp32s3-sdkconfig.defaults`; ours is off by default), the partition
 table, and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).

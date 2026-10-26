@@ -37,7 +37,7 @@ FILES=()
 while IFS= read -r -d '' f; do
     FILES+=("$f")
 done < <(
-    find "$ROOT/croaster" "$ROOT/boards" "$ROOT/roaster-core" "$ROOT/roaster-control" \
+    find "$ROOT/croaster" "$ROOT/boards" "$ROOT/control-core" "$ROOT/control-esp32" \
         -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \
                    -o -name '*.cc' -o -name '*.cxx' -o -name '*.ino' \) \
         -not -path '*/.pio/*' -not -path '*/managed_components/*' -not -path '*/.dummy/*' \

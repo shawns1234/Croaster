@@ -97,7 +97,7 @@ NeoPixel (Arduino 3.x drives the WS2812 via `digitalWrite(LED_BUILTIN)`).
 
 ## 6. Bluetooth
 yaeger: none. Croaster: BLE GATT server for the ICRM Android app (same JSON
-commands, OTA over BLE). Kept, on by default (`ROASTER_ENABLE_BLE`); roaster
+commands, OTA over BLE). Kept, on by default (`FLEX_ENABLE_BLE`); control
 commands work over BLE too because they register in the shared command handler.
 Artisan has no BLE path for this protocol; use WiFi.
 

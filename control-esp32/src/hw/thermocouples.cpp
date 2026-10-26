@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#include "core/max6675.h"
+#include "control/max6675.h"
 
 namespace {
 SPIClass tcSpi(FSPI);

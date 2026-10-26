@@ -15,9 +15,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32c3/` | ESP32-C3 Super Mini — SSD1306 OLED; custom OTA partition (`custom32c3sm.csv` lives in this folder) |
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
-| `boards/esp32s3-flex/` | Roaster **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
-| `roaster-core/` | Pure roaster logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
-| `roaster-control/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `RoasterPlugin` (hooks into `CroasterApp`) |
+| `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
+| `control-core/` | Pure control logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
+| `control-esp32/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `ControlPlugin` (hooks into `CroasterApp`) |
 | `docs/` | `design.md` (architecture + decisions D1–D10), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -42,20 +42,20 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   (`build_type = release`; `pio run -e <board>`); `./upload_monitor.sh <board>`
   builds + uploads the **debug** variant (`<board>-debug`, `extends` the
   release env) to the connected board, then opens the serial monitor.
-- Roaster board: control task (core 1, prio max-3) owns the SPI bus and
+- Flex board: control task (core 1, prio max-3) owns the SPI bus and
   publishes a snapshot; `RoasterProbe` feeds it to `CroasterCore` via the
-  sensor-injection constructor; `RoasterPlugin` registers roaster commands
+  sensor-injection constructor; `ControlPlugin` registers control commands
   (`onJsonCommand`/`onCommand`), adds data fields via `CroasterCore::onJsonData`,
   runs the comms watchdog and ArduinoOTA. Details: `docs/design.md`.
-- Roaster control is 100 % firmware-side (PID on the ESP32). Clients send
+- Heater/fan control is 100 % firmware-side (PID on the ESP32). Clients send
   setpoints/modes/percentages only. Two wire formats reach the same parser
-  (`roasterproto`): nested `{"command":{...}}` and yaeger's flat keys /
+  (`controlproto`): nested `{"command":{...}}` and yaeger's flat keys /
   `setBurner`/`setFan`/`setPreferences`/`getPreferences` (`parseLegacy`, routed
   via the new `CroasterCommandHandler::onOtherJson` hook for messages without
   `"command"`). Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`,
   `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
 - Comms watchdog: 10 s without client traffic while heating (not in Profile)
-  → heater off, fan to cooldown, `trip:"comms"` (`ROASTER_COMMS_TIMEOUT_S`).
+  → heater off, fan to cooldown, `trip:"comms"` (`FLEX_COMMS_TIMEOUT_S`).
 - Artisan: `.aset` verified against Artisan source (`docs/artisan-settings.md`).
   Input 1 = BT, Input 2 = ET, one `getData` per second, extra devices
   112/113 for Heater/Fan/SV, Artisan's own PID buttons off.
@@ -72,7 +72,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `CroasterCommandHandler::onOtherJson()`.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, hostname `croaster-flex`, `.aset`.
-- Decisions pending (Shawn): design.md D1 (top-level roaster libs), D3
+- Decisions pending (Shawn): design.md D1 (top-level control libs), D3
   (force-included config), D6 (watchdog via `getData` alias), D10 (flex ini
   vs Croaster's `boards/esp32s3` ini), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s
   traffic watchdog vs instant cut on disconnect).
@@ -94,7 +94,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `library.json`).
 
 ## Next steps
-- Roaster: hardware bring-up and the rest of `docs/tickets.md` (T2–T14).
+- Flex: hardware bring-up and the rest of `docs/tickets.md` (T2–T14).
 - Update the ICRM app's `lib_deps` for the `croaster/` subfolder.
 - Flash + verify the esp32s3 build on real hardware (touch, chart swipe,
   dark mode, OTA over BLE/WebSocket).

@@ -2,30 +2,29 @@
 // Compile-time validation of config.h. Each message names the setting to fix.
 #include <cstdint>
 
-#if !defined(ROASTER_THERMOCOUPLE) || \
-    (ROASTER_THERMOCOUPLE != ROASTER_TC_MAX31855 && ROASTER_THERMOCOUPLE != ROASTER_TC_MAX6675)
-#    error "config.h: ROASTER_THERMOCOUPLE must be ROASTER_TC_MAX31855 or ROASTER_TC_MAX6675"
+#if !defined(FLEX_THERMOCOUPLE) || (FLEX_THERMOCOUPLE != FLEX_TC_MAX31855 && FLEX_THERMOCOUPLE != FLEX_TC_MAX6675)
+#    error "config.h: FLEX_THERMOCOUPLE must be FLEX_TC_MAX31855 or FLEX_TC_MAX6675"
 #endif
-#if ROASTER_HEATER != ROASTER_HEATER_NONE && ROASTER_HEATER != ROASTER_HEATER_SSR
-#    error "config.h: ROASTER_HEATER must be ROASTER_HEATER_NONE or ROASTER_HEATER_SSR"
+#if FLEX_HEATER != FLEX_HEATER_NONE && FLEX_HEATER != FLEX_HEATER_SSR
+#    error "config.h: FLEX_HEATER must be FLEX_HEATER_NONE or FLEX_HEATER_SSR"
 #endif
-#if ROASTER_FAN != ROASTER_FAN_NONE && ROASTER_FAN != ROASTER_FAN_AC_DIMMER && ROASTER_FAN != ROASTER_FAN_PWM
-#    error "config.h: ROASTER_FAN must be ROASTER_FAN_NONE, ROASTER_FAN_AC_DIMMER or ROASTER_FAN_PWM"
+#if FLEX_FAN != FLEX_FAN_NONE && FLEX_FAN != FLEX_FAN_AC_DIMMER && FLEX_FAN != FLEX_FAN_PWM
+#    error "config.h: FLEX_FAN must be FLEX_FAN_NONE, FLEX_FAN_AC_DIMMER or FLEX_FAN_PWM"
 #endif
-#if ROASTER_DISPLAY != ROASTER_DISPLAY_NONE && ROASTER_DISPLAY != ROASTER_DISPLAY_SSD1306
-#    error "config.h: ROASTER_DISPLAY must be ROASTER_DISPLAY_NONE or ROASTER_DISPLAY_SSD1306"
+#if FLEX_DISPLAY != FLEX_DISPLAY_NONE && FLEX_DISPLAY != FLEX_DISPLAY_SSD1306
+#    error "config.h: FLEX_DISPLAY must be FLEX_DISPLAY_NONE or FLEX_DISPLAY_SSD1306"
 #endif
-#if ROASTER_HEATER != ROASTER_HEATER_NONE && ROASTER_FAN == ROASTER_FAN_NONE
-#    error "config.h: a heater needs a fan the firmware controls (airflow interlock). Set ROASTER_FAN."
+#if FLEX_HEATER != FLEX_HEATER_NONE && FLEX_FAN == FLEX_FAN_NONE
+#    error "config.h: a heater needs a fan the firmware controls (airflow interlock). Set FLEX_FAN."
 #endif
-#if ROASTER_HEATER == ROASTER_HEATER_NONE && ROASTER_FAN != ROASTER_FAN_NONE
-#    error "config.h: fan without heater is not supported; set ROASTER_FAN_NONE for a monitor build"
+#if FLEX_HEATER == FLEX_HEATER_NONE && FLEX_FAN != FLEX_FAN_NONE
+#    error "config.h: fan without heater is not supported; set FLEX_FAN_NONE for a monitor build"
 #endif
-#if ROASTER_REQUIRE_MAINS && ROASTER_FAN != ROASTER_FAN_AC_DIMMER && ROASTER_HEATER != ROASTER_HEATER_NONE
-#    error "config.h: ROASTER_REQUIRE_MAINS needs ROASTER_FAN_AC_DIMMER (only it can see mains); set it to 0"
+#if FLEX_REQUIRE_MAINS && FLEX_FAN != FLEX_FAN_AC_DIMMER && FLEX_HEATER != FLEX_HEATER_NONE
+#    error "config.h: FLEX_REQUIRE_MAINS needs FLEX_FAN_AC_DIMMER (only it can see mains); set it to 0"
 #endif
-#if ROASTER_FAN == ROASTER_FAN_AC_DIMMER && ROASTER_MAINS_HZ != 50 && ROASTER_MAINS_HZ != 60
-#    error "config.h: ROASTER_MAINS_HZ must be 50 or 60"
+#if FLEX_FAN == FLEX_FAN_AC_DIMMER && FLEX_MAINS_HZ != 50 && FLEX_MAINS_HZ != 60
+#    error "config.h: FLEX_MAINS_HZ must be 50 or 60"
 #endif
 
 namespace configcheck {
@@ -49,18 +48,18 @@ constexpr bool validGpio(int p) {
 }
 
 constexpr int kPins[] = {
-    ROASTER_PIN_TC_SCK,     ROASTER_PIN_TC_MISO, ROASTER_PIN_TC_CS_ET, ROASTER_PIN_TC_CS_BT,
-#if ROASTER_HEATER != ROASTER_HEATER_NONE
-    ROASTER_PIN_HEATER,
+    FLEX_PIN_TC_SCK,     FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_ET, FLEX_PIN_TC_CS_BT,
+#if FLEX_HEATER != FLEX_HEATER_NONE
+    FLEX_PIN_HEATER,
 #endif
-#if ROASTER_FAN != ROASTER_FAN_NONE
-    ROASTER_PIN_FAN,
+#if FLEX_FAN != FLEX_FAN_NONE
+    FLEX_PIN_FAN,
 #endif
-#if ROASTER_FAN == ROASTER_FAN_AC_DIMMER
-    ROASTER_PIN_ZERO_CROSS,
+#if FLEX_FAN == FLEX_FAN_AC_DIMMER
+    FLEX_PIN_ZERO_CROSS,
 #endif
-#if ROASTER_DISPLAY != ROASTER_DISPLAY_NONE
-    ROASTER_PIN_I2C_SDA,    ROASTER_PIN_I2C_SCL,
+#if FLEX_DISPLAY != FLEX_DISPLAY_NONE
+    FLEX_PIN_I2C_SDA,    FLEX_PIN_I2C_SCL,
 #endif
 };
 constexpr int kPinCount = sizeof(kPins) / sizeof(kPins[0]);
@@ -71,19 +70,18 @@ constexpr bool allValid(int i = 0) {
 constexpr bool unique(int i = 0, int j = 1) {
     return i >= kPinCount ? true : (j >= kPinCount ? unique(i + 1, i + 2) : (kPins[i] != kPins[j] && unique(i, j + 1)));
 }
-static_assert(allValid(), "config.h: a ROASTER_PIN_* is reserved or missing (use 1, 2, 4-18, 21, 38-42, 47)");
-static_assert(unique(), "config.h: two ROASTER_PIN_* settings use the same GPIO");
+static_assert(allValid(), "config.h: a FLEX_PIN_* is reserved or missing (use 1, 2, 4-18, 21, 38-42, 47)");
+static_assert(unique(), "config.h: two FLEX_PIN_* settings use the same GPIO");
 
-#if ROASTER_FAN == ROASTER_FAN_AC_DIMMER
-static_assert(ROASTER_PIN_FAN < 32, "config.h: AC dimmer gate pin must be < 32 (fast GPIO register path)");
+#if FLEX_FAN == FLEX_FAN_AC_DIMMER
+static_assert(FLEX_PIN_FAN < 32, "config.h: AC dimmer gate pin must be < 32 (fast GPIO register path)");
 #endif
-static_assert(ROASTER_HEATER_MAX_PERCENT > 0 && ROASTER_HEATER_MAX_PERCENT <= 100,
-              "config.h: ROASTER_HEATER_MAX_PERCENT must be 1..100");
-static_assert(ROASTER_HEATER_WINDOW_MS >= 100 && ROASTER_HEATER_WINDOW_MS <= 10000,
-              "config.h: ROASTER_HEATER_WINDOW_MS must be 100..10000");
-static_assert(ROASTER_MAX_SETPOINT_C < ROASTER_OVER_TEMP_C,
-              "config.h: ROASTER_MAX_SETPOINT_C must be below ROASTER_OVER_TEMP_C");
-static_assert(ROASTER_MIN_FAN_WITH_HEAT >= 0 && ROASTER_MIN_FAN_WITH_HEAT <= 100, "ROASTER_MIN_FAN_WITH_HEAT: 0..100");
-static_assert(ROASTER_COOLDOWN_FAN >= 0 && ROASTER_COOLDOWN_FAN <= 100, "ROASTER_COOLDOWN_FAN: 0..100");
-static_assert(ROASTER_CONTROL_CORE == 0 || ROASTER_CONTROL_CORE == 1, "ROASTER_CONTROL_CORE: 0 or 1");
+static_assert(FLEX_HEATER_MAX_PERCENT > 0 && FLEX_HEATER_MAX_PERCENT <= 100,
+              "config.h: FLEX_HEATER_MAX_PERCENT must be 1..100");
+static_assert(FLEX_HEATER_WINDOW_MS >= 100 && FLEX_HEATER_WINDOW_MS <= 10000,
+              "config.h: FLEX_HEATER_WINDOW_MS must be 100..10000");
+static_assert(FLEX_MAX_SETPOINT_C < FLEX_OVER_TEMP_C, "config.h: FLEX_MAX_SETPOINT_C must be below FLEX_OVER_TEMP_C");
+static_assert(FLEX_MIN_FAN_WITH_HEAT >= 0 && FLEX_MIN_FAN_WITH_HEAT <= 100, "FLEX_MIN_FAN_WITH_HEAT: 0..100");
+static_assert(FLEX_COOLDOWN_FAN >= 0 && FLEX_COOLDOWN_FAN <= 100, "FLEX_COOLDOWN_FAN: 0..100");
+static_assert(FLEX_CONTROL_CORE == 0 || FLEX_CONTROL_CORE == 1, "FLEX_CONTROL_CORE: 0 or 1");
 } // namespace configcheck

@@ -43,7 +43,7 @@ until the comms watchdog stops the heater.
 |:---|:---|:---|
 | `{"BurnerVal":v}`: heater %, switches to Manual | Same message accepted, plus `{"command":{"burner":v}}` | **closed** (flat keys added via `onOtherJson`, D8) |
 | `{"FanVal":v}` | Same, plus `{"command":{"fan":v}}` | **closed** |
-| `{"Setpoint":T}`, clamped 0..250 | Same, plus `{"command":{"setpoint":T}}`, clamped to `ROASTER_MAX_SETPOINT_C` 250 | **closed** / match |
+| `{"Setpoint":T}`, clamped 0..250 | Same, plus `{"command":{"setpoint":T}}`, clamped to `FLEX_MAX_SETPOINT_C` 250 | **closed** / match |
 | `{"Mode":"Manual"\|"PID"}` (prefix match) | Same, plus `{"command":{"mode":"manual"\|"pid"}}` | **closed** |
 | `{"Target":"ET"\|"BT"\|"MAX"}`: PID input, saved | Same, plus `{"command":{"pidInput":..}}`, saved to NVS | **closed** / match |
 | `{"command":"setBurner","value":v}` / `setFan` | Same | **closed** |
@@ -51,24 +51,24 @@ until the comms watchdog stops the heater.
 | `{"command":"setPreferences","pidKp","pidKi","pidKd","cooldownFanSpeed"}`: applied and saved | Same keys, applied and saved to NVS. Also `{"command":{"pid":{..}}}`, `{"command":{"cooldownFan":v}}` | **closed** |
 | `{"command":"getPreferences"}` → `{"id","data":{"type":"preferences",...}}` | Same reply format | **closed** |
 | `setPreferences` `wifiSsid`/`wifiPass` | Not accepted. WiFi is set in Croaster's WiFiManager portal. | **different**: one place for credentials, and nothing on the network can rewrite them |
-| — | `stop` (heater off, cooldown fan), `clearTrip`, `startProfile`, `profile` upload, `getRoaster` | **better** |
+| — | `stop` (heater off, cooldown fan), `clearTrip`, `startProfile`, `profile` upload, `getControl` | **better** |
 
 ## Control behaviour
 
 | yaeger | Ours | Status |
 |:---|:---|:---|
 | PID on the ESP32 | PID on the ESP32, core 1, own FreeRTOS task (10 ms tick, PID every 250 ms), not blocked by WiFi or the display | match / **better** |
-| Heater ceiling 90 % | `ROASTER_HEATER_MAX_PERCENT 90`, applied after PID and manual | match |
-| Fan floor: heat > 0 and fan ≤ 10 → fan 30 | Fan forced to ≥ `ROASTER_MIN_FAN_WITH_HEAT` (30) whenever heating | match (slightly stricter: 11–29 % is also raised) |
+| Heater ceiling 90 % | `FLEX_HEATER_MAX_PERCENT 90`, applied after PID and manual | match |
+| Fan floor: heat > 0 and fan ≤ 10 → fan 30 | Fan forced to ≥ `FLEX_MIN_FAN_WITH_HEAT` (30) whenever heating | match (slightly stricter: 11–29 % is also raised) |
 | Autotune: fan to 60 if below 30 | Same | match |
 | Autotune done: fan 30, setpoint 0, gains saved | Same, gains saved to NVS | match |
 | Anti-windup: integral clamp at 0.8 | Conditional integration (integral frozen while the output is saturated) | **better**: no overshoot from a stored integral |
 | Manual → PID switch | Bumpless: integral preset to the current heater % | match / **better** |
-| Setpoint 0 → >0 in PID resets the PID | Same (`Roaster::apply` SetSetpoint) | **closed** |
+| Setpoint 0 → >0 in PID resets the PID | Same (`Controller::apply` SetSetpoint) | **closed** |
 | Heater drive: 50 Hz PWM on an SSR pin | Time-proportional SSR window (zero-cross SSR switches whole half-cycles, so fast PWM gets rounded off) | **better** for a zero-cross SSR |
 | Fan drive: PWM / dimmer | AC dimmer (zero-cross + phase angle) or PWM, chosen in `config.h` | match |
 | Profile follower: in the README only, not in Shawn's yaeger code | Firmware profiles: steps of duration/setpoint/interpolation/fan, run on the ESP32 | **better** |
-| Cooldown fan default 65 % | Default `ROASTER_COOLDOWN_FAN` 100 %; changeable via `setPreferences` / `cooldownFan`, saved | **different**: faster cooling; set 65 if preferred |
+| Cooldown fan default 65 % | Default `FLEX_COOLDOWN_FAN` 100 %; changeable via `setPreferences` / `cooldownFan`, saved | **different**: faster cooling; set 65 if preferred |
 
 ## Safety
 

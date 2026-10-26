@@ -1,13 +1,13 @@
-#include "roaster_protocol.h"
+#include "control_protocol.h"
 
 #include <cmath>
 #include <cstring>
 
-namespace roasterproto {
+namespace controlproto {
 
 const char* const kNestedKeys[] = {"burner", "fan", "setpoint", "mode", "pidInput", "pid", "cooldownFan", "profile"};
 const size_t kNestedKeyCount = sizeof(kNestedKeys) / sizeof(kNestedKeys[0]);
-const char* const kBasicNames[] = {"startProfile", "stop", "autotune", "clearTrip", "getRoaster"};
+const char* const kBasicNames[] = {"startProfile", "stop", "autotune", "clearTrip", "getControl"};
 const size_t kBasicNameCount = sizeof(kBasicNames) / sizeof(kBasicNames[0]);
 const char* const kLegacyBasicNames[] = {"setBurner", "setFan", "setPreferences", "getPreferences"};
 const size_t kLegacyBasicNameCount = sizeof(kLegacyBasicNames) / sizeof(kLegacyBasicNames[0]);
@@ -171,7 +171,7 @@ void writePreferences(const PidGains& g, float cooldownFan, JsonObject d) {
     d["cooldownFanSpeed"] = cooldownFan;
 }
 
-void writeRoasterInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject o) {
+void writeControlInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject o) {
     o["mode"] = modeName(s.mode);
     o["pidInput"] = pidInputName(s.pidInput);
     putNum(o["setpoint"], fromCelsius(s.setpoint, unit));
@@ -189,4 +189,4 @@ void writeRoasterInfo(const Snapshot& s, float cooldownFan, char unit, JsonObjec
     putNum(o["ambient"], fromCelsius(s.ambient, unit));
 }
 
-} // namespace roasterproto
+} // namespace controlproto

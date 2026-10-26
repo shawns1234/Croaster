@@ -10,8 +10,8 @@ Artisan control over Croaster's WebSocket. It consumes:
 |:---|:---|
 | `Croaster=symlink://../../croaster` | Croaster core: WiFiManager, WebSocket :81, BLE, OTA, RoR, roast timer |
 | `CroasterDisplaySSD1306=symlink://../common` | Croaster's shared OLED screen; its header line shows heater %, fan % and mode (or the trip) |
-| `RoasterCore=symlink://../../roaster-core` | Pure control logic: PID, autotune, profiles, MAX31855/MAX6675 decode, command protocol (host-tested) |
-| `RoasterControl=symlink://../../roaster-control` | ESP32 side: control task, SSR, dimmer/PWM fan, probes, NVS, `RoasterPlugin` |
+| `ControlCore=symlink://../../control-core` | Pure control logic: PID, autotune, profiles, MAX31855/MAX6675 decode, command protocol (host-tested) |
+| `ControlEsp32=symlink://../../control-esp32` | ESP32 side: control task, SSR, dimmer/PWM fan, probes, NVS, `ControlPlugin` |
 
 Design notes and decisions: [`docs/design.md`](../../docs/design.md).
 Whether this ini should share chip-level settings with `boards/esp32s3` (standalone,
@@ -69,11 +69,11 @@ also switch Croaster library features (`CROASTER_HAS_BLE`).
 Invalid choices fail the build with a message naming the setting:
 
 ```
-src/ConfigCheck.h: error: static assertion failed: config.h: two ROASTER_PIN_* settings use the same GPIO
-src/ConfigCheck.h: error: #error "config.h: ROASTER_REQUIRE_MAINS needs ROASTER_FAN_AC_DIMMER ..."
+src/ConfigCheck.h: error: static assertion failed: config.h: two FLEX_PIN_* settings use the same GPIO
+src/ConfigCheck.h: error: #error "config.h: FLEX_REQUIRE_MAINS needs FLEX_FAN_AC_DIMMER ..."
 ```
 
-`ROASTER_HEATER_NONE` + `ROASTER_FAN_NONE` builds a plain Croaster temperature
+`FLEX_HEATER_NONE` + `FLEX_FAN_NONE` builds a plain Croaster temperature
 monitor (no control libs used) with either converter.
 
 ---
@@ -86,7 +86,7 @@ pio run -e esp32s3-flex                    # release (what ../../build_all.sh bu
 pio run -e esp32s3-flex -t upload          # flash over USB
 ../../upload_monitor.sh esp32s3-flex       # debug build + upload + monitor
 pio run -e esp32s3-flex-ota -t upload      # after the first flash: espota to croaster-flex.local
-pio test -e native                            # host unit tests (roaster-core)
+pio test -e native                            # host unit tests (control-core)
 ```
 
 | Env | Platform | Use |
@@ -117,7 +117,7 @@ Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
 | `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved) |
 | `{"command":{"cooldownFan":0..100}}` | fan after `stop` (saved) |
 | `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile |
-| `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getRoaster"` | actions / query |
+| `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getControl"` | actions / query |
 | `{"command":"getData","id":N}` | same as `getArtisanData`, and counts as client activity for the comms watchdog |
 
 yaeger's formats also work (same parser, see `docs/control-parity.md`):
@@ -137,7 +137,7 @@ and commands.
 
 Safety: over-temperature, probe fault, no mains (dimmer sees no zero-cross),
 OTA in progress, and **comms lost** (heating, not running a profile, and no
-client traffic for `ROASTER_COMMS_TIMEOUT_S`, default 10 s; also sets the
+client traffic for `FLEX_COMMS_TIMEOUT_S`, default 10 s; also sets the
 cooldown fan) all turn the heater off and latch a trip until `clearTrip`.
 
 ## ☕ Artisan
@@ -153,5 +153,5 @@ ESP32. Every setting and its source: [`docs/artisan-settings.md`](../../docs/art
 - IPEX antenna attached (transmitting without it can damage the RF stage).
 - ET probe isolation: MAX31855 reports a short-to-GND/VCC fault on grounded
   probes or a probe touching the chassis. Ungrounded probes only.
-- Dimmer VCC on 3V3, mains 60 Hz (`ROASTER_MAINS_HZ`), fan motor suits triac
+- Dimmer VCC on 3V3, mains 60 Hz (`FLEX_MAINS_HZ`), fan motor suits triac
   phase control (universal / shaded-pole; not capacitor-run or EC fans).

@@ -7,7 +7,7 @@
 #include <CroasterApp.h>
 #include <CroasterDeviceIdentity.h>
 
-class Roaster; // RoasterControl; only defined in the roaster build
+class Controller; // ControlEsp32; only defined in the control build
 
 // ---------------------------------------------------------------------------
 // Board wiring: build the parts selected in config.h and hand them to
@@ -16,51 +16,48 @@ class Roaster; // RoasterControl; only defined in the roaster build
 // knows about heaters or fans.
 // ---------------------------------------------------------------------------
 
-#if ROASTER_HEATER != ROASTER_HEATER_NONE // ===== roaster build =====
-#    include <RoasterPlugin.h>
+#if FLEX_HEATER != FLEX_HEATER_NONE // ===== control build =====
+#    include <ControlPlugin.h>
 #    include <RoasterProbe.h>
-#    include <app/roaster.h>
+#    include <app/controller.h>
 #    include <hw/heater_output.h>
 #    include <hw/thermocouples.h>
-#    if ROASTER_FAN == ROASTER_FAN_AC_DIMMER
+#    if FLEX_FAN == FLEX_FAN_AC_DIMMER
 #        include <hw/fan_dimmer.h>
-FanDimmer fan(ROASTER_PIN_ZERO_CROSS, ROASTER_PIN_FAN, ROASTER_MAINS_HZ);
+FanDimmer fan(FLEX_PIN_ZERO_CROSS, FLEX_PIN_FAN, FLEX_MAINS_HZ);
 #    else
 #        include <hw/fan_pwm.h>
-FanPwm fan(ROASTER_PIN_FAN, ROASTER_FAN_PWM_HZ);
+FanPwm fan(FLEX_PIN_FAN, FLEX_FAN_PWM_HZ);
 #    endif
 
-Thermocouples probes(ROASTER_THERMOCOUPLE == ROASTER_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855,
-                     ROASTER_PIN_TC_SCK, ROASTER_PIN_TC_MISO, ROASTER_PIN_TC_CS_ET, ROASTER_PIN_TC_CS_BT);
-HeaterOutput heater(ROASTER_PIN_HEATER, ROASTER_HEATER_WINDOW_MS, ROASTER_HEATER_MAX_PERCENT,
-                    ROASTER_HEATER_ACTIVE_HIGH);
+Thermocouples probes(FLEX_THERMOCOUPLE == FLEX_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, FLEX_PIN_TC_SCK,
+                     FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_ET, FLEX_PIN_TC_CS_BT);
+HeaterOutput heater(FLEX_PIN_HEATER, FLEX_HEATER_WINDOW_MS, FLEX_HEATER_MAX_PERCENT, FLEX_HEATER_ACTIVE_HIGH);
 
-RoasterLimits limits() {
-    RoasterLimits l;
-    l.overTempC = ROASTER_OVER_TEMP_C;
-    l.maxSetpointC = ROASTER_MAX_SETPOINT_C;
-    l.minFanWithHeat = ROASTER_MIN_FAN_WITH_HEAT;
-    l.requireMains = ROASTER_REQUIRE_MAINS;
+SafetyLimits limits() {
+    SafetyLimits l;
+    l.overTempC = FLEX_OVER_TEMP_C;
+    l.maxSetpointC = FLEX_MAX_SETPOINT_C;
+    l.minFanWithHeat = FLEX_MIN_FAN_WITH_HEAT;
+    l.requireMains = FLEX_REQUIRE_MAINS;
     return l;
 }
-Roaster roaster(probes, heater, fan, limits());
+Controller controller(probes, heater, fan, limits());
 
 // The control task owns the SPI bus; Croaster reads its filtered values.
-RoasterProbe btProbe(roaster, RoasterProbe::Channel::BT);
-RoasterProbe etProbe(roaster, RoasterProbe::Channel::ET);
-CroasterCore core(ROASTER_DUMMY_DATA, &btProbe, &etProbe);
-Roaster* const roasterPtr = &roaster;
+RoasterProbe btProbe(controller, RoasterProbe::Channel::BT);
+RoasterProbe etProbe(controller, RoasterProbe::Channel::ET);
+CroasterCore core(FLEX_DUMMY_DATA, &btProbe, &etProbe);
+Controller* const controllerPtr = &controller;
 
 #else // ===== monitor build: plain Croaster with the selected converter =====
-CroasterCore core(ROASTER_DUMMY_DATA,
-                  CroasterPinConfig{ROASTER_PIN_TC_SCK, ROASTER_PIN_TC_MISO, ROASTER_PIN_TC_CS_BT,
-                                    ROASTER_PIN_TC_CS_ET},
-                  ROASTER_THERMOCOUPLE == ROASTER_TC_MAX6675 ? CroasterThermocoupleType::MAX6675
-                                                             : CroasterThermocoupleType::MAX31855);
-Roaster* const roasterPtr = nullptr;
+CroasterCore
+    core(FLEX_DUMMY_DATA, CroasterPinConfig{FLEX_PIN_TC_SCK, FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_BT, FLEX_PIN_TC_CS_ET},
+         FLEX_THERMOCOUPLE == FLEX_TC_MAX6675 ? CroasterThermocoupleType::MAX6675 : CroasterThermocoupleType::MAX31855);
+Controller* const controllerPtr = nullptr;
 #endif
 
-#if ROASTER_DISPLAY == ROASTER_DISPLAY_SSD1306
+#if FLEX_DISPLAY == FLEX_DISPLAY_SSD1306
 #    include <CroasterDisplaySSD1306.h>
 CroasterDisplaySSD1306 display(core); // Croaster's shared screen (boards/common)
 CroasterDisplay* const displayPtr = &display;
@@ -68,24 +65,24 @@ CroasterDisplay* const displayPtr = &display;
 CroasterDisplay* const displayPtr = nullptr;
 #endif
 
-CroasterApp app(core, displayPtr, ROASTER_PIN_LED, ROASTER_LED_ON_LEVEL);
+CroasterApp app(core, displayPtr, FLEX_PIN_LED, FLEX_LED_ON_LEVEL);
 
-#if ROASTER_HEATER != ROASTER_HEATER_NONE
-RoasterSettings defaults() {
-    RoasterSettings d;
-    d.gains = {ROASTER_PID_KP, ROASTER_PID_KI, ROASTER_PID_KD};
-    d.cooldownFan = ROASTER_COOLDOWN_FAN;
+#if FLEX_HEATER != FLEX_HEATER_NONE
+ControlSettings defaults() {
+    ControlSettings d;
+    d.gains = {FLEX_PID_KP, FLEX_PID_KI, FLEX_PID_KD};
+    d.cooldownFan = FLEX_COOLDOWN_FAN;
     return d;
 }
-RoasterPluginConfig pluginConfig() {
-    RoasterPluginConfig c;
-    c.commsTimeoutMs = ROASTER_COMMS_TIMEOUT_S * 1000UL;
-    c.arduinoOta = ROASTER_ENABLE_ARDUINO_OTA;
+ControlPluginConfig pluginConfig() {
+    ControlPluginConfig c;
+    c.commsTimeoutMs = FLEX_COMMS_TIMEOUT_S * 1000UL;
+    c.arduinoOta = FLEX_ENABLE_ARDUINO_OTA;
     c.otaHostname = "croaster-flex";
-    c.otaPassword = ROASTER_OTA_PASSWORD;
+    c.otaPassword = FLEX_OTA_PASSWORD;
     return c;
 }
-RoasterPlugin plugin(roaster, pluginConfig());
+ControlPlugin plugin(controller, pluginConfig());
 
 // Header line for the SSD1306 (20 chars): "H 50 F 60 PID" or "TRIP overtemp F100".
 String statusLine(const Snapshot& s) {
@@ -99,34 +96,34 @@ String statusLine(const Snapshot& s) {
 #endif
 
 void setup() {
-    CroasterDeviceIdentity::setBoardName(ROASTER_BOARD_NAME);
-    Wire.setPins(ROASTER_PIN_I2C_SDA, ROASTER_PIN_I2C_SCL); // later Wire.begin() calls use these
+    CroasterDeviceIdentity::setBoardName(FLEX_BOARD_NAME);
+    Wire.setPins(FLEX_PIN_I2C_SDA, FLEX_PIN_I2C_SCL); // later Wire.begin() calls use these
 
-#if ROASTER_HEATER != ROASTER_HEATER_NONE
+#if FLEX_HEATER != FLEX_HEATER_NONE
     // Outputs safe before anything else: heater off, fan off.
     heater.begin();
     fan.begin();
     probes.begin();
-    const RoasterSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
-    roaster.begin(settings.gains, settings.pidInput, ROASTER_CONTROL_CORE, configMAX_PRIORITIES - 3);
+    const ControlSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
+    controller.begin(settings.gains, settings.pidInput, FLEX_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
-#    if ROASTER_DISPLAY == ROASTER_DISPLAY_SSD1306
+#    if FLEX_DISPLAY == FLEX_DISPLAY_SSD1306
     display.setHeaderText([]() {
-        return statusLine(roaster.snapshot());
+        return statusLine(controller.snapshot());
     }); // heater/fan/mode or trip
 #    endif
 #endif
 
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display
 
-#if ROASTER_HEATER != ROASTER_HEATER_NONE
+#if FLEX_HEATER != FLEX_HEATER_NONE
     plugin.begin();
 #endif
 }
 
 void loop() {
     app.loop();
-#if ROASTER_HEATER != ROASTER_HEATER_NONE
+#if FLEX_HEATER != FLEX_HEATER_NONE
     plugin.loop();
 #endif
 }
