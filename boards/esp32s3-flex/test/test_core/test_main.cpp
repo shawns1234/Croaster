@@ -70,6 +70,17 @@ void test_max31855_fault_bits() {
     TEST_ASSERT_EQUAL_FLOAT(-16.0f, r.internalC);
 }
 
+void test_board_temperature_skips_missing_chip() {
+    const uint32_t room = (100u << 18) | (400u << 4); // 25 C, 25 C
+    const ThermoReading absent = max31855::decode(0); // no chip: MISO stuck low
+    const ThermoReading present = max31855::decode(room);
+    const ThermoReading noProbe = max31855::decode((400u << 4) | 0x10000u | max31855::kFaultOpen);
+    TEST_ASSERT_EQUAL_FLOAT(25.0f, max31855::boardTemperatureC(absent, present)); // not 0 C
+    TEST_ASSERT_EQUAL_FLOAT(25.0f, max31855::boardTemperatureC(noProbe, absent)); // open probe, chip fine
+    TEST_ASSERT_TRUE(std::isnan(max31855::boardTemperatureC(absent, absent)));
+    TEST_ASSERT_TRUE(std::isnan(max31855::boardTemperatureC(max6675::decode(0x0640), absent)));
+}
+
 // ---------- Two probes (ET + BT on separate CS pins) ----------
 static ThermoReading reading(float c) {
     return max31855::decode((static_cast<uint32_t>(c * 4) << 18) | (400u << 4));
@@ -395,6 +406,7 @@ int main() {
     RUN_TEST(test_moving_average_seeds_with_first_sample);
     RUN_TEST(test_max31855_decode);
     RUN_TEST(test_max31855_fault_bits);
+    RUN_TEST(test_board_temperature_skips_missing_chip);
     RUN_TEST(test_probe_channels_independent_faults);
     RUN_TEST(test_max6675_decode);
     RUN_TEST(test_time_proportional_window);

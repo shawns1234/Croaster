@@ -32,3 +32,6 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T25 | Config wizard `tools/flex-config.py` (design D14): questions or an answers file in, `src/config.h` out, same checks as `ConfigCheck.h`; README section | todo | Shawn (D14) |
 | T26 | Library builds without warnings from Croaster or our code: `-Wreorder` in `CroasterBleManager`, `-Wformat` in `CroasterDeviceIdentity`; WiFiManager's own warning remains | done | — |
 | T27 | °F by default (design D16): `FLEX_TEMP_UNIT`, OLED and telemetry in °F, `.aset` in °F mode, header says "Fan" instead of "F". Bench check: OLED in °F, Artisan reads BT/ET/SV in °F, a 383 °F setpoint comes back as SV 383 | done (bench check todo) | T2 |
+| T28 | Bench findings 2026-10-26: Heater/Fan LCDs swapped and SV LCD empty (`.aset` `channel_nodes`); `Amb` 32 °F with no BT chip; leaving Autotune carried the relay's 100 % into Manual/PID; SV changes during Autotune ignored. Bench check: Heater/Fan/SV LCDs match the OLED, `Amb` near room temperature, Manual during Autotune → heater 0 | done (bench check todo) | — |
+| T29 | Visible autotune status (design D17) | todo | Shawn (D17) |
+| T30 | Roast rules: Artisan alarms first, firmware rules later if needed (design D20) | todo | Shawn (D20) |

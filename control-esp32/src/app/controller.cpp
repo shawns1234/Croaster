@@ -67,14 +67,20 @@ float Controller::pidInput(const ThermoSample& s) const {
 }
 
 void Controller::setMode(Mode m, float pv) {
+    const bool leavingAutotune = st_.mode == Mode::Autotune && m != Mode::Autotune;
+    // Bumpless transfer keeps the current heater output. The relay's 0/100 % is
+    // not an operating point, so a mode left mid-autotune starts from 0 instead.
+    const float carry = leavingAutotune ? 0 : heater_.requested();
     if (m == Mode::Pid || m == Mode::Profile) {
         if (st_.mode == Mode::Manual || st_.mode == Mode::Autotune)
-            pid_.reset(st_.setpoint, pv, heater_.requested());
+            pid_.reset(st_.setpoint, pv, carry);
     }
     if (m == Mode::Manual)
-        manualHeater_ = heater_.requested();
-    if (st_.mode == Mode::Autotune && m != Mode::Autotune)
+        manualHeater_ = carry;
+    if (leavingAutotune && autotune_.state() == RelayAutotune::State::Running) {
         autotune_.abort();
+        st_.autotuneMsg = autotune_.failure();
+    }
     st_.mode = m;
 }
 
@@ -95,6 +101,12 @@ void Controller::apply(const Command& c) {
     case Command::Kind::SetSetpoint: {
         const float prev = st_.setpoint;
         st_.setpoint = fmaxf(0, fminf(c.a, lim_.maxSetpointC));
+        // Autotune keeps the setpoint it started with, so a new one would leave SV
+        // showing a target the relay ignores. Stop tuning (heater off) instead.
+        if (st_.mode == Mode::Autotune && st_.setpoint != prev) {
+            setMode(Mode::Manual, pv);
+            st_.autotuneMsg = "aborted: setpoint changed";
+        }
         // legacy Control::setSetpoint: going from 0 to a real setpoint clears the
         // PID history so it starts from zero output, not from stale state.
         if (prev <= 0 && st_.setpoint > 0 && st_.mode == Mode::Pid)

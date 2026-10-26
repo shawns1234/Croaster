@@ -20,7 +20,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Artisan settings file. Single master `src/config.h` validated at
   compile time by `src/ConfigCheck.h`.
 - **`control-core/`** (pure, host-tested) and **`control-esp32/`** (ESP32)
-  libraries; host tests (`pio test -e native`, 19 now).
+  libraries; host tests (`pio test -e native`, 20 now).
 - **MAX31855 support** in the library: `CroasterMAX31855`,
   `CroasterThermocoupleType`, optional third `CroasterCore` constructor argument
   (default MAX6675).
@@ -38,6 +38,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Flex Artisan settings: Heater and Fan LCDs swapped, SV LCD empty.**
+  `channel_nodes` is now `BT, ET, BurnerVal, FanVal, SV`.
+- **Flex `Amb` read 0 °C (32 °F) with no BT chip fitted.** It now uses
+  whichever MAX31855 answers.
+- **Flex autotune exits.** Switching to Manual or PID during autotune no
+  longer keeps the relay's 100 % heater output, and a setpoint change during
+  autotune stops it instead of being ignored.
 - **Compiler warnings in the library.** `CroasterBleManager`'s constructor
   initializes its members in declaration order (`-Wreorder`).
   `CroasterDeviceIdentity::uniqueChipId()` formats the chip id with `PRIX32`

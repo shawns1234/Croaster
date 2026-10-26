@@ -61,7 +61,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `{"command":{"watchdog":...}}` saves to NVS.
 - Artisan: `.aset` verified against Artisan source (`docs/artisan-settings.md`).
   Input 1 = BT, Input 2 = ET, one `getArtisanData` per second, extra devices
-  112/113 for Heater/Fan/SV, Artisan's own PID buttons off.
+  112/113 for Heater/Fan/SV, Artisan's own PID buttons off. Extra curve 1 is
+  the odd input (3, 5), curve 2 the even one (4, 6).
+- Leaving Autotune by any command starts the next mode with the heater at 0;
+  a setpoint change during Autotune aborts it. `Amb` is the cold-junction
+  temperature of whichever MAX31855 answers (BT first).
 - Library features added in 0.52: roast timer (`CroasterCore::roastTimerStart/
   Pause/Reset`), `getDeviceInfo` now reports `board`/`darkMode`/`brightness`
   (display state via `CroasterDisplay::isDarkMode()/getBrightness()`), and a

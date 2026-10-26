@@ -142,7 +142,9 @@ and commands.
 
 Safety: over-temperature, probe fault, no mains (dimmer sees no zero-cross),
 OTA in progress, and comms lost (below) all turn the heater off and latch a
-trip until `clearTrip`.
+trip. `clearTrip`, or any heater, mode, autotune or profile command, clears it;
+the firmware trips again at once if the cause is still there. Fan and setpoint
+changes don't clear a trip.
 
 ### Comms watchdog
 

@@ -39,7 +39,7 @@ ThermoSample Thermocouples::read() {
     s.btRaw = b.thermocoupleC;
     s.etFault = e.fault;
     s.btFault = b.fault;
-    s.ambient = b.internalC;
+    s.ambient = max31855::boardTemperatureC(b, e);
     s.et = et_.push(e);
     s.bt = bt_.push(b);
     return s;

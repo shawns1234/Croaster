@@ -37,4 +37,15 @@ inline ThermoReading decode(uint32_t raw) {
     r.thermocoupleC = r.ok ? tc * 0.25f : NAN;
     return r;
 }
+
+// Board (cold-junction) temperature for "Amb": the preferred chip's, or the
+// other chip's when the preferred one doesn't answer. NaN when neither has one
+// (no chip fitted, or MAX6675, which has no cold-junction output).
+inline float boardTemperatureC(const ThermoReading& preferred, const ThermoReading& other) {
+    if (!(preferred.fault & kFaultNoDevice) && std::isfinite(preferred.internalC))
+        return preferred.internalC;
+    if (!(other.fault & kFaultNoDevice) && std::isfinite(other.internalC))
+        return other.internalC;
+    return NAN;
+}
 } // namespace max31855

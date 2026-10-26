@@ -198,6 +198,11 @@ Changes from Shawn's nine review points (2026-10-26):
 | D14 | new, design only | Config wizard. |
 | D15 | new | `MAX6675_Thermocouple` stays a core dependency. |
 | D16 | new | Temperature unit: Croaster's `tempUnit`, °F at boot on flex; control stays in °C. |
+| D9 | note added | How a comms trip clears, and why reconnecting doesn't clear it. |
+| D17 | new, open | Visible autotune status. |
+| D18 | new, open | PID input (ET or BT) and default gains. |
+| D19 | new, open | Cooldown fan default (100 % or yaeger's 65 %). |
+| D20 | new, open | Roast rules and profiles. |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -339,6 +344,18 @@ Settings (changed 2026-10-26, Shawn's point 4): `FLEX_WATCHDOG_ENABLED` and
 `{"command":{"watchdog":{"timeout":20}}}` changes the timeout (2 to 600 s).
 Both are saved in NVS and reported by `getControl`. Usage: flex README,
 "Comms watchdog".
+
+Clearing (note added 2026-10-26 after a bench test). A comms trip latches
+like every other trip. `clearTrip`, or any heater, mode, autotune or profile
+command, clears it; fan and setpoint commands don't. Reconnecting doesn't clear
+it on purpose: the trip says the roast went unattended, and the operator should
+see that before heat comes back. Artisan sends nothing to the firmware when it
+switches ON, so after an OFF/ON cycle the firmware still shows the cooldown
+state until a command arrives. A fan command applies even while tripped and a
+heater command clears the trip, so if neither changes, the firmware never
+received them (no `[CMD-SOCKET]` line in its log). yaeger has no
+latch: on a clean disconnect in Manual it sets heater 0 and fan 100, and the
+next heater command simply applies.
 
 ### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made; facts updated 2026-10-26)**
 
@@ -511,6 +528,79 @@ Artisan's mode and the firmware unit must match: Artisan sends slider and
 button temperatures in its own mode, and the firmware reads them in its unit.
 The header line now says "Fan" ("H50 Fan60 PID") so the fan % isn't read as a
 °F value.
+
+### D17. Visible autotune status — **DECISION (new 2026-10-26, open)**
+Autotune refuses to start below a 100 °C (212 °F) setpoint or without a valid
+probe, and later ends as done, failed (timeout, over temperature, sensor fault,
+oscillation too small) or aborted. The reason is only in `getControl`'s
+`autotune` field, so from Artisan a refused start looks like nothing happened.
+1. **`autotune` field in `getArtisanData`** (e.g. `"running"`, `"done"`,
+   `"need setpoint >= 100 C (212 F)"`). Visible in Artisan's serial log and any
+   client; Artisan has no way to show an arbitrary field on screen. ~40 bytes
+   per sample.
+2. **OLED header** shows the status for ~10 s after it changes ("AT: SV<212F",
+   "AT done", "AT timeout"). Visible at the roaster; 20 characters is tight.
+3. 1 and 2 together.
+4. Map rejection to a trip-like code in `trip` (e.g. `"autotune"`). Reuses an
+   existing field, but mixes a refused command with safety trips.
+Recommendation: 3.
+
+### D18. PID input and default gains — **DECISION (new 2026-10-26, open)**
+The firmware PID follows `Target` (ET by default, as in yaeger, saved in NVS;
+`{"command":{"pidInput":"BT"}}` changes it). Default gains are yaeger's
+`Kp 1, Ki 0.1, Kd 0.01` (`FLEX_PID_KP/KI/KD`), in % heater per °C, per °C·s
+and %·s per °C. They are the controller's live gains, not leftover fields.
+They are gentle: a 10 °C error asks for 10 % heater plus 1 % per second from
+the integral, so the output moves slowly (the 0.5 %/s decay seen on the bench
+is the integral at work). Autotune replaces them.
+1. **Keep ET, autotune on the real heater (no change).** ET responds within
+   seconds of a heater change, so the loop is stable; BT targets are reached
+   by choosing ET setpoints (profiles or Artisan alarms).
+2. Default to BT. Matches roast thinking, but BT lags the heater by tens of
+   seconds and sits in the bean mass, so a single PID on BT overshoots and
+   oscillates unless tuned very softly.
+3. Cascade: an outer BT loop sets the ET setpoint of the inner ET loop. Best
+   tracking of BT, but new code and two sets of gains.
+4. Raise the defaults (e.g. Kp 4, Ki 0.05, Kd 0) so an untuned controller is
+   less sluggish. Guesswork until measured on the hardware.
+Recommendation: 1 now, run autotune on ET once mains and the heater are
+connected; consider 3 if BT tracking matters after real roasts.
+
+### D19. Cooldown fan default — **DECISION (new 2026-10-26, open)**
+`FLEX_COOLDOWN_FAN` (100 %) is the fan after `stop` and after a comms trip.
+yaeger stores 65 % for its cooldown preference but uses 100 % on disconnect.
+1. **100 % (current).** Fastest cooling; can blow light beans out of a fluid-bed
+   chamber.
+2. 65 % (yaeger's stored default). Gentler; slower cooling.
+3. 65 % after `stop`, 100 % after a trip. Two settings.
+Either way it is a runtime setting (`{"command":{"cooldownFan":N}}`, NVS).
+Recommendation: Shawn picks by testing on the roaster; 1 until then.
+
+### D20. Roast rules and profiles — **DECISION (new 2026-10-26, open)**
+Hard requirement: the PID runs on the ESP32; Artisan only sends setpoints and
+commands. Example rule: heater 100 % from the start with a BT target of
+383 °F; at 90 % of it, heater 65 % and fan from 20 to 50 %.
+1. **Artisan alarms.** Conditions on BT/ET/extra curves, time since CHARGE, or
+   another alarm ("If Alarm"); actions move a slider (which sends its WebSocket
+   command) or press an event button. The example is two alarms
+   (BT > 345 °F → Heater slider 65 and Fan slider 50). No firmware change;
+   lives in the `.aset`/alarm file. Needs Artisan running; the comms watchdog
+   covers a crash.
+2. **Artisan background replay.** Load a previous roast as background and turn
+   on event playback by time or by BT. Repeats a good roast's slider moves.
+   No firmware change.
+3. **Firmware profile (exists, from yaeger).** `{"command":{"profile":[...]}}`
+   then `startProfile`: setpoint (on the PID input) and fan by elapsed time,
+   with ramps. Runs without Artisan (watchdog exempt). Time-based only; no
+   "when BT reaches X" rules. Croaster itself has no profiles.
+4. Firmware rule steps: extend profile steps with triggers (BT above X) and
+   actions (heater %, fan %, setpoint, mode). Standalone and conditional, but
+   new code, a new JSON format and a UI to write it.
+Artisan's ramp/soak and "follow background" drive Artisan's own software PID,
+which can't set our firmware's setpoint over WebSocket; they don't fit the
+requirement.
+Recommendation: 1 now (no code), 2 once a good roast exists, 4 only if roasts
+must run without a laptop.
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

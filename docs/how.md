@@ -110,7 +110,7 @@ MISO (GPIO 13), one chip-select each (`FLEX_PIN_TC_CS_ET` 10,
 | Read | `hw/thermocouples.cpp` | Every 250 ms the control task pulls CS_ET low and reads 32 bits, then the same for CS_BT (FSPI, 1 MHz). |
 | Decode | `control/max31855.h` | One frame gives the temperature, the cold junction and the fault bits (open, short to GND, short to VCC; all-0 or all-1 means no chip). |
 | Filter | `control/probe_channel.h` | One `ProbeChannel` per probe: 4-sample average; one or two bad reads hold the last value; the third in a row gives NaN; a reconnected probe starts fresh. The two channels never affect each other. |
-| Control | `app/controller.cpp` | The snapshot carries `et`, `bt`, `etFault`, `btFault` and `ambient` (BT chip's cold junction). NaN on the PID input, or on both probes, trips `sensor`. |
+| Control | `app/controller.cpp` | The snapshot carries `et`, `bt`, `etFault`, `btFault` and `ambient` (cold junction of the BT chip, or the ET chip when no BT chip answers). NaN on the PID input, or on both probes, trips `sensor`. |
 | Croaster | `RoasterProbe.h` | Two adapters (`Channel::BT`, `Channel::ET`) hand the snapshot values to `CroasterCore`, which computes RoR. |
 | Telemetry | `CroasterCore::getJsonData` | `BT`/`ET` and `DBT`/`DET` (RoR); a faulted probe's keys are left out, which Artisan shows as a gap. |
 | Screen | `CroasterDisplaySSD1306` | BT and ET with RoR; a faulted probe shows `N/A`. |
