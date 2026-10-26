@@ -8,7 +8,6 @@
 namespace {
 SPIClass tcSpi(FSPI);
 const SPISettings kSettings(1000000, MSBFIRST, SPI_MODE0); // both chips >= 4 MHz; 1 MHz for long leads
-constexpr uint8_t kFaultsBeforeNaN = 3;                    // ride through single glitches
 } // namespace
 
 void Thermocouples::begin() {
@@ -41,13 +40,7 @@ ThermoSample Thermocouples::read() {
     s.etFault = e.fault;
     s.btFault = b.fault;
     s.ambient = b.internalC;
-    etBad_ = e.ok ? 0 : (etBad_ < 255 ? etBad_ + 1 : 255);
-    btBad_ = b.ok ? 0 : (btBad_ < 255 ? btBad_ + 1 : 255);
-    if (etBad_ >= kFaultsBeforeNaN)
-        etAvg_.reset();
-    if (btBad_ >= kFaultsBeforeNaN)
-        btAvg_.reset();
-    s.et = etAvg_.push(e.thermocoupleC);
-    s.bt = btAvg_.push(b.thermocoupleC);
+    s.et = et_.push(e);
+    s.bt = bt_.push(b);
     return s;
 }

@@ -5,9 +5,9 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 
 | # | Ticket | Status | Blocked by |
 |:---|:---|:---|:---|
-| T1 | Skeleton: board project, config.h + ConfigCheck, control-core/-control libs, builds on espressif32 8.0.0 + pioarduino, 15 host tests | done | — |
+| T1 | Skeleton: board project, config.h + ConfigCheck, control-core/control-esp32 libs, builds on espressif32 8.0.0 + pioarduino, 15 host tests | done | — |
 | T2 | Bench bring-up, no mains: flash, WiFiManager portal, OLED shows IP + BT/ET from both MAX31855; `getArtisanData` in a browser WS client | todo | T1 |
-| T3 | Probe check: both probes read room temp; boiling water ≈ 100 °C; grounded-probe fault shows as `trip:"sensor"` | todo | T2 |
+| T3 | Probe check: both probes read room temp; boiling water ≈ 100 °C; unplug ET only → ET `N/A` on the screen and missing from `getArtisanData`, BT unaffected; unplug the PID input probe while heating → `trip:"sensor"` | todo | T2 |
 | T4 | Fan on mains: dimmer Z-C detected (`mainsDetected`), fan 30/60/100 % audibly different; unplug mains → `trip:"nomains"` | todo | T2 |
 | T5 | Heater on bench lamp/load via SSR: `burner` 0/50/100 % gives correct window duty; fan interlock (heat forces fan ≥ 30 %) | todo | T4 |
 | T6 | Safety drills: over-temp (set `FLEX_OVER_TEMP_C` low), close Artisan while heating → `trip:"comms"` after 10 s and fan to cooldown; `{"command":{"watchdog":{"enabled":false}}}` → no trip, survives reboot, Croaster OTA (ICRM app) start → heater off | todo | T5 |
@@ -28,3 +28,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T21 | Rename roaster-named code to flex/control (map in `docs/design.md`) | done | — |
 | T22 | Croaster's OTA only (ArduinoOTA and `-ota` env removed), `default_16MB.csv`, flex `lib_deps` trimmed | done | — |
 | T23 | Watchdog settings: `FLEX_WATCHDOG_ENABLED`/`FLEX_WATCHDOG_TIMEOUT_S` defaults, `{"command":{"watchdog":...}}` saved in NVS, shown in `getControl` | done | — |
+| T24 | Two-probe path documented end to end (`docs/how.md`); per-probe fault filter moved to pure `ProbeChannel`; host tests for fault bits and independent channels | done | — |

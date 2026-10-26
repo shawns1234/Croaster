@@ -11,6 +11,7 @@
 #include "control/max6675.h"
 #include "control/moving_average.h"
 #include "control/pid.h"
+#include "control/probe_channel.h"
 #include "control/relay_autotune.h"
 #include "control/roast_profile.h"
 #include "control/time_proportional.h"
@@ -51,6 +52,51 @@ void test_max31855_decode() {
     // nothing connected
     TEST_ASSERT_FALSE(max31855::decode(0).ok);
     TEST_ASSERT_FALSE(max31855::decode(0xFFFFFFFFu).ok);
+}
+
+void test_max31855_fault_bits() {
+    const uint32_t room = (100u << 18) | (400u << 4);  // 25 C, 25 C
+    auto r = max31855::decode(room | 0x10000u | 0x2u); // short to GND
+    TEST_ASSERT_FALSE(r.ok);
+    TEST_ASSERT_EQUAL_UINT8(max31855::kFaultShortGnd, r.fault);
+    TEST_ASSERT_EQUAL_FLOAT(25.0f, r.internalC);  // cold junction still valid
+    r = max31855::decode(room | 0x10000u | 0x4u); // short to VCC
+    TEST_ASSERT_EQUAL_UINT8(max31855::kFaultShortVcc, r.fault);
+    r = max31855::decode(room | 0x10000u); // D16 alone still means "fault"
+    TEST_ASSERT_FALSE(r.ok);
+    r = max31855::decode((4000u << 18) | (400u << 4)); // +1000 C, top of range
+    TEST_ASSERT_EQUAL_FLOAT(1000.0f, r.thermocoupleC);
+    r = max31855::decode((100u << 18) | (0xF00u << 4)); // internal -16 C
+    TEST_ASSERT_EQUAL_FLOAT(-16.0f, r.internalC);
+}
+
+// ---------- Two probes (ET + BT on separate CS pins) ----------
+static ThermoReading reading(float c) {
+    return max31855::decode((static_cast<uint32_t>(c * 4) << 18) | (400u << 4));
+}
+static ThermoReading openProbe() {
+    return max31855::decode((400u << 4) | 0x10000u | max31855::kFaultOpen);
+}
+
+void test_probe_channels_independent_faults() {
+    ProbeChannel et, bt;
+    TEST_ASSERT_EQUAL_FLOAT(150.0f, et.push(reading(150)));
+    TEST_ASSERT_EQUAL_FLOAT(120.0f, bt.push(reading(120)));
+    // ET glitches twice: it holds its last average; BT is untouched
+    TEST_ASSERT_EQUAL_FLOAT(150.0f, et.push(openProbe()));
+    TEST_ASSERT_EQUAL_FLOAT(150.0f, et.push(openProbe()));
+    TEST_ASSERT_EQUAL_FLOAT(120.0f, bt.push(reading(120)));
+    // third consecutive fault: ET reports NaN (Croaster shows it as missing,
+    // the controller trips if ET is the PID input)
+    TEST_ASSERT_TRUE(std::isnan(et.push(openProbe())));
+    TEST_ASSERT_EQUAL_FLOAT(120.0f, bt.push(reading(120)));
+    // probe reconnected: starts from the new value, not the stale 150
+    TEST_ASSERT_EQUAL_FLOAT(160.0f, et.push(reading(160)));
+    // one good read between glitches resets the count
+    et.push(openProbe());
+    et.push(openProbe());
+    et.push(reading(160));
+    TEST_ASSERT_FALSE(std::isnan(et.push(openProbe())));
 }
 
 // ---------- TimeProportional ----------
@@ -347,6 +393,8 @@ int main() {
     UNITY_BEGIN();
     RUN_TEST(test_moving_average_seeds_with_first_sample);
     RUN_TEST(test_max31855_decode);
+    RUN_TEST(test_max31855_fault_bits);
+    RUN_TEST(test_probe_channels_independent_faults);
     RUN_TEST(test_max6675_decode);
     RUN_TEST(test_time_proportional_window);
     RUN_TEST(test_pid_integrator_does_not_wind_up);

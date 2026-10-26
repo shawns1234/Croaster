@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include "control/max31855.h"
-#include "control/moving_average.h"
+#include "control/probe_channel.h"
 
 enum class TcChip : uint8_t { MAX31855, MAX6675 };
 
@@ -32,6 +32,5 @@ private:
     ThermoReading readChip(int cs);
     TcChip chip_;
     int sck_, miso_, csEt_, csBt_;
-    MovingAverage<4> etAvg_, btAvg_; // 4 samples @ 4 Hz = 1 s window
-    uint8_t etBad_ = 0, btBad_ = 0;  // consecutive faults
+    ProbeChannel et_, bt_;
 };

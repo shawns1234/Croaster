@@ -85,7 +85,7 @@ config stays in the board; control logic is reusable by any future board
 |:---|:---|:---|
 | MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
 | MAX31855/MAX6675 decode for control | `control-core/control/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
-| PID, autotune, profiles | `control-core` | Pure logic, unit-tested on the host (16 tests). |
+| PID, autotune, profiles | `control-core` | Pure logic, unit-tested on the host. |
 | SSR, dimmer, PWM fan, probe reading, NVS | `control-esp32/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 control board. |
 | Control loop + safety | `control-esp32/app/controller` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog | `control-esp32/ControlPlugin` | Uses only Croaster's public extension points. |

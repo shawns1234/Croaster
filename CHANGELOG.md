@@ -17,7 +17,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Artisan settings file. Single master `src/config.h` validated at
   compile time by `src/ConfigCheck.h`.
 - **`control-core/`** (pure, host-tested) and **`control-esp32/`** (ESP32)
-  libraries; host tests (`pio test -e native`, 16 now).
+  libraries; host tests (`pio test -e native`, 19 now).
 - **MAX31855 support** in the library: `CroasterMAX31855`,
   `CroasterThermocoupleType`, optional third `CroasterCore` constructor argument
   (default MAX6675).
@@ -41,6 +41,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- Per-probe fault filter moved from `hw/thermocouples` into the pure
+  `ProbeChannel` (`control-core`), same behaviour, now host-tested; tests for
+  MAX31855 fault bits and two independent channels (19 host tests).
 - **Comms watchdog counts every client message** through
   `CroasterCommandHandler` (WebSocket and BLE, `getArtisanData` included), so
   the `getData` alias is gone and the `.aset` polls `getArtisanData`. It can be

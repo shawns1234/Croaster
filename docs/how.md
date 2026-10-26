@@ -100,6 +100,25 @@ answers with its data (`BT`, `ET`, RoR) plus our fields from the snapshot: `Burn
 `SV`, `Mode`, `trip`, `Target`, `pidKp/Ki/Kd`, `Amb`, `wifiStrength`. Croaster
 also broadcasts the same data to the ICRM app.
 
+### Two probes, end to end
+ET and BT are two MAX31855 boards on one SPI bus: shared SCK (GPIO 12) and
+MISO (GPIO 13), one chip-select each (`FLEX_PIN_TC_CS_ET` 10,
+`FLEX_PIN_TC_CS_BT` 11, in `config.h`; `ConfigCheck.h` rejects a reused pin).
+
+| Step | Where | What happens |
+|:---|:---|:---|
+| Read | `hw/thermocouples.cpp` | Every 250 ms the control task pulls CS_ET low and reads 32 bits, then the same for CS_BT (FSPI, 1 MHz). |
+| Decode | `control/max31855.h` | One frame gives the temperature, the cold junction and the fault bits (open, short to GND, short to VCC; all-0 or all-1 means no chip). |
+| Filter | `control/probe_channel.h` | One `ProbeChannel` per probe: 4-sample average; one or two bad reads hold the last value; the third in a row gives NaN; a reconnected probe starts fresh. The two channels never affect each other. |
+| Control | `app/controller.cpp` | The snapshot carries `et`, `bt`, `etFault`, `btFault` and `ambient` (BT chip's cold junction). NaN on the PID input, or on both probes, trips `sensor`. |
+| Croaster | `RoasterProbe.h` | Two adapters (`Channel::BT`, `Channel::ET`) hand the snapshot values to `CroasterCore`, which computes RoR. |
+| Telemetry | `CroasterCore::getJsonData` | `BT`/`ET` and `DBT`/`DET` (RoR); a faulted probe's keys are left out, which Artisan shows as a gap. |
+| Screen | `CroasterDisplaySSD1306` | BT and ET with RoR; a faulted probe shows `N/A`. |
+
+Host tests cover the decode and filter steps (`test_max31855_*`,
+`test_probe_channels_independent_faults`). Wiring and the real chips are
+checked on the bench (tickets T2, T3).
+
 ### Watchdog
 Croaster's command handler records when it last accepted a message
 (`lastCommandMillis()`, WebSocket or BLE). If the heater is on (Manual, PID or
@@ -118,7 +137,7 @@ settings; see the flex README, "Comms watchdog".
 | `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
 | `boards/esp32s3-flex/artisan/croaster-flex.aset` | Artisan settings (see `artisan-settings.md`) |
 | `boards/esp32s3-flex/test/` | Host unit tests (`pio test -e native`) |
-| `control-core/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding |
+| `control-core/src/control/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding, probe fault filter |
 | `control-esp32/src/app/controller.*` | The control task |
 | `control-esp32/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
 | `control-esp32/src/ControlPlugin.*` | Commands, data fields, watchdog |
