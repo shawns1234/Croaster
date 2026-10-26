@@ -23,8 +23,6 @@
 //
 // yaeger compatibility (same wire format as yaeger's CommandLoop.cpp, so its web
 // UI and its Artisan settings keep working; see docs/control-parity.md):
-//   flat keys, no "command":  {"BurnerVal":v} {"FanVal":v} {"Setpoint":T}
-//                             {"Mode":"Manual"|"PID"} {"Target":"ET"|"BT"|"MAX"}
 //   {"command":"setBurner","value":v}   {"command":"setFan","value":v}
 //   {"command":"setPreferences","pidKp":..,"pidKi":..,"pidKd":..,"cooldownFanSpeed":..}
 //   {"command":"getPreferences"}  -> {"id":..,"data":{"type":"preferences",...}}
@@ -72,9 +70,11 @@ struct Parsed {
 // callback with the whole object, so each callback handles its own key once.
 Parsed parseNested(JsonObjectConst cmd, char unit, const char* onlyKey = nullptr);
 
-// Parses a whole message in yaeger's format (flat keys and/or a legacy command
-// name). Ignores everything else, so it is safe on any message.
-Parsed parseLegacy(JsonObjectConst msg, char unit);
+// Parses a whole message carrying one of yaeger's named commands
+// (kLegacyBasicNames). Ignores everything else, so it is safe on any message.
+// yaeger's flat keys ({"BurnerVal":60} without "command") are not supported:
+// Croaster's handler only routes messages that have a "command" member (D8).
+Parsed parseLegacy(JsonObjectConst msg);
 
 // Maps a basic command name to a control command. "getControl" returns false
 // (it is a query, answered with writeControlInfo()).

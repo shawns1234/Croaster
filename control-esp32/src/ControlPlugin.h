@@ -1,9 +1,9 @@
 #pragma once
 // Plugs the controller into a CroasterApp using only Croaster's extension
 // points: onCommand()/onJsonCommand() for control, core().onJsonData() to add
-// heater/fan/setpoint/mode to every data payload. Also accepts yaeger's message
-// format (flat keys via onOtherJson(), setBurner/setFan/get|setPreferences). Croaster keeps WiFi, WebSocket
-// (port 81), BLE, OTA, display and RoR. Commands: see control/control_protocol.h.
+// heater/fan/setpoint/mode to every data payload. Also accepts yaeger's named
+// commands (setBurner, setFan, setPreferences, getPreferences). Croaster keeps
+// WiFi, WebSocket (port 81), BLE, OTA, display and RoR. Commands: see control/control_protocol.h.
 //
 // Also owns two network-side safety/housekeeping jobs (loop task):
 //  - comms watchdog: heating and no message through Croaster's command handler

@@ -49,11 +49,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   runs the comms watchdog. Details: `docs/design.md`.
 - Heater/fan control is 100 % firmware-side (PID on the ESP32). Clients send
   setpoints/modes/percentages only. Two wire formats reach the same parser
-  (`controlproto`): nested `{"command":{...}}` and yaeger's flat keys /
-  `setBurner`/`setFan`/`setPreferences`/`getPreferences` (`parseLegacy`, routed
-  via the new `CroasterCommandHandler::onOtherJson` hook for messages without
-  `"command"`). Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`,
-  `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
+  (`controlproto`): nested `{"command":{...}}` and yaeger's named commands
+  `setBurner`/`setFan`/`setPreferences`/`getPreferences` (`parseLegacy`, via
+  `onCommand`). yaeger's flat keys (`{"BurnerVal":60}`) are not accepted (D8).
+  Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`, `Target`,
+  `pidKp/Ki/Kd`, `wifiStrength`.
 - Comms watchdog: no message through Croaster's command handler
   (`lastCommandMillis()`, WebSocket or BLE) for the timeout while heating
   (not in Profile) → heater off, fan to cooldown, `trip:"comms"`. Defaults
@@ -76,14 +76,14 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
-  `CroasterCommandHandler::onOtherJson()`, `lastCommandMillis()`, and two
+  `CroasterCommandHandler::lastCommandMillis()`, and two
   warning fixes (`CroasterBleManager` initializer order,
   `CroasterDeviceIdentity` `PRIX32` format).
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
 - Decisions pending (Shawn), all in design.md: D1 (top-level control libs),
   D3 (force-included config), D6 (watchdog via core `lastCommandMillis()`),
-  D8 (`onOtherJson` for yaeger flat keys, or drop them), D9 (traffic watchdog,
+  D9 (traffic watchdog,
   configurable, vs instant cut on disconnect), D10 (flex ini vs Croaster's
   `boards/esp32s3` ini), D11 (two MAX31855 decoders), D12 (Croaster display
   plus header hook), D13 (Croaster OTA only, no mDNS), D14 (config wizard,
@@ -116,8 +116,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 ## Gotchas
 - `onJsonCommand(key, fn)`: every registered callback gets the **whole**
   `command` object when its key is present; parse only your own key.
-- `onOtherJson(fn)` gets every JSON object without `"command"` (any client,
-  WebSocket or BLE): return `""` for messages that aren't yours.
+- Croaster's handler ignores messages without a `"command"` member, so
+  yaeger's flat keys never reach the plugin (D8).
 - Artisan WebSocket: replies must echo the request `id`. Command strings in the
   `.aset` go through Python `str.format`, so literal braces are doubled.
   Artisan's "Control" button is its own PC-side PID; keep it off.

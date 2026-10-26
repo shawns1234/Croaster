@@ -125,11 +125,11 @@ the next reboot. Limits and the PID still work in °C. The flex board adds:
 | `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile |
 | `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getControl"` | actions / query |
 
-yaeger's formats also work (same parser, see `docs/control-parity.md`):
+yaeger's named commands also work (same parser, see `docs/control-parity.md`).
+yaeger's flat keys (`{"BurnerVal":v}` without `"command"`) are not accepted.
 
 | JSON | Effect |
 |:---|:---|
-| `{"BurnerVal":v}` `{"FanVal":v}` `{"Setpoint":T}` `{"Mode":"Manual"\|"PID"}` `{"Target":"ET"\|"BT"\|"MAX"}` | as above (no `"command"` key) |
 | `{"command":"setBurner","value":v}` / `setFan` | heater / fan % |
 | `{"command":"setPreferences","pidKp":..,"pidKi":..,"pidKd":..,"cooldownFanSpeed":..}` | gains + cooldown fan (saved); replies with preferences |
 | `{"command":"getPreferences","id":N}` | `{"id":N,"data":{"type":"preferences","pidKp",...,"cooldownFanSpeed"}}` |

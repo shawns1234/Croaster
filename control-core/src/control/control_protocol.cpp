@@ -111,27 +111,8 @@ Parsed parseNested(JsonObjectConst c, char unit, const char* only) {
     return p;
 }
 
-Parsed parseLegacy(JsonObjectConst m, char unit) {
+Parsed parseLegacy(JsonObjectConst m) {
     Parsed p;
-    // Same order as yaeger's CommandLoop: Mode, BurnerVal, Setpoint, FanVal, Target.
-    if (m["Mode"].is<const char*>()) {
-        const char* s = m["Mode"];
-        if (eq(s, "manual"))
-            add(p, Command::Kind::SetMode, (float)Mode::Manual);
-        if (eq(s, "pid"))
-            add(p, Command::Kind::SetMode, (float)Mode::Pid);
-    }
-    if (m["BurnerVal"].is<float>())
-        add(p, Command::Kind::SetHeater, m["BurnerVal"].as<float>());
-    if (m["Setpoint"].is<float>())
-        add(p, Command::Kind::SetSetpoint, toCelsius(m["Setpoint"].as<float>(), unit));
-    if (m["FanVal"].is<float>())
-        add(p, Command::Kind::SetFan, m["FanVal"].as<float>());
-    if (m["Target"].is<const char*>()) {
-        p.hasPidInput = parsePidInput(m["Target"], p.pidInput);
-        if (p.hasPidInput)
-            add(p, Command::Kind::SetPidInput, (float)p.pidInput);
-    }
     const char* cmd = m["command"].is<const char*>() ? m["command"].as<const char*>() : nullptr;
     if (eq(cmd, "setBurner") && m["value"].is<float>())
         add(p, Command::Kind::SetHeater, m["value"].as<float>());

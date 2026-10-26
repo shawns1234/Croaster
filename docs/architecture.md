@@ -51,7 +51,7 @@ A client sees JSON only:
 ```json
 {"command":{"setpoint":200}}      {"command":{"mode":"pid"}}
 {"command":"autotune"}            {"command":"getArtisanData","id":7}
-{"BurnerVal":60}                  {"command":"setPreferences","pidKp":5}
+{"command":"setBurner","value":60} {"command":"setPreferences","pidKp":5}
 ```
 
 ## Shape
@@ -86,7 +86,7 @@ flowchart TB
     MAIN --> PLUG & R & OLED
     CFG -.compile-time.-> MAIN
     WS & BLE --> CMD
-    CMD -- onCommand / onJsonCommand / onOtherJson --> PLUG
+    CMD -- onCommand / onJsonCommand --> PLUG
     PLUG --> PROTO
     PLUG -- Command queue --> R
     R --> PID & AT & PROF & HW
@@ -110,7 +110,7 @@ Load-bearing decisions:
   `snapshot()`, `loadProfile`. Mode logic, bumpless transfer, anti-windup,
   interlocks, the SSR window and autotune all sit behind those four calls.
 - **Croaster changes are small additive hooks** (sensor-injection constructor,
-  `onJsonData`, `onOtherJson`, MAX31855 type, BLE switch). Every existing
+  `onJsonData`, `lastCommandMillis`, MAX31855 type, BLE switch). Every existing
   board builds unchanged.
 - **Board config is compile-time** (`config.h` + `static_assert`s), so a bad
   pin or a conflicting choice fails the build, not the roast.
@@ -141,7 +141,7 @@ Taken from Croaster: everything about connectivity, display and boards.
 
 | Flag | Where | Verdict |
 |:---|:---|:---|
-| Two ways to do one task | Nested commands (`{"command":{"burner":..}}`) **and** yaeger flat keys (`{"BurnerVal":..}`) | Accepted on purpose for yaeger compatibility. Both end in `controlproto` → the same `Command`, so the behaviour can't diverge. New clients should use nested. |
+| Two ways to do one task | Nested commands (`{"command":{"burner":..}}`) **and** yaeger's named commands (`{"command":"setBurner","value":..}`) | Accepted on purpose for yaeger compatibility. Both end in `controlproto` → the same `Command`, so the behaviour can't diverge. New clients should use nested. yaeger's flat keys were dropped (D8). |
 | Hand-synced list | `.aset` command strings vs `controlproto` keys; `kNestedKeys` vs `parseNested` | Inside the firmware, registration loops over `kNestedKeys`/`kBasicNames`, so it's derived. The `.aset` is a separate file Artisan reads. `artisan-settings.md` documents every key. A future test could parse the `.aset` and run each command through `controlproto` (ticket T16). |
 | Pass-through | `RoasterProbe` (Croaster `Thermocouple` → snapshot) | An adapter that adds policy (NaN on fault, unit), so not a plain pass-through |
 | Importable internals | Boards can include `app/controller.h`, `hw/*` | Needed: the board constructs the drivers. Not hidden. |
@@ -158,8 +158,6 @@ Taken from Croaster: everything about connectivity, display and boards.
   also catching silent WiFi loss. The cost is a timeout (10 s default,
   2–600 s, can be switched off) instead of yaeger's instant cut on a clean
   disconnect.
-- A Croaster core hook `onOtherJson` (D8), in exchange for exact yaeger wire
-  compatibility.
 
 ## Alternatives considered
 - **Control in `loop()`** (Croaster's style). Simpler, but heater safety
@@ -175,8 +173,7 @@ Taken from Croaster: everything about connectivity, display and boards.
 3. D6/D9: is the comms watchdog (heater off, fan to cooldown; 10 s default,
    configurable, can be off) the behaviour you want, or yaeger's instant cut
    on disconnect as well?
-4. D8: keep yaeger flat-key compatibility (needs the `onOtherJson` core hook),
-   or drop flat keys and the hook? Nothing of ours sends them.
+4. D8: resolved 2026-10-26, flat keys and the `onOtherJson` hook dropped.
 5. Cooldown fan default: 100 % (ours) or 65 % (yaeger)?
 6. D10: how the flex board's `platformio.ini` relates to Croaster's
    `boards/esp32s3` (standalone, `extends` his env, or a shared chip-level base

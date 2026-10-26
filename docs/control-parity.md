@@ -41,11 +41,11 @@ until the comms watchdog stops the heater.
 
 | yaeger | Ours | Status |
 |:---|:---|:---|
-| `{"BurnerVal":v}`: heater %, switches to Manual | Same message accepted, plus `{"command":{"burner":v}}` | **closed** (flat keys added via `onOtherJson`, D8) |
-| `{"FanVal":v}` | Same, plus `{"command":{"fan":v}}` | **closed** |
-| `{"Setpoint":T}`, clamped 0..250 | Same, plus `{"command":{"setpoint":T}}`, clamped to `FLEX_MAX_SETPOINT_C` 250 | **closed** / match |
-| `{"Mode":"Manual"\|"PID"}` (prefix match) | Same, plus `{"command":{"mode":"manual"\|"pid"}}` | **closed** |
-| `{"Target":"ET"\|"BT"\|"MAX"}`: PID input, saved | Same, plus `{"command":{"pidInput":..}}`, saved to NVS | **closed** / match |
+| `{"BurnerVal":v}`: heater %, switches to Manual | `{"command":{"burner":v}}` or `{"command":"setBurner","value":v}`; the flat key is not accepted | **dropped** (D8, 2026-10-26) |
+| `{"FanVal":v}` | `{"command":{"fan":v}}` or `setFan`; flat key not accepted | **dropped** (D8) |
+| `{"Setpoint":T}`, clamped 0..250 | `{"command":{"setpoint":T}}`, clamped to `FLEX_MAX_SETPOINT_C` 250; flat key not accepted | **dropped** (D8) / clamp matches |
+| `{"Mode":"Manual"\|"PID"}` (prefix match) | `{"command":{"mode":"manual"\|"pid"}}`; flat key not accepted | **dropped** (D8) |
+| `{"Target":"ET"\|"BT"\|"MAX"}`: PID input, saved | `{"command":{"pidInput":..}}`, saved to NVS; flat key not accepted | **dropped** (D8) |
 | `{"command":"setBurner","value":v}` / `setFan` | Same | **closed** |
 | `{"command":"autotune"}` | Same (relay autotune, Tyreus–Luyben) | match / **better** (see below) |
 | `{"command":"setPreferences","pidKp","pidKi","pidKd","cooldownFanSpeed"}`: applied and saved | Same keys, applied and saved to NVS. Also `{"command":{"pid":{..}}}`, `{"command":{"cooldownFan":v}}` | **closed** |
@@ -96,7 +96,9 @@ until the comms watchdog stops the heater.
 
 ## Gaps found and closed in this change
 1. yaeger's flat-key messages (`BurnerVal`, `FanVal`, `Setpoint`, `Mode`,
-   `Target`) were ignored. Now accepted (D8).
+   `Target`) are not accepted. Shawn chose to drop them on 2026-10-26 (D8):
+   nothing we ship sends them, and accepting them needed a core change.
+   yaeger's web UI and old yaeger `.aset` files don't work with flex.
 2. `setBurner`/`setFan`/`setPreferences`/`getPreferences` were missing. Now
    implemented with yaeger's reply format.
 3. Telemetry lacked `Amb`, `Target`, `pidKp/Ki/Kd` and `wifiStrength`. Added.

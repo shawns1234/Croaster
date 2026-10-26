@@ -383,31 +383,26 @@ void test_protocol_basic_and_data() {
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"SV\":null"));
 }
 
-static controlproto::Parsed parseLegacy(const char* json, char unit = 'C') {
+static controlproto::Parsed parseLegacy(const char* json) {
     JsonDocument d;
     deserializeJson(d, json);
-    return controlproto::parseLegacy(d.as<JsonObjectConst>(), unit);
+    return controlproto::parseLegacy(d.as<JsonObjectConst>());
 }
 
 void test_protocol_yaeger_compat() {
-    // yaeger's Artisan sliders/buttons send flat keys plus Artisan's id/roasterID
-    auto p = parseLegacy(R"({"BurnerVal":60,"id":123,"roasterID":0})");
+    auto p = parseLegacy(R"({"command":"setBurner","value":60,"id":123,"roasterID":0})");
     TEST_ASSERT_EQUAL(1, (int)p.count);
     TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetHeater);
     TEST_ASSERT_EQUAL_FLOAT(60.0f, p.commands[0].a);
 
-    p = parseLegacy(R"({"Setpoint":428,"Mode":"PID","FanVal":55,"Target":"MAX"})", 'F');
-    TEST_ASSERT_EQUAL(4, (int)p.count); // Mode first, as in yaeger's CommandLoop
-    TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetMode);
-    TEST_ASSERT_EQUAL_FLOAT((float)Mode::Pid, p.commands[0].a);
-    TEST_ASSERT_TRUE(p.commands[1].kind == Command::Kind::SetSetpoint);
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 220.0f, p.commands[1].a);
-    TEST_ASSERT_TRUE(p.commands[2].kind == Command::Kind::SetFan);
-    TEST_ASSERT_TRUE(p.hasPidInput && p.pidInput == PidInput::MAX);
-
     p = parseLegacy(R"({"command":"setFan","value":80})");
     TEST_ASSERT_EQUAL(1, (int)p.count);
     TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetFan);
+
+    // Flat keys are not supported (D8): no "command" member, nothing parsed.
+    p = parseLegacy(R"({"BurnerVal":60,"Mode":"PID","Setpoint":428,"Target":"MAX"})");
+    TEST_ASSERT_EQUAL(0, (int)p.count);
+    TEST_ASSERT_FALSE(p.hasPidInput);
 
     p = parseLegacy(R"({"command":"setPreferences","pidKp":4,"pidKi":0.2,"pidKd":1,"cooldownFanSpeed":70})");
     TEST_ASSERT_TRUE(p.hasGains && p.hasCooldownFan);

@@ -19,7 +19,7 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T12 | Watchdog sees all client traffic via core `CroasterCommandHandler::lastCommandMillis()` (D6 option 1); `getData` alias removed | done | — |
 | T13 | Existing boards: fix `boards/esp32s3` platformio.ini (`boards_dir = ..`, `-Wno-deprecated-declarations`), pin c3/s3 platform versions | todo | — |
 | T14 | Web UI (phase 2): control page served from LittleFS or embedded | todo | T9 |
-| T15 | yaeger parity on hardware: flat keys (`BurnerVal`, `Mode`, `Setpoint`, `Target`), `setPreferences`/`getPreferences`, `Amb`/`wifiStrength` in data, setpoint 0→>0 PID reset (`docs/control-parity.md`) | todo | T8 |
+| T15 | yaeger parity on hardware: `setBurner`/`setFan`, `setPreferences`/`getPreferences`, `Amb`/`wifiStrength` in data, setpoint 0→>0 PID reset (`docs/control-parity.md`) | todo | T8 |
 | T16 | Test that parses the `.aset` slider/button commands and runs each through `controlproto`, so the file and the firmware can't drift | todo | — |
 | T17 | Artisan setting check against source + docs (`docs/artisan-settings.md`) | done | — |
 | T18 | Board renamed `esp32s3-roaster` → `esp32s3-flex` (folder, envs, board id, `.aset`) | done | — |
@@ -36,3 +36,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T29 | Visible autotune status (design D17) | todo | Shawn (D17) |
 | T30 | Roast rules: Artisan alarms first, firmware rules later if needed (design D20) | todo | Shawn (D20) |
 | T31 | Test plan from `docs/test-plan.md`: turn the running list into ordered bench procedures; clear the "bench todo" items (T28 fixes, 383 °F echo) | todo | AC wiring for heat items |
+| T32 | Drop yaeger flat keys and the `onOtherJson` core hook (design D8, Shawn 2026-10-26) | done | — |

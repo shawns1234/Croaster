@@ -35,6 +35,7 @@ Status tags:
 - SV LCD shows the firmware SV in °F (fix in 067e316). **bench todo**
 - Fan, Setpoint and Heater sliders send `fan`, `setpoint` and `burner` commands. **bench 2026-10-26**
 - Event buttons (heater %, PID, Manual, Autotune, Stop, Clear trip) send their commands. **bench 2026-10-26**
+- yaeger's `setBurner`/`setFan` → heater/fan change; flat `{"BurnerVal":60}` → ignored (D8). **host** `test_protocol_yaeger_compat`; bench untested
 
 ## Manual
 - Heater slider → BurnerVal follows; SSR duty is BurnerVal × 90 %. **bench 2026-10-26** (BurnerVal only; duty unmeasured)
@@ -78,7 +79,7 @@ Status tags:
 
 ## °F conversion
 - °F/°C/K conversions both ways. **host** `test_unit_conversion`
-- Nested and legacy setpoints in °F convert to °C; SV written back in °F. **host** `test_protocol_values`, `test_protocol_yaeger_compat`, `test_protocol_basic_and_data`
+- Nested setpoints in °F convert to °C; SV written back in °F. **host** `test_protocol_values`, `test_protocol_yaeger_compat`, `test_protocol_basic_and_data`
 - Profile steps in °F convert to °C. **host** `test_profile_in_fahrenheit`
 - Artisan setpoint 383 °F → SV 383 in telemetry and Artisan's SV LCD. **host** (conversion only, `test_unit_conversion`); bench todo
 - `{"command":{"tempUnit":"C"}}` → OLED and telemetry in °C until reboot. **untested**

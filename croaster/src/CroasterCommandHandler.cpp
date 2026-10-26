@@ -29,10 +29,6 @@ unsigned long CroasterCommandHandler::lastCommandMillis() const {
     return lastCommandMs;
 }
 
-void CroasterCommandHandler::onOtherJson(CommandFn fn) {
-    otherJson = fn;
-}
-
 void CroasterCommandHandler::begin() {
     if (ledPin >= 0) {
         pinMode(ledPin, OUTPUT);
@@ -86,13 +82,6 @@ bool CroasterCommandHandler::handle(const String& json, String& responseOut) {
         JsonObject obj = doc["command"];
 
         handleJsonCommand(obj, responseOut);
-
-        return true;
-    }
-
-    if (otherJson && doc["command"].isNull() && doc.is<JsonObject>()) {
-        lastCommandMs = millis();
-        responseOut = otherJson(doc.as<JsonObject>());
 
         return true;
     }

@@ -43,10 +43,6 @@ void ControlPlugin::attach(CroasterApp& app, const ControlSettings& settings) {
             return handleLegacy(json, name);
         });
     }
-    // yaeger's flat keys ({"BurnerVal":50}, {"Mode":"PID"}, ...) carry no "command".
-    app.commands().onOtherJson([this](const JsonObject& json) {
-        return handleLegacy(json, nullptr);
-    });
     app.core().onJsonData([this](JsonObject& data) {
         controlproto::writeDataFields(controller_.snapshot(), unit(), data);
         if (WiFi.status() == WL_CONNECTED)
@@ -69,11 +65,8 @@ String ControlPlugin::handleNested(const JsonObject& json, const char* key) {
 }
 
 String ControlPlugin::handleLegacy(const JsonObject& json, const char* name) {
-    controlproto::Parsed p = controlproto::parseLegacy(json, unit());
-    if (p.count == 0 && !p.hasCooldownFan && !name)
-        return ""; // unrelated message without "command"
-    apply(p);
-    if (!name || std::strcmp(name, "setFan") == 0 || std::strcmp(name, "setBurner") == 0)
+    apply(controlproto::parseLegacy(json));
+    if (std::strcmp(name, "setFan") == 0 || std::strcmp(name, "setBurner") == 0)
         return "";
     JsonDocument r; // yaeger answers set/getPreferences with the stored values
     r["id"] = json["id"] | 0;

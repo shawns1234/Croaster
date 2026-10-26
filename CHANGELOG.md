@@ -28,12 +28,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   owned elsewhere (e.g. a control task that owns the SPI bus).
 - **`CroasterCore::onJsonData(fn)`** — boards add fields to every data payload.
 - `docs/design.md`, `docs/tickets.md`, `docs/analysis.md`.
-- **yaeger control parity**: flat-key messages (`BurnerVal`, `FanVal`,
-  `Setpoint`, `Mode`, `Target`), `setBurner`/`setFan`/`setPreferences`/
+- **yaeger control parity**: `setBurner`/`setFan`/`setPreferences`/
   `getPreferences`; data gains `Amb`, `Target`, `pidKp/Ki/Kd`, `wifiStrength`;
   PID resets when the setpoint goes from 0 to > 0. 16 host tests.
-- **`CroasterCommandHandler::onOtherJson(fn)`** — handler for JSON messages
-  without `"command"` (WebSocket and BLE).
 - `docs/how.md`, `docs/architecture.md`, `docs/control-parity.md`,
   `docs/artisan-settings.md`.
 
@@ -56,6 +53,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **yaeger flat keys dropped (D8).** `{"BurnerVal":v}`, `FanVal`, `Setpoint`,
+  `Mode` and `Target` messages without `"command"` are ignored, and the
+  `CroasterCommandHandler::onOtherJson()` hook they needed is removed, so that
+  part of core matches upstream. yaeger's named commands (`setBurner`,
+  `setFan`, `setPreferences`, `getPreferences`) still work.
 - Per-probe fault filter moved from `hw/thermocouples` into the pure
   `ProbeChannel` (`control-core`), same behaviour, now host-tested; tests for
   MAX31855 fault bits and two independent channels (19 host tests).

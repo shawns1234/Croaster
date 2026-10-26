@@ -90,9 +90,11 @@ sequenceDiagram
     T->>T: PID now aims for 200 C
 ```
 
-yaeger-style messages (`{"BurnerVal":60}`, `{"command":"setBurner","value":60}`)
-go through the same path. `onOtherJson` and `onCommand` hand them to
-`parseLegacy`, so yaeger's web UI or settings would also work.
+yaeger's named commands (`{"command":"setBurner","value":60}`, `setFan`,
+`setPreferences`, `getPreferences`) go through the same path: `onCommand`
+hands them to `parseLegacy`. yaeger's flat keys (`{"BurnerVal":60}`) are
+ignored, because Croaster's handler only routes messages with a `"command"`
+member (D8).
 
 ### Data going out
 Every second Artisan sends `{"command":"getArtisanData","id":N}`. Croaster

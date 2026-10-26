@@ -120,7 +120,7 @@ Libraries `control-core/` (pure C++) and `control-esp32/` (ESP32):
 | `control/max6675.h` | duplicates | Same decode as the `MAX6675_Thermocouple` library, which reads the bus itself and has no fault bit API. Used only if a control board picks MAX6675. |
 | `control/moving_average.h`, `probe_channel.h` | new | Per-probe filter and fault count for the control loop. Croaster's `SmoothThermocouple` wraps a sensor that reads the bus, and has no fault count, so it can't sit on the control task's readings. |
 | `control/pid.*`, `relay_autotune.*`, `roast_profile.*`, `time_proportional.h` | new | Control features Croaster doesn't have. |
-| `control/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands, named commands, flat keys via D8); builds the extra data fields. |
+| `control/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands and yaeger's named commands); builds the extra data fields. |
 | `ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
 | `RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
 | `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
@@ -167,7 +167,6 @@ tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
 | `CroasterDisplaySSD1306::setHeaderText(fn)` (boards/common) | small | Lets a board show its own state in the header line instead of a second display class. Additive; default header unchanged. |
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
 | `CroasterCommandHandler::lastCommandMillis()` | needed for the comms watchdog | Lets an add-on see client traffic on Croaster's own WebSocket/BLE path, built-in commands included. Additive getter; `handle()` stores `millis()` when it accepts a message. See D6. |
-| `CroasterCommandHandler::onOtherJson(fn)` | needed for yaeger wire compatibility | Messages without `"command"` (yaeger's `{"BurnerVal":60}`) were dropped. Additive fallback, called only when no other branch matched; WebSocket and BLE. See D8. |
 | `CroasterBleManager` initializer order, `CroasterDeviceIdentity` `PRIX32` + `snprintf` | warning fixes | `-Wreorder` and `-Wformat` on ESP32 builds. No behaviour change; the chip id string is identical. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
@@ -203,6 +202,12 @@ Changes from Shawn's nine review points (2026-10-26):
 | D18 | new, open | PID input (ET or BT) and default gains. |
 | D19 | new, open | Cooldown fan default (100 % or yaeger's 65 %). |
 | D20 | new, open | Roast rules and profiles. |
+
+Resolved by Shawn on 2026-10-26:
+
+| Decision | Choice |
+|:---|:---|
+| D8 | Drop flat keys and the `onOtherJson` hook (option 2). |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -286,7 +291,12 @@ avoid. Options: loop-only (simplest, unsafe stalls), hardware-timer ISR (no SPI
 reads in ISR), dedicated task (implemented), task on core 0 (shares core with
 WiFi). Task on core 1 at high priority chosen.
 
-### D8. yaeger's flat keys need a core hook — **DECISION** (changed 2026-10-26)
+### D8. yaeger's flat keys need a core hook — resolved 2026-10-26: dropped (option 2)
+Shawn chose option 2: nothing we ship sends flat keys, and dropping them
+removes a core change. `onOtherJson` and the flat-key half of `parseLegacy`
+are gone; `CroasterCommandHandler` matches upstream apart from
+`lastCommandMillis()` (D6). The analysis below is kept for the record.
+
 yaeger's clients send two kinds of message. Named commands
 (`setBurner`, `setFan`, `setPreferences`, `getPreferences`) carry a string
 `"command"`, so they use Croaster's `onCommand` with no core change (done,
@@ -305,10 +315,10 @@ no other layer sees it either. No registration call can reach `BurnerVal`.
 Who sends flat keys today: nothing of ours. The `.aset` sends nested commands
 (`{"command":{"burner":60}}`). Only yaeger's own web UI and older yaeger
 `.aset` files do.
-1. **`onOtherJson(fn)` fallback in `CroasterCommandHandler` (implemented).**
+1. `onOtherJson(fn)` fallback in `CroasterCommandHandler` (was implemented).
    About 5 lines, additive, runs only for JSON objects without `"command"`,
    over WebSocket and BLE. Parsing stays in `controlproto::parseLegacy`.
-2. Drop flat-key support: remove the hook, the registration and the flat-key
+2. **Drop flat-key support (implemented).** Remove the hook, the registration and the flat-key
    half of `parseLegacy`; keep the named yaeger commands. No core change for
    this feature. yaeger's web UI and old settings files stop working; ours
    don't notice.
