@@ -27,7 +27,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (U8g2; confirmed by Shawn) | `esp32s3-flex` | 27.1% (1 773 207 B), RAM 62 332 B |
+| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-flex` | 27.2% (1 783 391 B), RAM 61 300 B |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass

@@ -113,7 +113,7 @@ Profiles are exempt because they are meant to run on their own.
 | `boards/esp32s3-flex/src/config.h` | **The one file to edit**: pins, parts, limits, PID defaults |
 | `boards/esp32s3-flex/src/ConfigCheck.h` | Compile-time checks on config.h (bad pins, conflicts) |
 | `boards/esp32s3-flex/src/main.cpp` | Wires everything together |
-| `boards/esp32s3-flex/src/RoasterOledDisplay.*` | The OLED screen (SSD1306 via U8g2) |
+| `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
 | `boards/esp32s3-flex/artisan/croaster-flex.aset` | Artisan settings (see `artisan-settings.md`) |
 | `boards/esp32s3-flex/test/` | Host unit tests (`pio test -e native`) |
 | `roaster-core/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding |

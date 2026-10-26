@@ -25,7 +25,7 @@ Croaster's library/board split and extension model.
 ## Layers
 
 ```
-boards/esp32s3-flex/          board: config.h, ConfigCheck.h, main.cpp, RoasterOledDisplay
+boards/esp32s3-flex/          board: config.h, ConfigCheck.h, main.cpp
         |  constructs + injects
         v
 roaster-control/  (Arduino/ESP32)   RoasterPlugin  --registers-->  CroasterApp commands / onJsonData
@@ -55,7 +55,7 @@ config stays in the board; roaster logic is reusable by any future board
 | Control loop + safety | `roaster-control/app/roaster` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog, ArduinoOTA | `roaster-control/RoasterPlugin` | Uses only Croaster's public extension points. |
 | Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
-| Roaster OLED screen | `boards/esp32s3-flex/src/RoasterOledDisplay.*` | Board display code, a `CroasterDisplay` subclass. |
+| OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
 
 ## Data flow
 1. Control task (core 1, every 10 ms tick): reads both converters on its own
@@ -88,6 +88,7 @@ config stays in the board; roaster logic is reusable by any future board
 | `CroasterCore(bool, Thermocouple* bt, Thermocouple* et)` | needed | Two owners of one SPI bus would race; this lets the control task own it. Additive, existing constructor unchanged. |
 | `CroasterCore::onJsonData(fn)` | needed | Artisan must see heater/fan/setpoint in the same `getArtisanData` payload; no existing hook. Additive. |
 | `CroasterThermocoupleType` + `CroasterMAX31855` | requested | MAX31855 alongside MAX6675 for monitor builds; default stays MAX6675. |
+| `CroasterDisplaySSD1306::setHeaderText(fn)` (boards/common) | small | Lets a board show its own state in the header line instead of a second display class. Additive; default header unchanged. |
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
 | `CroasterCommandHandler::onOtherJson(fn)` | needed for yaeger wire compatibility | Messages without `"command"` (yaeger's `{"BurnerVal":60}`) were dropped. Additive fallback, called only when no other branch matched; WebSocket and BLE. See D8. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
@@ -291,8 +292,9 @@ option overridden, and it makes our build depend on edits to his file.
 ## Hardware notes driving defaults
 See `boards/esp32s3-flex/README.md` (pins, power, probe isolation, IPEX).
 - Display **confirmed by Shawn (2026-10-26)**: 0.96" I2C 128×64 SSD1306
-  module. It is the default (`ROASTER_DISPLAY_ROASTER_SSD1306`, U8g2 full-buffer HW
-  I2C, probes 0x3C then 0x3D).
+  module, address 0x3C. It uses Croaster's shared `CroasterDisplaySSD1306`
+  (Adafruit SSD1306). The header line shows heater %, fan % and mode, or the
+  trip, alternating with the IP.
 
 ## Related docs
 `how.md` (walkthrough), `architecture.md` (shape, red flags, open questions),

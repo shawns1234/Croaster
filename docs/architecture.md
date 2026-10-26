@@ -61,7 +61,7 @@ flowchart TB
     subgraph board["boards/esp32s3-flex (board)"]
         CFG[config.h + ConfigCheck.h]
         MAIN[main.cpp]
-        OLED[RoasterOledDisplay]
+        OLED[CroasterDisplaySSD1306]
     end
     subgraph rc["roaster-control (ESP32)"]
         PLUG[RoasterPlugin]

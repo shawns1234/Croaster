@@ -60,13 +60,9 @@ CroasterCore core(ROASTER_DUMMY_DATA,
 Roaster* const roasterPtr = nullptr;
 #endif
 
-#if ROASTER_DISPLAY == ROASTER_DISPLAY_CROASTER_SSD1306
+#if ROASTER_DISPLAY == ROASTER_DISPLAY_SSD1306
 #    include <CroasterDisplaySSD1306.h>
-CroasterDisplaySSD1306 display(core);
-CroasterDisplay* const displayPtr = &display;
-#elif ROASTER_DISPLAY != ROASTER_DISPLAY_NONE
-#    include "RoasterOledDisplay.h"
-RoasterOledDisplay display(core, roasterPtr);
+CroasterDisplaySSD1306 display(core); // Croaster's shared screen (boards/common)
 CroasterDisplay* const displayPtr = &display;
 #else
 CroasterDisplay* const displayPtr = nullptr;
@@ -90,6 +86,16 @@ RoasterPluginConfig pluginConfig() {
     return c;
 }
 RoasterPlugin plugin(roaster, pluginConfig());
+
+// Header line for the SSD1306 (20 chars): "H 50 F 60 PID" or "TRIP overtemp F100".
+String statusLine(const Snapshot& s) {
+    char line[24];
+    if (s.trip != SafetyTrip::None)
+        snprintf(line, sizeof line, "TRIP %s F%.0f", tripName(s.trip), s.fanPct);
+    else
+        snprintf(line, sizeof line, "H%.0f F%.0f %s", s.heaterPct, s.fanPct, modeName(s.mode));
+    return String(line);
+}
 #endif
 
 void setup() {
@@ -104,6 +110,11 @@ void setup() {
     const RoasterSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
     roaster.begin(settings.gains, settings.pidInput, ROASTER_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
+#    if ROASTER_DISPLAY == ROASTER_DISPLAY_SSD1306
+    display.setHeaderText([]() {
+        return statusLine(roaster.snapshot());
+    }); // heater/fan/mode or trip
+#    endif
 #endif
 
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display

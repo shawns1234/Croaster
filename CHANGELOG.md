@@ -11,7 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`boards/esp32s3-flex`** ("flex") — roaster control board for the Lonely Binary
   ESP32-S3 N16R8: PID heater via SSR (time-proportional window), RobotDyn AC
   dimmer or PWM fan, roast profiles, relay autotune, safety trips (over-temp,
-  sensor fault, no mains, OTA, comms lost), roaster OLED screen (SSD1306/SH1106),
+  sensor fault, no mains, OTA, comms lost), Croaster's shared SSD1306 screen,
   ArduinoOTA, Artisan settings file. Single master `src/config.h` validated at
   compile time by `src/ConfigCheck.h`.
 - **`roaster-core/`** (pure, host-tested) and **`roaster-control/`** (ESP32)
@@ -39,6 +39,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Flex screen is Croaster's `CroasterDisplaySSD1306`** (boards/common), with a
+  new `setHeaderText(fn)` so the header shows heater/fan/mode or the trip.
+  `RoasterOledDisplay`, the U8g2 dependency and the SH1106 option are gone.
 - **Board renamed `esp32s3-roaster` → `esp32s3-flex`**: folder (history kept
   via `git mv`), envs `esp32s3-flex[-debug|-ota|-pioarduino|-pioarduino-sdkconfig]`,
   board id `esp32s3-flex`, mDNS/OTA hostname `croaster-flex`,

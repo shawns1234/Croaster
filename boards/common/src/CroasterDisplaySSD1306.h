@@ -3,6 +3,8 @@
 #include <Adafruit_SSD1306.h>
 #include <CroasterDisplay.h>
 
+#include <functional>
+
 // This display's hardware specifics (defined in the implementation, not the library).
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -34,6 +36,16 @@ public:
     void updatingStatusToggle(bool isUpdating) override;
     bool isFirmwareUpdating() const override;
 
+    /**
+     * @brief Sets an optional provider for the header line, shown instead of
+     *        "CROASTER V<version>" (the IP address still alternates with it).
+     *        Lets an implementation show its own state, e.g. heater/fan/mode,
+     *        without a display subclass. Keep the text to 20 characters.
+     * @param fn Callback returning the header text; an empty string or
+     *           nullptr shows the default header.
+     */
+    void setHeaderText(std::function<String()> fn);
+
 private:
     Adafruit_SSD1306 display;
 
@@ -64,6 +76,8 @@ private:
     bool isDisplayOn = true;
 
     bool isUpdatingFirmware = false;
+
+    std::function<String()> headerText; ///< Optional header provider (see setHeaderText()).
 
     /**
      * @brief Draws the header section of the display.

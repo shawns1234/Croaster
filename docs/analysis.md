@@ -54,7 +54,7 @@ PlatformIO only; release envs for `build_all.sh`, `-debug` envs for
 | Heater | rewritten from yaeger | SSR time-proportional window, not 50 Hz PWM (zero-cross SSR cannot follow 50 Hz PWM) |
 | Fan | new AC dimmer driver (+ PWM option from yaeger) | Shawn's fan is mains AC |
 | PID, autotune, profiles | yaeger ideas, rewritten pure + tested | host tests, no globals |
-| Display | Croaster `CroasterDisplay` interface + new roaster screen | yaeger's 16×2 LCD isn't Shawn's hardware |
+| Display | Croaster's shared `CroasterDisplaySSD1306` with a header-text hook | yaeger's 16×2 LCD isn't Shawn's hardware |
 | Safety | new | over-temp, sensor fault, no mains, OTA, comms-lost trips |
 | Web UI | deferred (ticket T14) | Artisan + ICRM cover control |
 
@@ -66,8 +66,7 @@ PlatformIO only; release envs for `build_all.sh`, `-debug` envs for
 | bblanchon/ArduinoJson 7.4.3 | all | |
 | tzapu/WiFiManager 2.0.17 | Croaster | `-Wformat` warnings only |
 | yuriisalimov/MAX6675_Thermocouple 2.0.2 | Croaster | provides the `Thermocouple` interface we implement |
-| adafruit/Adafruit SSD1306 2.5.17 | boards/common | only with `ROASTER_DISPLAY_CROASTER_SSD1306` |
-| olikraus/U8g2 2.36.18 | roaster OLED | SSD1306 and SH1106 |
+| adafruit/Adafruit SSD1306 2.5.17 | boards/common | the flex screen |
 | Arduino BLE (NimBLE in Arduino 3.3) | Croaster | |
 Dropped from yaeger: ESPAsyncWebServer/AsyncTCP, ElegantOTA, WebSerial,
 Adafruit MAX31855, nexgen_filter, Moving-Average lib, LiquidCrystal_I2C,
@@ -106,7 +105,7 @@ Artisan has no BLE path for this protocol; use WiFi.
 - Only `#define`s; force-included into every unit so it also sets Croaster's
   `CROASTER_HAS_BLE`.
 - Selects: converter (MAX31855/MAX6675), heater (NONE/SSR), fan
-  (NONE/AC_DIMMER/PWM), display (NONE/Croaster SSD1306/roaster SSD1306/SH1106),
+  (NONE/AC_DIMMER/PWM), display (NONE/SSD1306),
   pins, BLE, ArduinoOTA, PID defaults, limits, control core.
 - `ConfigCheck.h` (included first by `main.cpp`): `#error` for invalid enums
   and combinations (heater without fan, `REQUIRE_MAINS` without dimmer, mains

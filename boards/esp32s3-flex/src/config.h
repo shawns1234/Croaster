@@ -60,10 +60,8 @@
 
 // ---- Display ----------------------------------------------------------------
 #define ROASTER_DISPLAY_NONE 0
-#define ROASTER_DISPLAY_CROASTER_SSD1306 1              // Croaster's shared screen (boards/common): BT/ET + RoR
-#define ROASTER_DISPLAY_ROASTER_SSD1306 2               // roaster screen: temps + heater/fan/mode (U8g2)
-#define ROASTER_DISPLAY_ROASTER_SH1106 3                // same, SH1106 controller (some 1.3" GME12864)
-#define ROASTER_DISPLAY ROASTER_DISPLAY_ROASTER_SSD1306 // Shawn's 0.96" 128x64 SSD1306 (confirmed)
+#define ROASTER_DISPLAY_SSD1306 1 // Croaster's shared screen (boards/common); header shows heater/fan/mode
+#define ROASTER_DISPLAY ROASTER_DISPLAY_SSD1306 // Shawn's 0.96" 128x64 SSD1306 (confirmed)
 
 #define ROASTER_PIN_I2C_SDA 8 // Arduino default Wire pins (also what Croaster's display uses)
 #define ROASTER_PIN_I2C_SCL 9

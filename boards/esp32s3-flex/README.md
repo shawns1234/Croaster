@@ -9,7 +9,7 @@ Artisan control over Croaster's WebSocket. It consumes:
 | lib_dep | What |
 |:---|:---|
 | `Croaster=symlink://../../croaster` | Croaster core: WiFiManager, WebSocket :81, BLE, OTA, RoR, roast timer |
-| `CroasterDisplaySSD1306=symlink://../common` | Croaster's stock OLED screen (optional) |
+| `CroasterDisplaySSD1306=symlink://../common` | Croaster's shared OLED screen; its header line shows heater %, fan % and mode (or the trip) |
 | `RoasterCore=symlink://../../roaster-core` | Pure control logic: PID, autotune, profiles, MAX31855/MAX6675 decode, command protocol (host-tested) |
 | `RoasterControl=symlink://../../roaster-control` | ESP32 side: control task, SSR, dimmer/PWM fan, probes, NVS, `RoasterPlugin` |
 
@@ -29,7 +29,7 @@ Whether this ini should share chip-level settings with `boards/esp32s3` (standal
 | ET probe | K probe from the Inkbird kit | **check grounded vs ungrounded** (see below) |
 | Heater | SSR-40DA from the Inkbird PID kit (kit PID unused) | input 3–32 VDC, on > 2.4 V: 3.3 V GPIO drives it directly |
 | Fan | RobotDyn 1-ch AC dimmer (BTA16 triac, Z-C output) | VCC from **3V3** so Z-C swings 0–3.3 V |
-| Display | 0.96" 128×64 I2C OLED, SSD1306 (**confirmed**), yellow/blue | address 0x3C (0x3D also probed); top 16 rows are yellow: the IP header sits there |
+| Display | 0.96" 128×64 I2C OLED, SSD1306 (**confirmed**), yellow/blue | address 0x3C; top 16 rows are yellow: the IP header sits there |
 
 All modules run from the board's 3V3 pin (AMS1117, ~500 mA budget: OLED ~20 mA,
 2 × MAX31855 < 3 mA, dimmer logic < 10 mA, SSR input ~7.5 mA).

@@ -24,3 +24,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T17 | Artisan setting check against source + docs (`docs/artisan-settings.md`) | done | — |
 | T18 | Board renamed `esp32s3-roaster` → `esp32s3-flex` (folder, envs, board id, hostname `croaster-flex`, `.aset`) | done | — |
 | T19 | Decide D10 (flex vs Croaster's esp32s3 ini: standalone / extends / shared base ini) | blocked | Shawn |
+| T20 | Flex screen: Croaster's shared SSD1306 display + `setHeaderText()`; drop `RoasterOledDisplay`/U8g2 | done | — |

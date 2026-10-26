@@ -36,7 +36,10 @@ void CroasterDisplaySSD1306::drawHeader() {
     if (!hasDisplay)
         return;
 
-    String text = "CROASTER V" + String(version);
+    String text = headerText ? headerText() : String();
+
+    if (text.isEmpty())
+        text = "CROASTER V" + String(version);
 
     if (isIpShowed && !ipAddr.isEmpty()) {
         text = ipAddr;
@@ -209,4 +212,8 @@ void CroasterDisplaySSD1306::updatingStatusToggle(bool isUpdating) {
 
 bool CroasterDisplaySSD1306::isFirmwareUpdating() const {
     return isUpdatingFirmware;
+}
+
+void CroasterDisplaySSD1306::setHeaderText(std::function<String()> fn) {
+    headerText = fn;
 }
