@@ -28,6 +28,11 @@
 #endif
 
 namespace configcheck {
+
+constexpr bool validTempUnit(const char* u) {
+    return (u[0] == 'C' || u[0] == 'F' || u[0] == 'K') && u[1] == '\0';
+}
+static_assert(validTempUnit(FLEX_TEMP_UNIT), "config.h: FLEX_TEMP_UNIT must be \"C\", \"F\" or \"K\"");
 // N16R8: GPIO26-32 quad SPI flash, GPIO33-37 octal PSRAM (35-37 are on the header).
 constexpr bool isFlashOrPsramPin(int p) {
     return p >= 26 && p <= 37;

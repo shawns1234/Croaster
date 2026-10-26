@@ -1,6 +1,6 @@
 [General]
 AUCLCDmode=0
-AUCbase=100
+AUCbase=212
 AUCbaseFlag=false
 AUCbegin=1
 AUCguideFlag=false
@@ -42,8 +42,8 @@ LargeLCDs=false
 LargePIDLCDs=false
 LargePhasesLCDs=false
 LargeScaleLCDs=false
-Mode=C
-Phases=90, 130, 185, 230
+Mode=F
+Phases=194, 266, 365, 446
 Schedule=false
 ScheduleDayFilter=true
 ScheduleMachineFilter=true
@@ -88,7 +88,7 @@ customflavorlabels=Acidity, Aftertaste, Clean Cup, Head, Fragrance, Sweetness, A
 detectBackgroundEventTime=20
 dpi=100
 dropDuplicates=false
-dropDuplicatesLimit=0.3
+dropDuplicatesLimit=0.54
 dropSpikes=false
 drumspeed_setup=
 externaloutprogram=out.py
@@ -232,10 +232,10 @@ svLookahead=0
 svMode=2
 svRamps=0, 0, 0, 0, 0, 0, 0, 0
 svSlider=false
-svSliderMax=230
+svSliderMax=446
 svSliderMin=0
 svSoaks=0, 0, 0, 0, 0, 0, 0, 0
-svValue=180
+svValue=356
 svValues=0, 0, 0, 0, 0, 0, 0, 0
 
 [Axis]
@@ -255,9 +255,9 @@ temp_grid=false
 time_grid=false
 xmax=600
 xmin=-30
-ymax=275
+ymax=527
 ymin=0
-zmax=42
+zmax=76
 zmin=0
 
 [Batch]
@@ -471,7 +471,7 @@ extraeventbuttontextcolor=white, white, white, white, white, white, white, white
 extraeventsactions=22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22
 extraeventsactionstrings=send({{\"command\": {{\"burner\": {}}}}}), send({{\"command\": {{\"burner\": {}}}}}), send({{\"command\": {{\"burner\": {}}}}}), send({{\"command\": {{\"burner\": {}}}}}), send({{\"command\": {{\"burner\": {}}}}}), send({{\"command\": {{\"burner\": {}}}}}), send({{\"command\": {{\"mode\": \"pid\"}}}}), send({{\"command\": {{\"mode\": \"manual\"}}}}), send({{\"command\": \"autotune\"}}), send({{\"command\": \"stop\"}}), send({{\"command\": \"clearTrip\"}})
 extraeventsbuttonsflags=0, 1, 1
-extraeventsdescriptions=Heater 50%, Heater 55%, Heater 60%, Heater 65%, Heater 70%, Heater off, Firmware PID on (uses SV slider), Manual heater (PID off), Firmware autotune at current SV (>= 100 C), Heater off + cooldown fan, Clear a safety trip
+extraeventsdescriptions=Heater 50%, Heater 55%, Heater 60%, Heater 65%, Heater 70%, Heater off, Firmware PID on (uses SV slider), Manual heater (PID off), Firmware autotune at current SV (>= 212 F), Heater off + cooldown fan, Clear a safety trip
 extraeventslabels=50%, 55%, 60%, 65%, 70%, Off, PID, Manual, Autotune, Stop, Clear trip
 extraeventstypes=3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4
 extraeventsvalues=6, 6.5, 7, 7.5, 8, 0, 0, 0, 0, 0, 0
@@ -798,9 +798,9 @@ statisticsmode=1
 swapdeltalcds=false
 
 [RoRlimits]
-RoRlimit=35
+RoRlimit=63
 RoRlimitFlag=true
-RoRlimitm=-71
+RoRlimitm=-128
 
 [RoastProperties]
 beansize_max=0
@@ -850,7 +850,7 @@ stopbits=1
 timeout=0.4
 
 [Sliders]
-ModeTempSliders=C
+ModeTempSliders=F
 eventsliderAlternativeLayout=false
 eventsliderBernoulli=0, 0, 0, 0
 eventsliderKeyboardControl=true
@@ -861,7 +861,7 @@ eventsliderunits=%, , , %
 slideractions=18, 0, 18, 18
 slidercommands=send({{\"command\": {{\"fan\": {}}}}}), , send({{\"command\": {{\"setpoint\": {}}}}}), send({{\"command\": {{\"burner\": {}}}}})
 sliderfactors=1, 1, 1, 1
-slidermax=100, 100, 250, 100
+slidermax=100, 100, 482, 100
 slidermin=0, 0, 0, 0
 slideroffsets=0, 0, 0, 0
 slidervisibilities=1, 0, 1, 1
@@ -911,7 +911,7 @@ SCe_node=secondCrackEndEvent
 SCs_node=secondCrackBeginningEvent
 STARTonCHARGE=false
 addEvent_message=addEvent
-channel_modes=1, 1, 0, 0, 0, 1, 0, 0, 0, 0
+channel_modes=2, 2, 0, 0, 0, 2, 0, 0, 0, 0
 channel_nodes=BT, ET, FanVal, BurnerVal, , SV, , , , 
 channel_requests=, , , , , , , , , 
 charge_message=startRoasting
@@ -1000,5 +1000,5 @@ gridalpha=0.2
 gridlinestyle=0
 gridthickness=1
 xgrid=120
-ygrid=50
-zgrid=5
+ygrid=100
+zgrid=10

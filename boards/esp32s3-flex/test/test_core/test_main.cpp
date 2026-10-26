@@ -384,6 +384,7 @@ void test_protocol_yaeger_compat() {
 
 void test_unit_conversion() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 100.0f, toCelsius(212.0f, 'F'));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 195.0f, toCelsius(383.0f, 'F')); // Artisan setpoint in F, under the 250 C cap
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, toCelsius(273.15f, 'K'));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 212.0f, fromCelsius(100.0f, 'F'));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 50.0f, fromCelsius(toCelsius(50.0f, 'C'), 'C'));

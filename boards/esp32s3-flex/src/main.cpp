@@ -77,19 +77,21 @@ ControlSettings defaults() {
 }
 ControlPlugin plugin(controller);
 
-// Header line for the SSD1306 (20 chars): "H 50 F 60 PID" or "TRIP overtemp F100".
+// Header line for the SSD1306, at most 20 characters: "H50 Fan60 PID" or "TRIP overtemp Fan100".
+// "Fan" is spelled out so it can't be read as a Fahrenheit temperature.
 String statusLine(const Snapshot& s) {
     char line[24];
     if (s.trip != SafetyTrip::None)
-        snprintf(line, sizeof line, "TRIP %s F%.0f", tripName(s.trip), s.fanPct);
+        snprintf(line, sizeof line, "TRIP %s Fan%.0f", tripName(s.trip), s.fanPct);
     else
-        snprintf(line, sizeof line, "H%.0f F%.0f %s", s.heaterPct, s.fanPct, modeName(s.mode));
+        snprintf(line, sizeof line, "H%.0f Fan%.0f %s", s.heaterPct, s.fanPct, modeName(s.mode));
     return String(line);
 }
 #endif
 
 void setup() {
     CroasterDeviceIdentity::setBoardName(FLEX_BOARD_NAME);
+    core.changeTemperatureUnit(FLEX_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
     Wire.setPins(FLEX_PIN_I2C_SDA, FLEX_PIN_I2C_SCL); // later Wire.begin() calls use these
 
 #if FLEX_HEATER != FLEX_HEATER_NONE

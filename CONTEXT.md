@@ -117,8 +117,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Artisan WebSocket: replies must echo the request `id`. Command strings in the
   `.aset` go through Python `str.format`, so literal braces are doubled.
   Artisan's "Control" button is its own PC-side PID; keep it off.
-- Keep Croaster's unit and Artisan both in °C: command temperatures are read
-  in Croaster's unit.
+- Units: control math and limits are °C. Croaster's `tempUnit` (flex boots in
+  `FLEX_TEMP_UNIT`, default "F") sets the screen, telemetry and command
+  temperatures; convert at the edges (`toCelsius`/`fromCelsius`). Artisan's
+  mode and `channel_modes` must match the firmware unit.
 - NVS (`Preferences`) is not usable from global constructors: load settings in
   `setup()`.
 - Unpinned `platform = espressif32` resolves to whatever espressif32 is

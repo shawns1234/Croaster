@@ -197,6 +197,7 @@ Changes from Shawn's nine review points (2026-10-26):
 | D13 | new | Croaster's OTA only; ArduinoOTA and its mDNS name dropped. |
 | D14 | new, design only | Config wizard. |
 | D15 | new | `MAX6675_Thermocouple` stays a core dependency. |
+| D16 | new | Temperature unit: Croaster's `tempUnit`, °F at boot on flex; control stays in °C. |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -490,6 +491,26 @@ Shawn asked to remove the MAX6675 library. Core needs it to compile:
    dependency, but upstream fixes stop flowing in.
 Recommendation: 1. The library costs nothing in a control build beyond
 compile time (the linker drops unused code).
+
+### D16. Temperature unit — **DECISION (new 2026-10-26)**
+Shawn wants °F on the screen and in Artisan. Croaster already has a unit:
+`CroasterCore::changeTemperatureUnit()` converts BT, ET and RoR, the screen
+prints the unit, and `getArtisanData` reports it in `"temp"`. The control
+plugin already converts setpoints in and SV/ambient out with
+`toCelsius`/`fromCelsius`, and the controller caps and trips in °C.
+1. **Boot in a configured unit (implemented).** `FLEX_TEMP_UNIT` in `config.h`
+   (default "F"); `main.cpp` calls `core.changeTemperatureUnit()` in `setup()`.
+   No core change. The `.aset` ships in °F mode with `channel_modes` 2 (°F).
+   The runtime `tempUnit` command still works until the next reboot.
+2. Keep the firmware in °C and let Artisan convert (`channel_modes` 1, Artisan
+   in °F). Artisan shows °F, but the OLED stays in °C, and Artisan sends
+   setpoints in °F, which a °C firmware reads as °C.
+3. Persist `tempUnit` in NVS from core. Affects every board; not needed while
+   `config.h` sets the default.
+Artisan's mode and the firmware unit must match: Artisan sends slider and
+button temperatures in its own mode, and the firmware reads them in its unit.
+The header line now says "Fan" ("H50 Fan60 PID") so the fan % isn't read as a
+°F value.
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

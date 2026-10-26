@@ -31,3 +31,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T24 | Two-probe path documented end to end (`docs/how.md`); per-probe fault filter moved to pure `ProbeChannel`; host tests for fault bits and independent channels | done | — |
 | T25 | Config wizard `tools/flex-config.py` (design D14): questions or an answers file in, `src/config.h` out, same checks as `ConfigCheck.h`; README section | todo | Shawn (D14) |
 | T26 | Library builds without warnings from Croaster or our code: `-Wreorder` in `CroasterBleManager`, `-Wformat` in `CroasterDeviceIdentity`; WiFiManager's own warning remains | done | — |
+| T27 | °F by default (design D16): `FLEX_TEMP_UNIT`, OLED and telemetry in °F, `.aset` in °F mode, header says "Fan" instead of "F". Bench check: OLED in °F, Artisan reads BT/ET/SV in °F, a 383 °F setpoint comes back as SV 383 | done (bench check todo) | T2 |

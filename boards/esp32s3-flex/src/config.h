@@ -25,6 +25,11 @@
 // the ES3C28P LCD image, and an app OTA would replace the roaster firmware.
 #define FLEX_BOARD_NAME "esp32s3-flex"
 #define FLEX_DUMMY_DATA 0 // 1 = report fake temperatures (no probes needed)
+// Unit for the screen, telemetry ("temp" field) and incoming setpoints: "C",
+// "F" or "K". Applied at every boot; Croaster's {"command":{"tempUnit":"C"}}
+// changes it until the next reboot. Control limits below stay in Celsius.
+// Artisan's .aset must match: artisan/croaster-flex.aset is set up for "F".
+#define FLEX_TEMP_UNIT "F"
 
 // ---- Thermocouple converters (ET + BT share SCK/MISO, one CS each) --------
 #define FLEX_TC_MAX31855 1 // 14-bit, -200..1350 C, fault bits, cold junction
@@ -75,12 +80,12 @@
 // ---- Features ---------------------------------------------------------------
 #define FLEX_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
 
-// ---- Control and safety (Celsius; the app may display F) --------------------
+// ---- Control and safety (always Celsius, whatever FLEX_TEMP_UNIT is) --------
 #define FLEX_PID_KP 1.0f // defaults until set over WebSocket or autotuned (then NVS)
 #define FLEX_PID_KI 0.1f
 #define FLEX_PID_KD 0.01f
-#define FLEX_OVER_TEMP_C 275 // any probe above: heater off, fan 100 %
-#define FLEX_MAX_SETPOINT_C 250
+#define FLEX_OVER_TEMP_C 275      // 527 F; any probe above: heater off, fan 100 %
+#define FLEX_MAX_SETPOINT_C 250   // 482 F; higher setpoints are capped here
 #define FLEX_MIN_FAN_WITH_HEAT 30 // fan forced to at least this while heating
 #define FLEX_COOLDOWN_FAN 100     // fan % after "stop" (changeable, stored in NVS)
 // Comms watchdog: heater off + cooldown fan when no client message arrives for

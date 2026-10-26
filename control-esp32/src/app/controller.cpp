@@ -116,7 +116,7 @@ void Controller::apply(const Command& c) {
         break;
     case Command::Kind::StartAutotune: {
         if (!(st_.setpoint >= 100) || !std::isfinite(pv)) {
-            st_.autotuneMsg = "need setpoint >= 100 and a valid probe";
+            st_.autotuneMsg = "need setpoint >= 100 C (212 F) and a valid probe";
             break;
         }
         if (fan_.get() < 30)

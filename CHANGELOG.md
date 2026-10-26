@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — flex control board (branch rework/roaster)
 
 ### Added
+- **Flex °F by default**: `FLEX_TEMP_UNIT` in `config.h` sets Croaster's
+  unit at boot (screen, telemetry, setpoints); control limits stay in °C. The
+  Artisan `.aset` is now in °F mode.
 - **`CroasterCommandHandler::lastCommandMillis()`**: when the handler last
   accepted a message (WebSocket or BLE), for add-ons such as a comms watchdog.
 - **`boards/esp32s3-flex`** ("flex") — heater + fan control board for the Lonely Binary

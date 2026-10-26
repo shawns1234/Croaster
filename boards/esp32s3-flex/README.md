@@ -108,7 +108,9 @@ Serial logs: native USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`). Using the other
 ## 📡 Commands (WebSocket :81 and BLE, Croaster JSON)
 
 Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
-`tempUnit`, OTA...). The roaster adds (temperatures in Croaster's current unit):
+`tempUnit`, OTA...). Temperatures are in Croaster's current unit: °F at boot
+(`FLEX_TEMP_UNIT` in `config.h`); `{"command":{"tempUnit":"C"}}` switches until
+the next reboot. Limits and the PID still work in °C. The flex board adds:
 
 | JSON | Effect |
 |:---|:---|
