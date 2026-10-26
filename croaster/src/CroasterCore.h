@@ -1,8 +1,11 @@
 #pragma once
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <MAX6675_Thermocouple.h>
 #include <SmoothThermocouple.h>
 #include <Thermocouple.h>
+
+#include <functional>
 
 #include "CroasterConstants.h"
 #include "CroasterPinConfig.h"
@@ -30,6 +33,8 @@ private:
     unsigned long intervalSend = 3;
 
     bool useDummyData;
+
+    std::function<void(JsonObject&)> jsonDataExtension; ///< Optional extra fields for getJsonData().
 
     // Roast timer state (start / pause / reset).
     bool roastTimerRunning = false;      ///< Whether the roast timer is counting.
@@ -89,7 +94,28 @@ public:
      * @param pins The thermocouple pin layout for the target board (provided by
      *             the implementation's config.h — there is no library default).
      */
-    CroasterCore(bool dummyMode, CroasterPinConfig pins);
+    CroasterCore(bool dummyMode, CroasterPinConfig pins,
+                 CroasterThermocoupleType type = CroasterThermocoupleType::MAX6675);
+
+    /**
+     * @brief Constructs a CroasterCore that reads temperatures from caller-provided
+     *        sensors (any Thermocouple implementation; not owned, never deleted).
+     *
+     * Use this when something else owns the SPI bus, e.g. a roaster control task
+     * that reads the probes itself and shares the values. No smoothing is added.
+     * @param dummyMode If true, uses dummy data instead of the sensors.
+     * @param bt Bean temperature sensor.
+     * @param et Environment temperature sensor.
+     */
+    CroasterCore(bool dummyMode, Thermocouple* bt, Thermocouple* et);
+
+    /**
+     * @brief Adds implementation-defined fields to the "data" object of every
+     *        getJsonData() payload (broadcasts and getArtisanData replies), e.g.
+     *        heater/fan values for Artisan. Called on the loop task.
+     * @param fn Callback receiving the "data" JsonObject; pass nullptr to remove.
+     */
+    void onJsonData(std::function<void(JsonObject&)> fn);
 
     /**
      * @brief Main loop for handling sensor updates and data processing.

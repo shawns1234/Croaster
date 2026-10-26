@@ -15,6 +15,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32c3/` | ESP32-C3 Super Mini — SSD1306 OLED; custom OTA partition (`custom32c3sm.csv` lives in this folder) |
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
+| `boards/esp32s3-roaster/` | Roaster **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
+| `roaster-core/` | Pure roaster logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-roaster/test` (`pio test -e native`) |
+| `roaster-control/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `RoasterPlugin` (hooks into `CroasterApp`) |
+| `docs/` | `design.md` (architecture + decisions), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -23,6 +27,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
+| `esp32s3-roaster` | ESP32-S3 N16R8 | 128×64 SSD1306 (U8g2) | `esp32s3-roaster` | 26.9% (1 765 159 B), RAM 62 316 B |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -37,12 +42,26 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   (`build_type = release`; `pio run -e <board>`); `./upload_monitor.sh <board>`
   builds + uploads the **debug** variant (`<board>-debug`, `extends` the
   release env) to the connected board, then opens the serial monitor.
+- Roaster board: control task (core 1, prio max-3) owns the SPI bus and
+  publishes a snapshot; `RoasterProbe` feeds it to `CroasterCore` via the
+  sensor-injection constructor; `RoasterPlugin` registers roaster commands
+  (`onJsonCommand`/`onCommand`), adds data fields via `CroasterCore::onJsonData`,
+  runs the comms watchdog and ArduinoOTA. Details: `docs/design.md`.
 - Library features added in 0.52: roast timer (`CroasterCore::roastTimerStart/
   Pause/Reset`), `getDeviceInfo` now reports `board`/`darkMode`/`brightness`
   (display state via `CroasterDisplay::isDarkMode()/getBrightness()`), and a
   BLE-guarded `CroasterApp::ble()` accessor.
 
-## Git state (2026-08-30)
+## Git state (2026-10-26)
+- Shawn's fork: local branch `rework/roaster` off `master` (`0845ba8`), **not
+  pushed**. Adds the roaster board + libs + docs and these core changes:
+  sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
+  `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0.
+- Decisions pending (Shawn): design.md D1 (top-level roaster libs), D3
+  (force-included config), D5 (board id `esp32s3-roaster`), D6 (watchdog via
+  `getData` alias).
+
+## Git state (2026-08-30, upstream)
 - Branch `dev` (HEAD `3f52109`, tracks `origin/dev`); the `boards/` + `croaster/`
   restructure, per-board `setBoardName()`, and the 0.62 bump are committed
   (merged from `decoupling` via PR #31). Working tree **clean** after this batch.
@@ -59,12 +78,25 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `library.json`).
 
 ## Next steps
+- Roaster: hardware bring-up and the rest of `docs/tickets.md` (T2–T14).
 - Update the ICRM app's `lib_deps` for the `croaster/` subfolder.
 - Flash + verify the esp32s3 build on real hardware (touch, chart swipe,
   dark mode, OTA over BLE/WebSocket).
 - Confirm `boardName()` strings against the ICRM app's `CroasterBoardTypes`.
 
 ## Gotchas
+- `onJsonCommand(key, fn)`: every registered callback gets the **whole**
+  `command` object when its key is present; parse only your own key.
+- NVS (`Preferences`) is not usable from global constructors: load settings in
+  `setup()`.
+- Unpinned `platform = espressif32` resolves to whatever espressif32 is
+  installed (a pioarduino install made `esp32c3` fail); pin the version.
+- `custom_sdkconfig` (pioarduino) writes `managed_components/`, `sdkconfig.*`,
+  `CMakeLists.txt`, `src/idf_component.yml` into the board folder (gitignored in
+  `esp32s3-roaster`). `MBEDTLS_SSL_IN/OUT_CONTENT_LEN` need
+  `MBEDTLS_ASYMMETRIC_CONTENT_LEN=y` to take effect.
+- `.clang-format` is LLVM-based with attached braces; AGENTS.md says Allman.
+  Sources follow `.clang-format`.
 - PlatformIO not on PATH → `~/.platformio/penv/bin/pio` or `PIO=`.
 - Libs are **live-linked** via `symlink://` lib_deps
   (`Croaster=symlink://../../croaster`, `CroasterDisplaySSD1306=symlink://../common`)

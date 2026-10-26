@@ -1,0 +1,8 @@
+{
+  "name": "RoasterCore",
+  "version": "0.1.0",
+  "description": "Pure roaster control logic (no Arduino/ESP headers): MAX31855/MAX6675 decode, moving average, PID, relay autotune, time-proportional SSR window, roast profile, roaster command protocol for Croaster's command system. Host-tested.",
+  "frameworks": "*",
+  "platforms": "*",
+  "dependencies": { "bblanchon/ArduinoJson": "^7.4.3" }
+}

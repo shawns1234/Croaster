@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — roaster control (branch rework/roaster)
+
+### Added
+- **`boards/esp32s3-roaster`** — roaster control board for the Lonely Binary
+  ESP32-S3 N16R8: PID heater via SSR (time-proportional window), RobotDyn AC
+  dimmer or PWM fan, roast profiles, relay autotune, safety trips (over-temp,
+  sensor fault, no mains, OTA, comms lost), roaster OLED screen (SSD1306/SH1106),
+  ArduinoOTA, Artisan settings file. Single master `src/config.h` validated at
+  compile time by `src/ConfigCheck.h`.
+- **`roaster-core/`** (pure, host-tested) and **`roaster-control/`** (ESP32)
+  libraries; 15 host tests (`pio test -e native`).
+- **MAX31855 support** in the library: `CroasterMAX31855`,
+  `CroasterThermocoupleType`, optional third `CroasterCore` constructor argument
+  (default MAX6675).
+- **`CroasterCore(bool, Thermocouple* bt, Thermocouple* et)`** — inject sensors
+  owned elsewhere (e.g. a control task that owns the SPI bus).
+- **`CroasterCore::onJsonData(fn)`** — boards add fields to every data payload.
+- `docs/design.md`, `docs/tickets.md`, `docs/analysis.md`.
+
+### Changed
+- **RoR keeps negative values** (falling temperature was reported as 0).
+- `CROASTER_HAS_BLE` can be preset by a board (`#ifndef`).
+- `format.sh` also formats `roaster-core/` and `roaster-control/`.
+
+---
+
 ## [Unreleased] — 2026-06-13
 
 ### Fixed

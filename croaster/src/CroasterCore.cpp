@@ -4,14 +4,31 @@
 
 #include "CroasterConstants.h"
 #include "CroasterDeviceIdentity.h"
+#include "CroasterMAX31855.h"
 
-CroasterCore::CroasterCore(bool dummyMode, CroasterPinConfig pins)
+namespace {
+Thermocouple* makeThermocouple(CroasterThermocoupleType type, const CroasterPinConfig& p, int8_t cs) {
+    if (type == CroasterThermocoupleType::MAX31855)
+        return new CroasterMAX31855(p.sckPin, cs, p.soPin);
+    return new MAX6675_Thermocouple(p.sckPin, cs, p.soPin);
+}
+} // namespace
+
+CroasterCore::CroasterCore(bool dummyMode, CroasterPinConfig pins, CroasterThermocoupleType type)
     : _pins(pins)
     , useDummyData(dummyMode) {
-    thermocoupleBT =
-        new SmoothThermocouple(new MAX6675_Thermocouple(_pins.sckPin, _pins.csPinBt, _pins.soPin), SMOOTHING_FACTOR);
-    thermocoupleET =
-        new SmoothThermocouple(new MAX6675_Thermocouple(_pins.sckPin, _pins.csPinEt, _pins.soPin), SMOOTHING_FACTOR);
+    thermocoupleBT = new SmoothThermocouple(makeThermocouple(type, _pins, _pins.csPinBt), SMOOTHING_FACTOR);
+    thermocoupleET = new SmoothThermocouple(makeThermocouple(type, _pins, _pins.csPinEt), SMOOTHING_FACTOR);
+}
+
+CroasterCore::CroasterCore(bool dummyMode, Thermocouple* bt, Thermocouple* et)
+    : thermocoupleBT(bt)
+    , thermocoupleET(et)
+    , _pins{-1, -1, -1, -1}
+    , useDummyData(dummyMode) {}
+
+void CroasterCore::onJsonData(std::function<void(JsonObject&)> fn) {
+    jsonDataExtension = fn;
 }
 
 double CroasterCore::convertTemperature(double tempCelsius) {
@@ -103,9 +120,8 @@ void CroasterCore::updateROR() {
         etHistory[59] = tempEt;
         double deltaET = etHistory[59] - etHistory[0];
 
-        bool validDelta = deltaET > 0 && deltaTimer > 0;
-
-        rorEt = validDelta ? (deltaET / deltaTimer) * 60 : 0;
+        // Negative RoR is kept: it shows the turning point after charge and cooling.
+        rorEt = deltaTimer > 0 ? (deltaET / deltaTimer) * 60 : 0;
     } else {
         etHistory[59] = etHistory[58]; // Retain last valid value
         rorEt = 0;                     // Reset RoR for invalid reading
@@ -116,9 +132,7 @@ void CroasterCore::updateROR() {
         btHistory[59] = tempBt;
         double deltaBT = btHistory[59] - btHistory[0];
 
-        bool validDelta = deltaBT > 0 && deltaTimer > 0;
-
-        rorBt = validDelta ? (deltaBT / deltaTimer) * 60 : 0;
+        rorBt = deltaTimer > 0 ? (deltaBT / deltaTimer) * 60 : 0;
     } else {
         btHistory[59] = btHistory[58]; // Retain last valid value
         rorBt = 0;                     // Reset RoR for invalid reading
@@ -277,6 +291,9 @@ String CroasterCore::getJsonData(int id) {
     data["cET"] = roundTo2(correctionEt);
 
     data["temp"] = tempUnit;
+
+    if (jsonDataExtension)
+        jsonDataExtension(data);
 
     String jsonOutput;
 

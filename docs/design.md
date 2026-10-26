@@ -1,0 +1,193 @@
+# Design — Croaster roaster control (ESP32-S3)
+
+Status: skeleton, builds and host-tests pass; not yet run on hardware.
+Owner decisions still open are marked **DECISION**.
+
+## Goal
+Shawn's roaster (SSR heater, AC-dimmer fan, 2 × MAX31855, I2C OLED, Lonely
+Binary ESP32-S3 N16R8) gets yaeger's control features (PID, autotune, profiles,
+Artisan control, safety) on top of Croaster's platform (WiFiManager, WebSocket,
+BLE/ICRM app, OTA, RoR, display interface, per-board projects), keeping
+Croaster's library/board split and extension model.
+
+## Croaster's model (what we kept)
+- `croaster/` is a display- and pin-agnostic library. Boards inject everything:
+  pins (`CroasterPinConfig`), a `CroasterDisplay` subclass, LED pin, board id
+  (`CroasterDeviceIdentity::setBoardName`).
+- `CroasterApp` owns WiFi, WebSocket :81, BLE, OTA, and the command handler.
+  Boards extend the protocol with `commands().onCommand(name, fn)` and
+  `commands().onJsonCommand(key, fn)`.
+- `boards/<board>/` are standalone PlatformIO projects; `boards/common/` is
+  shared board-side code. `build_all.sh` builds env `<board>`;
+  `upload_monitor.sh` builds env `<board>-debug`.
+
+## Layers
+
+```
+boards/esp32s3-roaster/          board: config.h, ConfigCheck.h, main.cpp, RoasterOledDisplay
+        |  constructs + injects
+        v
+roaster-control/  (Arduino/ESP32)   RoasterPlugin  --registers-->  CroasterApp commands / onJsonData
+                                    Roaster (FreeRTOS task)  <-- Command queue
+                                    HeaterOutput, FanDimmer|FanPwm, Thermocouples, ConfigStore(NVS)
+                                    RoasterProbe : Thermocouple  --> CroasterCore (BT/ET)
+        |
+        v
+roaster-core/     (pure C++, host-tested)  PID, relay autotune, roast profile,
+                                    MAX31855/MAX6675 decode, moving average,
+                                    time-proportional window, command protocol
+croaster/         (Croaster library) WiFi, WebSocket, BLE, OTA, RoR, display iface
+```
+
+Rules this keeps: nothing in `croaster/` knows about heaters or fans; board
+config stays in the board; roaster logic is reusable by any future board
+(e.g. a C3 roaster) by adding another `boards/<board>/` folder.
+
+### Where each feature lands
+
+| Feature | Lands in | Why |
+|:---|:---|:---|
+| MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
+| MAX31855/MAX6675 decode for control | `roaster-core/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
+| PID, autotune, profiles | `roaster-core` | Pure logic, unit-tested on the host (15 tests). |
+| SSR, dimmer, PWM fan, probe reading, NVS | `roaster-control/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 roaster board. |
+| Control loop + safety | `roaster-control/app/roaster` | Own FreeRTOS task (see Threading). |
+| Commands, data fields, watchdog, ArduinoOTA | `roaster-control/RoasterPlugin` | Uses only Croaster's public extension points. |
+| Pins, chip/driver/display choice, limits | `boards/esp32s3-roaster/src/config.h` | Board config never in a library (AGENTS.md). |
+| Roaster OLED screen | `boards/esp32s3-roaster/src/RoasterOledDisplay.*` | Board display code, a `CroasterDisplay` subclass. |
+
+## Data flow
+1. Control task (core 1, every 10 ms tick): reads both converters on its own
+   SPI bus every sample period, filters (moving average of 4, reset after 3
+   faults), runs safety checks, mode logic (Manual / PID / Profile / Autotune),
+   PID, and the SSR time-proportional window; writes the fan; publishes a
+   `Snapshot` under a spinlock.
+2. Croaster loop (Arduino loop task, core 1, lower priority): `CroasterCore`
+   reads BT/ET through `RoasterProbe` (snapshot, NaN on fault), computes RoR,
+   and broadcasts JSON; `onJsonData` adds `BurnerVal`, `FanVal`, `SV`, `Mode`,
+   `trip`.
+3. Clients (Artisan, ICRM, BLE) send JSON → `CroasterCommandHandler` →
+   `RoasterPlugin` callbacks → `roasterproto` parse → `Command` queue → control
+   task. Gains / PID input / cooldown fan are persisted to NVS by the plugin.
+
+## Threading
+- WiFi, LwIP and BLE (NimBLE) run on core 0 (IDF defaults).
+- Croaster's board json pins Arduino loop + events to core 1; the control task
+  also runs on core 1 at `configMAX_PRIORITIES - 3`, so it preempts the loop
+  (WebSocket handling, display, JSON) and never waits for it.
+- Only two shared objects: a FreeRTOS queue (commands in) and a
+  spinlock-protected `Snapshot` (state out). The SPI bus belongs to the control
+  task alone; that is why `CroasterCore` got a constructor taking sensors.
+- Dimmer: zero-cross ISR + one-shot GPTimer fires the triac gate; both IRAM.
+
+## Changes to Croaster's core (and why)
+
+| Change | Needed? | Reason |
+|:---|:---|:---|
+| `CroasterCore(bool, Thermocouple* bt, Thermocouple* et)` | needed | Two owners of one SPI bus would race; this lets the control task own it. Additive, existing constructor unchanged. |
+| `CroasterCore::onJsonData(fn)` | needed | Artisan must see heater/fan/setpoint in the same `getArtisanData` payload; no existing hook. Additive. |
+| `CroasterThermocoupleType` + `CroasterMAX31855` | requested | MAX31855 alongside MAX6675 for monitor builds; default stays MAX6675. |
+| `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
+| Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
+
+Existing boards still build: `esp32c3` built with the changes (RAM 44 680 B,
+flash 1 741 489 B = 91.6 %; pinned to espressif32 8.0.0 for the check).
+
+## Decisions where Croaster's rules and Shawn's goals rub
+
+Each lists alternatives; the recommended one is implemented (all reversible).
+
+### D1. Where the roaster libraries live — **DECISION**
+AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
+1. **Top-level `roaster-core/` + `roaster-control/` libs (implemented).**
+   Clear split: pure logic vs hardware; consumed like `boards/common` via
+   `symlink://`. Bends the layout list (two new top-level folders).
+2. Put them in `boards/common-roaster/` (one lib). Matches the "shared board
+   code under boards/" precedent, but `build_all.sh` must skip it (it only skips
+   `common`), and the pure/hardware split is lost.
+3. Fold into `croaster/src/roaster/`. One library, but every board (ESP8266
+   too) compiles heater/fan code and it breaks "monitor library, no board
+   specifics" intent.
+4. Keep everything inside `boards/esp32s3-roaster/src/`. Zero layout change,
+   but nothing is reusable for a second roaster board and tests live with one board.
+Recommendation: 1; update AGENTS.md's layout section if accepted.
+
+### D2. One master config vs `config.h` + `pins.h` — resolved
+Croaster boards use `config.h` (pins/dummy/LED) and sometimes `pins.h`.
+Shawn asked for a single file. Implemented: `src/config.h` holds everything
+(name keeps the convention), `src/ConfigCheck.h` validates. Options considered:
+split pins.h (convention, two files to edit), runtime JSON config (no compile
+checks), Kconfig menus (pioarduino only).
+
+### D3. Library feature switches from board config — **DECISION**
+`CROASTER_HAS_BLE` must be seen when `croaster/` compiles.
+1. **Force-include `config.h` into every unit (`-include`, implemented).** One
+   file really is the master; cost: every library sees the `ROASTER_*` macros
+   (prefixed, so collisions are unlikely).
+2. `-D CROASTER_HAS_BLE=0` in `platformio.ini`. Croaster style, but the master
+   config is then split across two files.
+3. Runtime switch (`CroasterApp` option to skip BLE). BLE code still linked
+   (no flash saving), library API change.
+4. Always build BLE. Simplest; ~310 KB flash plus NimBLE heap at runtime (fine on N16R8).
+Recommendation: 1.
+
+### D4. Compile-time feature selection in `main.cpp`
+AGENTS.md: "no board-specific compile-time guards" (meaning: the library never
+`#ifdef`s on a board). Our `#if ROASTER_FAN == ...` are feature selections inside
+one board, which the rule does not forbid, but they are guards. Alternatives:
+separate board folders per variant (monitor / roaster; duplicates main.cpp),
+runtime selection (all drivers linked, invalid configs only caught at boot),
+or templates (more C++ than the codebase uses). Kept `#if` + `ConfigCheck.h`
+because Shawn asked for compile-time selection with static checks.
+
+### D5. Board id — **DECISION**
+Ids must be lowercase and match ICRM's `CroasterBoardTypes`
+(`esp32s3`/`esp32c3`/`esp8266`/`unknown`).
+1. **`"esp32s3-roaster"` (implemented).** Distinct, so the app never offers the
+   ES3C28P LCD image as an update; ICRM may show it as unknown until the enum
+   is extended.
+2. `"esp32s3"`. Matches the enum, but an ICRM OTA would flash the LCD firmware
+   over the roaster firmware (heater control lost).
+3. `"unknown"`. Safe, but the app learns nothing.
+4. Add `esp32s3Roaster` to ICRM's enum (needs the app author).
+Recommendation: 1 now, 4 later.
+
+### D6. Comms watchdog vs built-in `getArtisanData` — **DECISION**
+The heater must stop if Artisan disappears, but `getArtisanData` is handled
+inside Croaster and boards cannot see it.
+1. **`getData` alias (implemented):** plugin registers `getData`, marks
+   activity, returns `core().getJsonData(id)`. Artisan polls `getData`
+   (the provided `.aset` does). No core change; ICRM/BLE traffic that does not
+   use it counts only via roaster commands.
+2. Add `CroasterCommandHandler::onAnyCommand(fn)` hook. Clean, small core change;
+   counts every client.
+3. Use WebSocket client count (`connected()` in `CroasterWebSocketManager`):
+   catches drops, not a hung Artisan.
+4. No watchdog (yaeger had none). Simplest, least safe.
+Recommendation: 1 for now; 2 if the author accepts a core hook.
+
+### D7. Control in a FreeRTOS task, not `loop()`
+Croaster is loop-driven. A blocking WiFiManager portal, WebSocket burst or BLE
+OTA can stall `loop()` for seconds; an SSR left on for seconds is the failure to
+avoid. Options: loop-only (simplest, unsafe stalls), hardware-timer ISR (no SPI
+reads in ISR), dedicated task (implemented), task on core 0 (shares core with
+WiFi). Task on core 1 at high priority chosen.
+
+## Build platform and sdkconfig
+- Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
+  Arduino builds ignore `board_build.sdkconfig_path`; stock libs already have
+  PSRAM malloc on.
+- pioarduino 55.03.312 (same Arduino core) builds too; only it can apply
+  `custom_sdkconfig` (recompiles IDF libs).
+- `esp32s3-sdkconfig.defaults` findings (checked in the generated sdkconfig):
+  - `MBEDTLS_EXTERNAL_MEM_ALLOC=y`, WiFi/LwIP in PSRAM, NimBLE 1 connection:
+    applied.
+  - `MBEDTLS_SSL_IN/OUT_CONTENT_LEN=4096` are **not applied**: IDF 5.5 only
+    uses them with `CONFIG_MBEDTLS_ASYMMETRIC_CONTENT_LEN=y`; the max stays
+    16384. The WSS fix works through PSRAM allocation, not smaller buffers.
+  - `MBEDTLS_HARDWARE_AES=n` slows TLS; only useful if a DMA/PSRAM AES issue
+    was observed.
+  - This firmware uses no TLS (plain `ws://`), so none of it is required.
+
+## Hardware notes driving defaults
+See `boards/esp32s3-roaster/README.md` (pins, power, probe isolation, IPEX).

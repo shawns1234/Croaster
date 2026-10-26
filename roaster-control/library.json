@@ -1,0 +1,10 @@
+{
+  "name": "RoasterControl",
+  "version": "0.1.0",
+  "description": "Croaster add-on: roaster control task (PID/profile/autotune, safety interlocks) on its own core, SSR heater, AC dimmer or PWM fan, MAX31855/MAX6675 probes, NVS settings, and a RoasterPlugin that registers roaster commands with CroasterApp.",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^7.4.3"
+  }
+}

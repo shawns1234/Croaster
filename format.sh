@@ -32,15 +32,15 @@ if ! command -v "$CLANG_FORMAT" >/dev/null 2>&1; then
     exit 1
 fi
 
-# All C/C++ sources under croaster/ and boards/, skipping .pio build artifacts.
+# All C/C++ sources under croaster/, boards/ and the roaster-* extension libs, skipping .pio build artifacts.
 FILES=()
 while IFS= read -r -d '' f; do
     FILES+=("$f")
 done < <(
-    find "$ROOT/croaster" "$ROOT/boards" \
+    find "$ROOT/croaster" "$ROOT/boards" "$ROOT/roaster-core" "$ROOT/roaster-control" \
         -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \
                    -o -name '*.cc' -o -name '*.cxx' -o -name '*.ino' \) \
-        -not -path '*/.pio/*' \
+        -not -path '*/.pio/*' -not -path '*/managed_components/*' -not -path '*/.dummy/*' \
         -print0
 )
 
@@ -64,6 +64,6 @@ case "$MODE" in
         ;;
     inplace)
         "$CLANG_FORMAT" -i "${FILES[@]}"
-        echo "formatted ${#FILES[@]} files (croaster/ + boards/)"
+        echo "formatted ${#FILES[@]} files (croaster/ + boards/ + roaster-*)"
         ;;
 esac

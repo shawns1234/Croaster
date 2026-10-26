@@ -8,10 +8,14 @@
 // conditionally (e.g. only create a CroasterBleManager when BLE is available).
 // ============================================================================
 
-#if defined(ESP32)
-#    define CROASTER_HAS_BLE 1
-#else
-#    define CROASTER_HAS_BLE 0
+// A board may force BLE off (e.g. -DCROASTER_HAS_BLE=0, or via its config
+// header) to save ~0.3 MB flash and the NimBLE heap when it does not use the ICRM app.
+#ifndef CROASTER_HAS_BLE
+#    if defined(ESP32)
+#        define CROASTER_HAS_BLE 1
+#    else
+#        define CROASTER_HAS_BLE 0
+#    endif
 #endif
 
 #if defined(ESP32) || defined(ESP8266)
