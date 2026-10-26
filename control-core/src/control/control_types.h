@@ -60,6 +60,20 @@ inline float fromCelsius(float c, char unit) {
     return unit == 'F' ? c * 9.0f / 5.0f + 32.0f : (unit == 'K' ? c + 273.15f : c);
 }
 
+// Autotune refuses to start below this setpoint (legacy CommandLoop rule).
+constexpr float kAutotuneMinSetpointC = 100;
+
+// Last autotune outcome, kept until the next one. Text: autotune_status.h.
+enum class AutotuneStatus : uint8_t {
+    Idle, // no autotune since boot
+    Running,
+    Done,         // new gains in use and saved
+    Failed,       // autotuneReason: RelayAutotune::failure()
+    Aborted,      // left by a command or a trip; autotuneReason may say why
+    NeedSetpoint, // refused: setpoint below kAutotuneMinSetpointC
+    NeedProbe,    // refused: PID input probe unreadable
+};
+
 struct Command {
     enum class Kind : uint8_t {
         SetHeater,   // a = 0..100 % (manual request)
@@ -94,7 +108,9 @@ struct Snapshot {
     bool mainsOk = false;
     float profileElapsedS = 0;
     uint32_t autotuneSeq = 0; // increments when new gains were produced
-    const char* autotuneMsg = "";
+    AutotuneStatus autotune = AutotuneStatus::Idle;
+    const char* autotuneReason = ""; // string literal; "" when there is none
+    uint32_t autotuneStatusSeq = 0;  // increments on every autotune status update
     uint32_t uptimeMs = 0;
 };
 

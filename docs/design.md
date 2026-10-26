@@ -198,7 +198,7 @@ Changes from Shawn's nine review points (2026-10-26):
 | D15 | new | `MAX6675_Thermocouple` stays a core dependency. |
 | D16 | new | Temperature unit: Croaster's `tempUnit`, °F at boot on flex; control stays in °C. |
 | D9 | note added | How a comms trip clears, and why reconnecting doesn't clear it. |
-| D17 | new, open | Visible autotune status. |
+| D17 | new | Visible autotune status: `autotune` in telemetry and on the OLED. |
 | D18 | new, open | PID input (ET or BT) and default gains. |
 | D19 | new, open | Cooldown fan default (100 % or yaeger's 65 %). |
 | D20 | new, open | Roast rules and profiles. |
@@ -208,6 +208,7 @@ Resolved by Shawn on 2026-10-26:
 | Decision | Choice |
 |:---|:---|
 | D8 | Drop flat keys and the `onOtherJson` hook (option 2). |
+| D17 | Autotune status in `getArtisanData` and on the OLED header (option 3). |
 | D18 | PID input defaults to BT (option 2); `pidInput` command and NVS kept; yaeger's gains kept until autotuned on BT. |
 | D19 | Cooldown fan 65 % after `stop`, 100 % after any trip (option 3). |
 
@@ -541,7 +542,20 @@ button temperatures in its own mode, and the firmware reads them in its unit.
 The header line now says "Fan" ("H50 Fan60 PID") so the fan % isn't read as a
 °F value.
 
-### D17. Visible autotune status — **DECISION (new 2026-10-26, open)**
+### D17. Visible autotune status — resolved 2026-10-26: telemetry and OLED (option 3)
+Shawn chose option 3. The controller keeps an `AutotuneStatus` (idle,
+running, done, failed, aborted, need setpoint, need probe), a reason and a
+counter that bumps on every update, so a repeated refusal counts as a change.
+`control/autotune_status.h` writes the text in the display unit:
+`autotune` in `getArtisanData` and `getControl` ("failed: timeout",
+"aborted: comms", "need setpoint >= 212 F"), and a 20-character OLED form
+("AT: SV<212F", "AT fail: small swing") that replaces the header for 10 s;
+a trip line takes precedence. The field keeps the last status, so a refusal
+stays visible in telemetry. Aborts name the cause when there is one (`stop`,
+a trip name, `setpoint changed`). The gate and exit behaviour are unchanged.
+
+Original options:
+
 Autotune refuses to start below a 100 °C (212 °F) setpoint or without a valid
 probe, and later ends as done, failed (timeout, over temperature, sensor fault,
 oscillation too small) or aborted. The reason is only in `getControl`'s
@@ -555,7 +569,7 @@ oscillation too small) or aborted. The reason is only in `getControl`'s
 3. 1 and 2 together.
 4. Map rejection to a trip-like code in `trip` (e.g. `"autotune"`). Reuses an
    existing field, but mixes a refused command with safety trips.
-Recommendation: 3.
+Recommendation: 3. **Implemented.**
 
 ### D18. PID input and default gains — resolved 2026-10-26: BT by default (option 2)
 Shawn chose option 2. `FLEX_PID_INPUT` in `config.h` (`FLEX_PID_INPUT_BT`)

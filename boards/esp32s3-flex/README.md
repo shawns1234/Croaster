@@ -9,7 +9,7 @@ Artisan control over Croaster's WebSocket. It consumes:
 | lib_dep | What |
 |:---|:---|
 | `Croaster=symlink://../../croaster` | Croaster core: WiFiManager, WebSocket :81, BLE, OTA, RoR, roast timer |
-| `CroasterDisplaySSD1306=symlink://../common` | Croaster's shared OLED screen; its header line shows heater %, fan % and mode (or the trip) |
+| `CroasterDisplaySSD1306=symlink://../common` | Croaster's shared OLED screen; its header line shows heater %, fan % and mode (or the trip, or an autotune status for 10 s) |
 | `ControlCore=symlink://../../control-core` | Pure control logic: PID, autotune, profiles, MAX31855/MAX6675 decode, command protocol (host-tested) |
 | `ControlEsp32=symlink://../../control-esp32` | ESP32 side: control task, SSR, dimmer/PWM fan, probes, NVS, `ControlPlugin` |
 
@@ -134,8 +134,12 @@ yaeger's flat keys (`{"BurnerVal":v}` without `"command"`) are not accepted.
 | `{"command":"setPreferences","pidKp":..,"pidKi":..,"pidKd":..,"cooldownFanSpeed":..}` | gains + cooldown fan (saved); replies with preferences |
 | `{"command":"getPreferences","id":N}` | `{"id":N,"data":{"type":"preferences","pidKp",...,"cooldownFanSpeed"}}` |
 
-Data broadcasts gain `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`,
-`Target`, `pidKp`/`pidKi`/`pidKd`, `wifiStrength`.
+Data broadcasts gain `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `autotune`,
+`Amb`, `Target`, `pidKp`/`pidKi`/`pidKd`, `wifiStrength`. `autotune` holds the
+last autotune status in the display unit: `idle`, `running`, `done`,
+`failed: timeout`, `aborted: stop`, `need setpoint >= 212 F`,
+`need a valid probe`. For 10 s after it changes, the OLED header shows a short
+form instead ("AT running", "AT: SV<212F").
 
 The PID runs on the ESP32. Clients (Artisan, ICRM, a browser) only send targets
 and commands.

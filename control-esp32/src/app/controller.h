@@ -56,7 +56,9 @@ private:
     void apply(const Command& c);
     void controlStep(uint32_t nowMs);
     float pidInput(const ThermoSample& s) const;
-    void setMode(Mode m, float pv);
+    // abortReason: why a running autotune stops, if this ends one ("" = a command).
+    void setMode(Mode m, float pv, const char* abortReason = "");
+    void setAutotuneStatus(AutotuneStatus status, const char* reason = "");
 
     Thermocouples& tc_;
     HeaterOutput& heater_;

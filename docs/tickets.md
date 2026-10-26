@@ -33,7 +33,7 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T26 | Library builds without warnings from Croaster or our code: `-Wreorder` in `CroasterBleManager`, `-Wformat` in `CroasterDeviceIdentity`; WiFiManager's own warning remains | done | — |
 | T27 | °F by default (design D16): `FLEX_TEMP_UNIT`, OLED and telemetry in °F, `.aset` in °F mode, header says "Fan" instead of "F". Bench check: OLED in °F, Artisan reads BT/ET/SV in °F, a 383 °F setpoint comes back as SV 383 | done (bench check todo) | T2 |
 | T28 | Bench findings 2026-10-26: Heater/Fan LCDs swapped and SV LCD empty (`.aset` `channel_nodes`); `Amb` 32 °F with no BT chip; leaving Autotune carried the relay's 100 % into Manual/PID; SV changes during Autotune ignored. Bench check: Heater/Fan/SV LCDs match the OLED, `Amb` near room temperature, Manual during Autotune → heater 0 | done (bench check todo) | — |
-| T29 | Visible autotune status (design D17) | todo | Shawn (D17) |
+| T29 | Visible autotune status (design D17): `autotune` in data and `getControl` in the display unit; OLED header shows it for 10 s after each change. Bench check: SV below 212 °F + autotune → `need setpoint >= 212 F` and "AT: SV<212F" | done (bench check todo) | — |
 | T30 | Roast rules: Artisan alarms first, firmware rules later if needed (design D20) | todo | Shawn (D20) |
 | T31 | Test plan from `docs/test-plan.md`: turn the running list into ordered bench procedures; clear the "bench todo" items (T28 fixes, 383 °F echo) | todo | AC wiring for heat items |
 | T34 | PID input BT by default (design D18): `FLEX_PID_INPUT`, `pidInput` command and NVS kept. Bench check: `Target` reads BT; autotune on BT once BT and AC are wired | done (bench check todo) | BT probe, AC |

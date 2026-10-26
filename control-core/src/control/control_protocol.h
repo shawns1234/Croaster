@@ -84,8 +84,9 @@ Parsed parseLegacy(JsonObjectConst msg);
 // (it is a query, answered with writeControlInfo()).
 bool basicCommand(const char* name, Command& out);
 
-// Adds BurnerVal, FanVal, SV (setpoint), Mode, trip and yaeger's Amb, Target,
-// pidKp/pidKi/pidKd to Croaster's "data" object.
+// Adds BurnerVal, FanVal, SV (setpoint), Mode, trip, autotune (status text,
+// autotune_status.h) and yaeger's Amb, Target, pidKp/pidKi/pidKd to Croaster's
+// "data" object.
 void writeDataFields(const Snapshot& s, char unit, JsonObject data);
 
 // yaeger's preferences reply body: type, pidKp, pidKi, pidKd, cooldownFanSpeed.

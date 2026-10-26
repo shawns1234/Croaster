@@ -67,7 +67,7 @@ float Controller::pidInput(const ThermoSample& s) const {
     }
 }
 
-void Controller::setMode(Mode m, float pv) {
+void Controller::setMode(Mode m, float pv, const char* abortReason) {
     const bool leavingAutotune = st_.mode == Mode::Autotune && m != Mode::Autotune;
     const float carry = startOutputOnModeChange(st_.mode, m, heater_.requested());
     if (m == Mode::Pid || m == Mode::Profile) {
@@ -78,9 +78,15 @@ void Controller::setMode(Mode m, float pv) {
         manualHeater_ = carry;
     if (leavingAutotune && autotune_.state() == RelayAutotune::State::Running) {
         autotune_.abort();
-        st_.autotuneMsg = autotune_.failure();
+        setAutotuneStatus(AutotuneStatus::Aborted, abortReason);
     }
     st_.mode = m;
+}
+
+void Controller::setAutotuneStatus(AutotuneStatus status, const char* reason) {
+    st_.autotune = status;
+    st_.autotuneReason = reason;
+    st_.autotuneStatusSeq++;
 }
 
 void Controller::apply(const Command& c) {
@@ -103,8 +109,7 @@ void Controller::apply(const Command& c) {
         // Autotune keeps the setpoint it started with, so a new one would leave SV
         // showing a target the relay ignores. Stop tuning (heater off) instead.
         if (st_.mode == Mode::Autotune && st_.setpoint != prev) {
-            setMode(Mode::Manual, pv);
-            st_.autotuneMsg = "aborted: setpoint changed";
+            setMode(Mode::Manual, pv, "setpoint changed");
         }
         // legacy Control::setSetpoint: going from 0 to a real setpoint clears the
         // PID history so it starts from zero output, not from stale state.
@@ -126,8 +131,12 @@ void Controller::apply(const Command& c) {
         pid_.setGains(st_.gains);
         break;
     case Command::Kind::StartAutotune: {
-        if (!(st_.setpoint >= 100) || !std::isfinite(pv)) {
-            st_.autotuneMsg = "need setpoint >= 100 C (212 F) and a valid probe";
+        if (!(st_.setpoint >= kAutotuneMinSetpointC)) {
+            setAutotuneStatus(AutotuneStatus::NeedSetpoint);
+            break;
+        }
+        if (!std::isfinite(pv)) {
+            setAutotuneStatus(AutotuneStatus::NeedProbe);
             break;
         }
         if (fan_.get() < 30)
@@ -137,7 +146,7 @@ void Controller::apply(const Command& c) {
         cfg.dtSeconds = pidCfg().dtSeconds;
         cfg.abortAboveC = lim_.overTempC;
         autotune_.start(cfg);
-        st_.autotuneMsg = "running";
+        setAutotuneStatus(AutotuneStatus::Running);
         st_.mode = Mode::Autotune;
         break;
     }
@@ -155,7 +164,7 @@ void Controller::apply(const Command& c) {
         break;
     case Command::Kind::Stop:
         manualHeater_ = 0;
-        setMode(Mode::Manual, pv);
+        setMode(Mode::Manual, pv, "stop");
         manualHeater_ = 0;
         break;
     case Command::Kind::EmergencyOff:
@@ -173,7 +182,7 @@ void Controller::apply(const Command& c) {
     case Command::Kind::Trip:
         st_.trip = static_cast<SafetyTrip>(static_cast<int>(c.a));
         manualHeater_ = 0;
-        setMode(Mode::Manual, pv);
+        setMode(Mode::Manual, pv, tripName(st_.trip));
         break;
     }
 }
@@ -205,13 +214,13 @@ void Controller::controlStep(uint32_t now) {
             st_.gains = autotune_.result();
             pid_.setGains(st_.gains);
             st_.autotuneSeq++;
-            st_.autotuneMsg = "done";
+            setAutotuneStatus(AutotuneStatus::Done);
             manualHeater_ = 0; // legacy: after tuning heater off (setpoint 0) and fan 30
             st_.mode = Mode::Manual;
             fan_.set(30);
             out = 0;
         } else if (autotune_.state() == RelayAutotune::State::Failed) {
-            st_.autotuneMsg = autotune_.failure();
+            setAutotuneStatus(AutotuneStatus::Failed, autotune_.failure());
             manualHeater_ = 0;
             st_.mode = Mode::Manual;
             out = 0;
@@ -254,7 +263,7 @@ void Controller::controlStep(uint32_t now) {
         tripFanApplied_ = true;
         out = 0;
         if (st_.mode != Mode::Manual)
-            setMode(Mode::Manual, pv);
+            setMode(Mode::Manual, pv, tripName(st_.trip));
         manualHeater_ = 0;
     }
     if (out > 0 && fan_.get() < lim_.minFanWithHeat)

@@ -1,5 +1,7 @@
 #include "control_protocol.h"
 
+#include "autotune_status.h"
+
 #include <cmath>
 #include <cstring>
 
@@ -165,6 +167,9 @@ void writeDataFields(const Snapshot& s, char unit, JsonObject d) {
     d["trip"] = tripName(s.trip);
     putNum(d["Amb"], fromCelsius(s.ambient, unit));
     d["Target"] = pidInputName(s.pidInput);
+    char at[48];
+    autotunetext::full(s, unit, at, sizeof at);
+    d["autotune"] = at;
     d["pidKp"] = s.gains.kp;
     d["pidKi"] = s.gains.ki;
     d["pidKd"] = s.gains.kd;
@@ -195,7 +200,9 @@ void writeControlInfo(const Snapshot& s, const CooldownFan& cooldownFan, const W
     g["kp"] = s.gains.kp;
     g["ki"] = s.gains.ki;
     g["kd"] = s.gains.kd;
-    o["autotune"] = s.autotuneMsg;
+    char at[48];
+    autotunetext::full(s, unit, at, sizeof at);
+    o["autotune"] = at;
     o["trip"] = tripName(s.trip);
     o["mainsOk"] = s.mainsOk;
     putNum(o["profileElapsed"], s.profileElapsedS, 1.0f);

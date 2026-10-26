@@ -58,7 +58,12 @@ Status tags:
 - Autotune with fan below 30 % → fan set to 60 %. **untested**
 - Relay identifies a simulated roaster and the gains hold its setpoint. **host** `test_relay_autotune_identifies_and_controls`
 - Autotune → PID or Manual → starts from 0 %, not the relay's 100 % (fix in 067e316). **host** `test_leaving_autotune_starts_from_zero`; bench todo
-- Autotune → PID or Manual → `getControl` `autotune` reads "aborted". **untested**
+- Autotune → PID or Manual → `autotune` reads "aborted"; Stop → "aborted: stop". **untested**
+- Autotune with SV below 212 °F → `autotune` reads "need setpoint >= 212 F" in every sample; OLED shows "AT: SV<212F" for 10 s, again on each retry (D17). **host** (text, `test_autotune_status_text`); bench untested
+- Autotune with °C selected → "need setpoint >= 100 C". **host** `test_autotune_status_text`
+- Autotune with no probe on the PID input → "need a valid probe", OLED "AT: no probe". **untested**
+- Trip during autotune → `autotune` "aborted: <trip>"; OLED keeps the TRIP line. **untested**
+- Autotune fails → "failed: <reason>"; OLED "AT fail: ..." within 20 characters. **host** (text); bench untested
 - Autotune with no heat (no AC) → fails "timeout" after 30 min, heater 0. **untested**
 - Autotune completes on the real heater → new gains saved to NVS, Manual, heater 0, fan 30 %. **untested** (needs AC)
 

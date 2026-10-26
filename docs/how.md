@@ -99,7 +99,7 @@ member (D8).
 ### Data going out
 Every second Artisan sends `{"command":"getArtisanData","id":N}`. Croaster
 answers with its data (`BT`, `ET`, RoR) plus our fields from the snapshot: `BurnerVal`, `FanVal`,
-`SV`, `Mode`, `trip`, `Target`, `pidKp/Ki/Kd`, `Amb`, `wifiStrength`. Croaster
+`SV`, `Mode`, `trip`, `autotune`, `Target`, `pidKp/Ki/Kd`, `Amb`, `wifiStrength`. Croaster
 also broadcasts the same data to the ICRM app.
 
 ### Two probes, end to end
@@ -151,8 +151,9 @@ settings; see the flex README, "Comms watchdog".
 - **Two PIDs exist in the world.** Artisan has its own software PID ("Control"
   button). It is turned off in our `.aset`. Ours runs on the ESP32. See
   `control-parity.md`.
-- **Autotune needs a setpoint ≥ 100 °C** and a working probe. It reports progress in
-  `getControl` → `autotune`.
+- **Autotune needs a setpoint ≥ 100 °C (212 °F)** and a working probe. The
+  `autotune` field in each data sample and in `getControl` says why it
+  refused, failed or stopped; the OLED header shows it for 10 s.
 - **Probe faults in Manual don't trip.** As in yaeger, Manual keeps your
   heater %. PID, Profile and Autotune trip after 2 s of bad readings.
 - **`.local` names** don't always resolve on Windows. Use the IP on the OLED.

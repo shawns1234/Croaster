@@ -6,6 +6,7 @@
 
 #include <ArduinoJson.h>
 
+#include "control/autotune_status.h"
 #include "control/control_protocol.h"
 #include "control/max31855.h"
 #include "control/max6675.h"
@@ -450,6 +451,49 @@ void test_protocol_yaeger_compat() {
     TEST_ASSERT_EQUAL_STRING(R"({"type":"preferences","pidKp":4,"pidKi":0.5,"pidKd":1,"cooldownFanSpeed":70})", buf);
 }
 
+void test_autotune_status_text() {
+    Snapshot s;
+    char full[48], brief[48];
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("idle", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("", brief);
+
+    s.autotune = AutotuneStatus::NeedSetpoint; // refusal in the display unit
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("need setpoint >= 212 F", full);
+    autotunetext::full(s, 'C', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("need setpoint >= 100 C", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT: SV<212F", brief);
+
+    s.autotune = AutotuneStatus::Failed;
+    s.autotuneReason = "oscillation too small vs hysteresis";
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("failed: oscillation too small vs hysteresis", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT fail: small swing", brief);
+
+    s.autotune = AutotuneStatus::Aborted;
+    s.autotuneReason = "";
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("aborted", full);
+    s.autotuneReason = "setpoint changed";
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("aborted: setpoint changed", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT abort: SV change", brief);
+
+    s.autotuneReason = "an unexpectedly long reason text"; // header stays within 20 characters
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL(20, (int)strlen(brief));
+
+    s.autotune = AutotuneStatus::Done; // telemetry carries the same text
+    JsonDocument d;
+    controlproto::writeDataFields(s, 'F', d.to<JsonObject>());
+    TEST_ASSERT_EQUAL_STRING("done", d["autotune"].as<const char*>());
+}
+
 void test_unit_conversion() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 100.0f, toCelsius(212.0f, 'F'));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 195.0f, toCelsius(383.0f, 'F')); // Artisan setpoint in F, under the 250 C cap
@@ -481,6 +525,7 @@ int main() {
     RUN_TEST(test_protocol_profile);
     RUN_TEST(test_protocol_basic_and_data);
     RUN_TEST(test_protocol_yaeger_compat);
+    RUN_TEST(test_autotune_status_text);
     RUN_TEST(test_unit_conversion);
     return UNITY_END();
 }

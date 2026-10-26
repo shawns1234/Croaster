@@ -20,7 +20,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Artisan settings file. Single master `src/config.h` validated at
   compile time by `src/ConfigCheck.h`.
 - **`control-core/`** (pure, host-tested) and **`control-esp32/`** (ESP32)
-  libraries; host tests (`pio test -e native`, 21 now).
+  libraries; host tests (`pio test -e native`, 23 now).
 - **MAX31855 support** in the library: `CroasterMAX31855`,
   `CroasterThermocoupleType`, optional third `CroasterCore` constructor argument
   (default MAX6675).
@@ -53,6 +53,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Autotune status is visible (D17).** Data samples gain `autotune`
+  (`running`, `done`, `failed: timeout`, `aborted: comms`,
+  `need setpoint >= 212 F`, in the display unit); `getControl` uses the same
+  text. The OLED header shows a short form for 10 s after each change. A
+  refused start now names the missing condition (setpoint or probe).
 - **PID input defaults to BT (D18).** `FLEX_PID_INPUT` in `config.h`
   (default `FLEX_PID_INPUT_BT`); `{"command":{"pidInput":"ET"}}` still
   switches at runtime and a saved choice in NVS wins over the default.

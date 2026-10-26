@@ -52,8 +52,14 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   (`controlproto`): nested `{"command":{...}}` and yaeger's named commands
   `setBurner`/`setFan`/`setPreferences`/`getPreferences` (`parseLegacy`, via
   `onCommand`). yaeger's flat keys (`{"BurnerVal":60}`) are not accepted (D8).
-  Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`, `Target`,
-  `pidKp/Ki/Kd`, `wifiStrength`.
+  Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `autotune`, `Amb`,
+  `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
+- Autotune status (D17): the controller records an `AutotuneStatus` and reason
+  in the snapshot; `control/autotune_status.h` turns it into text in the
+  display unit. Data and `getControl` carry `autotune` ("running", "done",
+  "failed: timeout", "aborted: comms", "need setpoint >= 212 F"); it holds
+  until the next change. The OLED header shows a 20-character form ("AT:
+  SV<212F") for 10 s after each change, refusals included; a trip line wins.
 - PID input defaults to BT (D18, `FLEX_PID_INPUT`); `pidInput` command and
   NVS key `in` still switch it, and a saved value overrides the default.
   Without a BT probe, PID mode trips `sensor`: send `pidInput` ET. Default

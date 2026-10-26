@@ -20,6 +20,7 @@ class Controller; // ControlEsp32; only defined in the control build
 #    include <ControlPlugin.h>
 #    include <RoasterProbe.h>
 #    include <app/controller.h>
+#    include <control/autotune_status.h>
 #    include <hw/heater_output.h>
 #    include <hw/thermocouples.h>
 #    if FLEX_FAN == FLEX_FAN_AC_DIMMER
@@ -83,13 +84,26 @@ ControlSettings defaults() {
 ControlPlugin plugin(controller);
 
 // Header line for the SSD1306, at most 20 characters: "H50 Fan60 PID" or "TRIP overtemp Fan100".
-// "Fan" is spelled out so it can't be read as a Fahrenheit temperature.
+// "Fan" is spelled out so it can't be read as a Fahrenheit temperature. For
+// 10 s after the autotune status changes (including a refused start), the
+// header shows it instead ("AT: SV<212F"); a trip still takes precedence.
+constexpr uint32_t kAutotuneNoticeMs = 10000;
 String statusLine(const Snapshot& s) {
+    static uint32_t seenSeq = 0, noticeSinceMs = 0;
+    if (s.autotuneStatusSeq != seenSeq) {
+        seenSeq = s.autotuneStatusSeq;
+        noticeSinceMs = millis();
+    }
+    const bool notice = seenSeq != 0 && millis() - noticeSinceMs < kAutotuneNoticeMs;
     char line[24];
-    if (s.trip != SafetyTrip::None)
+    if (s.trip != SafetyTrip::None) {
         snprintf(line, sizeof line, "TRIP %s Fan%.0f", tripName(s.trip), s.fanPct);
-    else
+    } else if (notice) {
+        const String unit = core.temperatureUnit();
+        autotunetext::brief(s, unit.length() ? unit[0] : 'C', line, sizeof line);
+    } else {
         snprintf(line, sizeof line, "H%.0f Fan%.0f %s", s.heaterPct, s.fanPct, modeName(s.mode));
+    }
     return String(line);
 }
 #endif
