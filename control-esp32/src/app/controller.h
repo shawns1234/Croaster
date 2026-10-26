@@ -6,7 +6,7 @@
 //   snapshot()       - thread-safe copy of the latest state
 // Safety interlocks live here, so no network path can bypass them:
 // over-temperature, dead PID probe, no mains (AC dimmer), OTA in progress,
-// minimum fan while heating, heater ceiling (HeaterOutput maxPercent).
+// fan to the trip speed when a trip starts, minimum fan while heating, heater ceiling (HeaterOutput maxPercent).
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -35,7 +35,8 @@ public:
         , lim_(lim)
         , pid_(pidCfg()) {}
 
-    void begin(const PidGains& gains, PidInput input, int core, UBaseType_t priority);
+    // tripFanPct: fan % when a safety trip starts (CooldownFan::trip).
+    void begin(const PidGains& gains, PidInput input, float tripFanPct, int core, UBaseType_t priority);
     bool submit(const Command& c);
     Snapshot snapshot() const;
     // Copies a parsed profile in; takes effect on StartProfile. Network task only.
@@ -72,6 +73,8 @@ private:
     Snapshot st_;
     ThermoSample last_{};
     float manualHeater_ = 0;
+    float tripFan_ = 100;
+    bool tripFanApplied_ = false; // trip fan set for the current trip
     uint32_t profileStartMs_ = 0, sensorBadSinceMs_ = 0;
     Snapshot published_;
 };

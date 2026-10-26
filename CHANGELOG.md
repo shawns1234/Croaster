@@ -53,6 +53,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Cooldown fan: 65 % after stop, 100 % after any trip (D19).** `cooldownFan`
+  has `stop` and `trip` values: `FLEX_COOLDOWN_FAN_STOP`/`_TRIP` in `config.h`
+  (replaces `FLEX_COOLDOWN_FAN`), `{"command":{"cooldownFan":{"stop":N,"trip":N}}}`
+  (a plain number sets `stop`), saved in NVS, both in `getControl`. Every
+  safety trip now sets the fan to the trip speed when it starts; before, only
+  comms and over-temperature trips touched the fan.
 - **yaeger flat keys dropped (D8).** `{"BurnerVal":v}`, `FanVal`, `Setpoint`,
   `Mode` and `Target` messages without `"command"` are ignored, and the
   `CroasterCommandHandler::onOtherJson()` hook they needed is removed, so that

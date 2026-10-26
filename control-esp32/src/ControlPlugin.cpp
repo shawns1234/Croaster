@@ -87,9 +87,16 @@ void ControlPlugin::apply(const controlproto::Parsed& p) {
         settings_.pidInput = p.pidInput;
         ConfigStore::savePidInput(p.pidInput);
     }
-    if (p.hasCooldownFan) {
-        settings_.cooldownFan = p.cooldownFan;
-        ConfigStore::saveCooldownFan(p.cooldownFan);
+    if (p.hasCooldownStop || p.hasCooldownTrip) {
+        if (p.hasCooldownStop)
+            settings_.cooldownFan.stop = p.cooldownFan.stop;
+        if (p.hasCooldownTrip) {
+            settings_.cooldownFan.trip = p.cooldownFan.trip;
+            Command c{Command::Kind::SetTripFan};
+            c.a = settings_.cooldownFan.trip;
+            controller_.submit(c);
+        }
+        ConfigStore::saveCooldownFan(settings_.cooldownFan);
     }
     if (p.hasWatchdogEnabled || p.hasWatchdogTimeout) {
         if (p.hasWatchdogEnabled)
@@ -105,9 +112,9 @@ String ControlPlugin::handleBasic(const char* name) {
     Command c;
     if (controlproto::basicCommand(name, c)) {
         controller_.submit(c);
-        if (c.kind == Command::Kind::Stop && settings_.cooldownFan >= 0) {
+        if (c.kind == Command::Kind::Stop) {
             Command fan{Command::Kind::SetFan};
-            fan.a = settings_.cooldownFan;
+            fan.a = settings_.cooldownFan.stop;
             controller_.submit(fan);
         }
         return "";
@@ -143,12 +150,7 @@ void ControlPlugin::loop() {
         quietMs > settings_.watchdog.timeoutS * 1000UL) {
         Command trip{Command::Kind::Trip};
         trip.a = static_cast<float>(SafetyTrip::CommsLost);
-        controller_.submit(trip);
-        if (settings_.cooldownFan >= 0) { // yaeger: client gone -> heater 0, fan 100
-            Command fan{Command::Kind::SetFan};
-            fan.a = settings_.cooldownFan;
-            controller_.submit(fan);
-        }
-        watchdogArmedMs_ = now; // one trip per timeout, not one per loop
+        controller_.submit(trip); // the controller sets the trip fan speed
+        watchdogArmedMs_ = now;   // one trip per timeout, not one per loop
     }
 }

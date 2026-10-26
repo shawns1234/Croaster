@@ -68,13 +68,13 @@ until the comms watchdog stops the heater.
 | Heater drive: 50 Hz PWM on an SSR pin | Time-proportional SSR window (zero-cross SSR switches whole half-cycles, so fast PWM gets rounded off) | **better** for a zero-cross SSR |
 | Fan drive: PWM / dimmer | AC dimmer (zero-cross + phase angle) or PWM, chosen in `config.h` | match |
 | Profile follower: in the README only, not in Shawn's yaeger code | Firmware profiles: steps of duration/setpoint/interpolation/fan, run on the ESP32 | **better** |
-| Cooldown fan default 65 % | Default `FLEX_COOLDOWN_FAN` 100 %; changeable via `setPreferences` / `cooldownFan`, saved | **different**: faster cooling; set 65 if preferred |
+| Cooldown fan default 65 % | 65 % after `stop` (`FLEX_COOLDOWN_FAN_STOP`), 100 % when any trip starts (`FLEX_COOLDOWN_FAN_TRIP`); both changeable via `cooldownFan`, the stop value also via `setPreferences`, saved | **match** after stop; trips follow yaeger's disconnect (D19) |
 
 ## Safety
 
 | yaeger | Ours | Status |
 |:---|:---|:---|
-| Client disconnects while Manual and heating → heater 0, fan 100 | Comms watchdog: no client message for the timeout (10 s default, configurable, can be turned off) while heating (Manual, PID or Autotune) → heater 0, fan to cooldown, `trip:"comms"`. Profiles keep running on their own. | **closed** (was 30 s and didn't set the fan). See D9. |
+| Client disconnects while Manual and heating → heater 0, fan 100 | Comms watchdog: no client message for the timeout (10 s default, configurable, can be turned off) while heating (Manual, PID or Autotune) → heater 0, fan to the trip speed (100 %), `trip:"comms"`. Profiles keep running on their own. | **closed** (was 30 s and didn't set the fan). See D9. |
 | — | Over-temperature (any probe > 275 °C) → heater off, fan 100 | **better** |
 | — | Probe fault (open, short) for 2 s in PID, Profile or Autotune → heater off (Manual keeps going, as yaeger did) | **better** |
 | — | AC dimmer sees no mains → heater off | **better** |
@@ -103,7 +103,7 @@ until the comms watchdog stops the heater.
    implemented with yaeger's reply format.
 3. Telemetry lacked `Amb`, `Target`, `pidKp/Ki/Kd` and `wifiStrength`. Added.
 4. Disconnect while heating: 30 s and heater only. Now 10 s, and the fan goes
-   to cooldown (D9).
+   to the trip speed (D9, D19).
 5. Setpoint 0 → >0 in PID didn't reset the PID. Now it does.
 6. The `.aset` turned on Artisan's software PID and swapped BT/ET. Fixed (see
    `artisan-settings.md`).

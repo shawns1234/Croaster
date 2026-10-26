@@ -120,7 +120,7 @@ the next reboot. Limits and the PID still work in °C. The flex board adds:
 | `{"command":{"mode":"manual"\|"pid"}}` | mode |
 | `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved) |
 | `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved) |
-| `{"command":{"cooldownFan":0..100}}` | fan after `stop` (saved) |
+| `{"command":{"cooldownFan":{"stop":0..100,"trip":0..100}}}` | fan after `stop` (default 65) and when any safety trip starts (default 100); either field alone works; a plain number sets `stop` (saved) |
 | `{"command":{"watchdog":{"enabled":bool,"timeout":s}}}` | comms watchdog on/off and timeout, 2..600 s (saved; either field alone works) |
 | `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile |
 | `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getControl"` | actions / query |
@@ -151,7 +151,8 @@ changes don't clear a trip.
 While the heater is on (Manual, PID or Autotune; profile runs are exempt), the
 firmware expects a client message at least every timeout. Any message counts,
 over WebSocket or BLE, including Artisan's once-a-second `getArtisanData`. If
-none arrives, it trips `comms`: heater off, fan to the cooldown speed.
+none arrives, it trips `comms`: heater off, fan to the trip speed (100 % by
+default, `cooldownFan.trip`).
 
 | Setting | Default | Change at build time | Change at runtime (saved in NVS) |
 |:---|:---|:---|:---|

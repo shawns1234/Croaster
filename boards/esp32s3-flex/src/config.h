@@ -87,8 +87,11 @@
 #define FLEX_OVER_TEMP_C 275      // 527 F; any probe above: heater off, fan 100 %
 #define FLEX_MAX_SETPOINT_C 250   // 482 F; higher setpoints are capped here
 #define FLEX_MIN_FAN_WITH_HEAT 30 // fan forced to at least this while heating
-#define FLEX_COOLDOWN_FAN 100     // fan % after "stop" (changeable, stored in NVS)
-// Comms watchdog: heater off + cooldown fan when no client message arrives for
+// Cooldown fan: first-boot defaults; {"command":{"cooldownFan":{"stop":N,"trip":N}}}
+// changes them at runtime and saves them in NVS.
+#define FLEX_COOLDOWN_FAN_STOP 65  // fan % after "stop" (yaeger's default)
+#define FLEX_COOLDOWN_FAN_TRIP 100 // fan % when any safety trip starts (over-temp: always 100)
+// Comms watchdog: heater off + trip fan when no client message arrives for
 // the timeout while heating (profile runs exempt). These are first-boot defaults;
 // {"command":{"watchdog":{"enabled":false}}} or {...{"timeout":20}} changes them
 // at runtime and saves them in NVS.

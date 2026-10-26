@@ -8,7 +8,7 @@
 // Also owns two network-side safety/housekeeping jobs (loop task):
 //  - comms watchdog: heating and no message through Croaster's command handler
 //    (WebSocket or BLE, getArtisanData polls included) for the watchdog timeout
-//    -> trip CommsLost (heater off, fan to the cooldown speed). Profile runs are
+//    -> trip CommsLost (heater off, fan to the trip cooldown speed). Profile runs are
 //    exempt (they are autonomous). Enable and timeout: ControlSettings::watchdog.
 //  - persists PID gains after a successful autotune.
 // Firmware updates use Croaster's own OTA (WebSocket/BLE); the control task

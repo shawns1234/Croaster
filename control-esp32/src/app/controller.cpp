@@ -5,7 +5,8 @@
 
 #include <cmath>
 
-void Controller::begin(const PidGains& gains, PidInput input, int core, UBaseType_t prio) {
+void Controller::begin(const PidGains& gains, PidInput input, float tripFanPct, int core, UBaseType_t prio) {
+    tripFan_ = tripFanPct;
     pid_.setGains(gains);
     st_.gains = gains;
     st_.pidInput = input;
@@ -163,6 +164,9 @@ void Controller::apply(const Command& c) {
         manualHeater_ = 0;
         fan_.set(100);
         break;
+    case Command::Kind::SetTripFan:
+        tripFan_ = c.a;
+        break;
     case Command::Kind::ClearTrip:
         st_.trip = SafetyTrip::None;
         break;
@@ -241,7 +245,13 @@ void Controller::controlStep(uint32_t now) {
     if (out > 0 && lim_.requireMains && !st_.mainsOk)
         st_.trip = SafetyTrip::NoMainsSync;
 
-    if (st_.trip != SafetyTrip::None) {
+    if (st_.trip == SafetyTrip::None) {
+        tripFanApplied_ = false;
+    } else {
+        // Once per trip, so a fan command while tripped still takes effect.
+        if (!tripFanApplied_)
+            fan_.set(st_.trip == SafetyTrip::OverTemp ? 100 : tripFan_);
+        tripFanApplied_ = true;
         out = 0;
         if (st_.mode != Mode::Manual)
             setMode(Mode::Manual, pv);

@@ -71,7 +71,7 @@ CroasterApp app(core, displayPtr, FLEX_PIN_LED, FLEX_LED_ON_LEVEL);
 ControlSettings defaults() {
     ControlSettings d;
     d.gains = {FLEX_PID_KP, FLEX_PID_KI, FLEX_PID_KD};
-    d.cooldownFan = FLEX_COOLDOWN_FAN;
+    d.cooldownFan = {FLEX_COOLDOWN_FAN_STOP, FLEX_COOLDOWN_FAN_TRIP};
     d.watchdog = {FLEX_WATCHDOG_ENABLED != 0, FLEX_WATCHDOG_TIMEOUT_S};
     return d;
 }
@@ -100,7 +100,8 @@ void setup() {
     fan.begin();
     probes.begin();
     const ControlSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
-    controller.begin(settings.gains, settings.pidInput, FLEX_CONTROL_CORE, configMAX_PRIORITIES - 3);
+    controller.begin(settings.gains, settings.pidInput, settings.cooldownFan.trip, FLEX_CONTROL_CORE,
+                     configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
 #    if FLEX_DISPLAY == FLEX_DISPLAY_SSD1306
     display.setHeaderText([]() {

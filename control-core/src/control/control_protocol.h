@@ -12,7 +12,10 @@
 //   {"command":{"mode":"manual"|"pid"}}
 //   {"command":{"pidInput":"ET"|"BT"|"MAX"}}
 //   {"command":{"pid":{"kp":..,"ki":..,"kd":..}}}       saved to NVS
-//   {"command":{"cooldownFan":0..100}}                  saved to NVS
+//   {"command":{"cooldownFan":0..100}}                  fan after stop, saved to NVS
+//   {"command":{"cooldownFan":{"stop":0..100,"trip":0..100}}} either field alone
+//                                            works; trip = fan when a safety trip
+//                                            starts; saved to NVS
 //   {"command":{"watchdog":{"enabled":bool,"timeout":s}}} saved to NVS; either
 //                                            field alone works; timeout 2..600 s
 //   {"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%},...]}}
@@ -57,8 +60,9 @@ struct Parsed {
     PidGains gains;
     bool hasPidInput = false;
     PidInput pidInput = PidInput::ET;
-    bool hasCooldownFan = false;
-    float cooldownFan = 0;
+    bool hasCooldownStop = false; // persist these
+    bool hasCooldownTrip = false;
+    CooldownFan cooldownFan;
     bool hasWatchdogEnabled = false; // persist these
     bool watchdogEnabled = true;
     bool hasWatchdogTimeout = false;
@@ -85,9 +89,11 @@ bool basicCommand(const char* name, Command& out);
 void writeDataFields(const Snapshot& s, char unit, JsonObject data);
 
 // yaeger's preferences reply body: type, pidKp, pidKi, pidKd, cooldownFanSpeed.
-void writePreferences(const PidGains& g, float cooldownFan, JsonObject data);
+// cooldownFanSpeed is the fan after stop.
+void writePreferences(const PidGains& g, const CooldownFan& cooldownFan, JsonObject data);
 
 // Response body for {"command":"getControl"}.
-void writeControlInfo(const Snapshot& s, float cooldownFan, const WatchdogSettings& wd, char unit, JsonObject out);
+void writeControlInfo(const Snapshot& s, const CooldownFan& cooldownFan, const WatchdogSettings& wd, char unit,
+                      JsonObject out);
 
 } // namespace controlproto

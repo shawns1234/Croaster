@@ -44,6 +44,13 @@ struct WatchdogSettings {
     uint16_t timeoutS = 10;
 };
 
+// Fan % after a heater shutdown. Defaults come from config.h; the
+// {"command":{"cooldownFan":...}} command changes them and they are saved in NVS.
+struct CooldownFan {
+    float stop = 65;  // after the stop command (yaeger's stored default)
+    float trip = 100; // when a safety trip starts; over-temperature always uses 100
+};
+
 // Croaster reports temperatures in a user-selected unit ("C", "F" or "K"); the
 // controller works in Celsius. These convert absolute temperatures.
 inline float toCelsius(float v, char unit) {
@@ -64,7 +71,8 @@ struct Command {
         StartAutotune,
         StartProfile, // profile must already be loaded via Controller::loadProfile
         Stop,         // heater 0, back to Manual (fan unchanged)
-        EmergencyOff, // heater 0, fan to cooldown speed, Manual (comms loss / OTA)
+        EmergencyOff, // heater 0, fan 100, Manual
+        SetTripFan,   // a = fan % applied when a safety trip starts
         Trip,         // a = (float)SafetyTrip; raised by the network side (comms, OTA)
         ClearTrip,
     };

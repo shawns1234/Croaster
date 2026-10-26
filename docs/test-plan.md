@@ -60,7 +60,7 @@ Status tags:
 - Autotune completes on the real heater → new gains saved to NVS, Manual, heater 0, fan 30 %. **untested** (needs AC)
 
 ## Watchdog and trips
-- Artisan Off, then On → `trip:"comms"`, heater 0, fan at cooldown; stays tripped after reconnect. **bench 2026-10-26** (when it tripped is unconfirmed; it should only trip while heating)
+- Artisan Off, then On → `trip:"comms"`, heater 0, fan at the trip speed; stays tripped after reconnect. **bench 2026-10-26** (when it tripped is unconfirmed; it should only trip while heating)
 - Artisan Off while heating → trip after the 10 s timeout, not before. **untested**
 - Clear trip, or any heater, mode, autotune or profile command → trip clears. **untested**
 - Fan or setpoint command while tripped → applied, trip stays. **untested**
@@ -70,7 +70,11 @@ Status tags:
 - OTA starts → `trip:"ota"`, heater 0. **untested**
 
 ## Stop and cooldown
-- Stop → heater 0, fan 100 % at once, SV kept, mode Manual. **bench 2026-10-26**
+- Stop → heater 0, fan 100 % at once, SV kept, mode Manual. **bench 2026-10-26** (before D19; the stop fan is now 65 %)
+- Stop with defaults → fan 65 % (D19). **untested**
+- Any trip (comms, sensor, nomains) → fan to 100 % once when it starts; a fan command afterwards still applies (D19). **untested**
+- `cooldownFan` as a number or `{"stop","trip"}` object, range 0..100, both in `getControl`. **host** `test_protocol_cooldown_fan`
+- `{"command":{"cooldownFan":{"trip":80}}}` then a comms trip → fan 80 %, survives reboot. **untested**
 - `{"command":{"cooldownFan":65}}` then Stop → fan 65 %, survives reboot. **untested**
 
 ## Mains detection

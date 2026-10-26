@@ -56,7 +56,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `pidKp/Ki/Kd`, `wifiStrength`.
 - Comms watchdog: no message through Croaster's command handler
   (`lastCommandMillis()`, WebSocket or BLE) for the timeout while heating
-  (not in Profile) → heater off, fan to cooldown, `trip:"comms"`. Defaults
+  (not in Profile) → heater off, `trip:"comms"`.
+  Cooldown fan (D19): 65 % after `stop`, 100 % when any trip starts
+  (`FLEX_COOLDOWN_FAN_STOP`/`_TRIP`, `{"command":{"cooldownFan":{...}}}`,
+  NVS keys `cool`/`coolTrip`, reported by `getControl`). The controller sets
+  the trip fan once per trip; over-temperature always uses 100 %. Defaults
   `FLEX_WATCHDOG_ENABLED`/`FLEX_WATCHDOG_TIMEOUT_S`; runtime command
   `{"command":{"watchdog":...}}` saves to NVS.
 - Artisan: `.aset` verified against Artisan source (`docs/artisan-settings.md`).

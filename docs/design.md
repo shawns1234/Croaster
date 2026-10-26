@@ -124,7 +124,7 @@ Libraries `control-core/` (pure C++) and `control-esp32/` (ESP32):
 | `ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
 | `RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
 | `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
-| `app/config_store.*` | new | NVS for PID gains, cooldown fan and watchdog. Croaster core stores nothing. |
+| `app/config_store.*` | new | NVS for PID gains, PID input, cooldown fan (stop and trip) and watchdog. Croaster core stores nothing. |
 | `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
 
 Clear wins done this round: the board's own SSD1306 class (now Croaster's
@@ -208,6 +208,7 @@ Resolved by Shawn on 2026-10-26:
 | Decision | Choice |
 |:---|:---|
 | D8 | Drop flat keys and the `onOtherJson` hook (option 2). |
+| D19 | Cooldown fan 65 % after `stop`, 100 % after any trip (option 3). |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -576,15 +577,24 @@ is the integral at work). Autotune replaces them.
 Recommendation: 1 now, run autotune on ET once mains and the heater are
 connected; consider 3 if BT tracking matters after real roasts.
 
-### D19. Cooldown fan default — **DECISION (new 2026-10-26, open)**
-`FLEX_COOLDOWN_FAN` (100 %) is the fan after `stop` and after a comms trip.
+### D19. Cooldown fan default — resolved 2026-10-26: 65 % after stop, 100 % after a trip (option 3)
+Shawn chose option 3. `cooldownFan` is now two settings, `stop` (65 %) and
+`trip` (100 %): defaults `FLEX_COOLDOWN_FAN_STOP`/`FLEX_COOLDOWN_FAN_TRIP`,
+runtime `{"command":{"cooldownFan":{"stop":N,"trip":N}}}` (a plain number
+still sets `stop`; yaeger's `cooldownFanSpeed` is `stop`), NVS keys `cool`
+and `coolTrip`, and `getControl` reports both. The controller applies the trip
+speed once when any trip starts (comms, sensor, no mains, OTA), so a fan
+command while tripped still works; over-temperature always runs the fan at
+100 %. A board that already stored `cool` in NVS keeps that stop value.
+
+Before: `FLEX_COOLDOWN_FAN` (100 %) was the fan after `stop` and after a comms trip.
 yaeger stores 65 % for its cooldown preference but uses 100 % on disconnect.
-1. **100 % (current).** Fastest cooling; can blow light beans out of a fluid-bed
+1. 100 %. Fastest cooling; can blow light beans out of a fluid-bed
    chamber.
 2. 65 % (yaeger's stored default). Gentler; slower cooling.
-3. 65 % after `stop`, 100 % after a trip. Two settings.
+3. **65 % after `stop`, 100 % after a trip (implemented).** Two settings.
 Either way it is a runtime setting (`{"command":{"cooldownFan":N}}`, NVS).
-Recommendation: Shawn picks by testing on the roaster; 1 until then.
+Recommendation was: Shawn picks by testing on the roaster.
 
 ### D20. Roast rules and profiles — **DECISION (new 2026-10-26, open)**
 Hard requirement: the PID runs on the ESP32; Artisan only sends setpoints and

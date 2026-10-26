@@ -301,10 +301,39 @@ void test_protocol_values() {
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 220.0f, p.commands[1].a); // 428 F -> 220 C
 
     p = parse(R"({"command":{"pid":{"kp":5,"ki":0.1,"kd":2},"pidInput":"BT","cooldownFan":80}})");
-    TEST_ASSERT_TRUE(p.hasGains && p.hasPidInput && p.hasCooldownFan);
+    TEST_ASSERT_TRUE(p.hasGains && p.hasPidInput && p.hasCooldownStop);
+    TEST_ASSERT_FALSE(p.hasCooldownTrip); // a plain number sets the stop speed only
     TEST_ASSERT_EQUAL_FLOAT(5.0f, p.gains.kp);
     TEST_ASSERT_TRUE(p.pidInput == PidInput::BT);
-    TEST_ASSERT_EQUAL_FLOAT(80.0f, p.cooldownFan);
+    TEST_ASSERT_EQUAL_FLOAT(80.0f, p.cooldownFan.stop);
+}
+
+void test_protocol_cooldown_fan() {
+    auto p = parse(R"({"command":{"cooldownFan":{"stop":65,"trip":100}}})");
+    TEST_ASSERT_TRUE(p.hasCooldownStop && p.hasCooldownTrip);
+    TEST_ASSERT_EQUAL_FLOAT(65.0f, p.cooldownFan.stop);
+    TEST_ASSERT_EQUAL_FLOAT(100.0f, p.cooldownFan.trip);
+    TEST_ASSERT_EQUAL(0, (int)p.count); // a setting, not a control command
+
+    p = parse(R"({"command":{"cooldownFan":{"trip":90}}})");
+    TEST_ASSERT_FALSE(p.hasCooldownStop);
+    TEST_ASSERT_TRUE(p.hasCooldownTrip);
+    TEST_ASSERT_EQUAL_FLOAT(90.0f, p.cooldownFan.trip);
+
+    p = parse(R"({"command":{"cooldownFan":{"stop":-1,"trip":101}}})"); // out of range: ignored
+    TEST_ASSERT_FALSE(p.hasCooldownStop || p.hasCooldownTrip);
+    p = parse(R"({"command":{"cooldownFan":150}})");
+    TEST_ASSERT_FALSE(p.hasCooldownStop);
+
+    CooldownFan defaults;
+    TEST_ASSERT_EQUAL_FLOAT(65.0f, defaults.stop);
+    TEST_ASSERT_EQUAL_FLOAT(100.0f, defaults.trip);
+
+    Snapshot s;
+    JsonDocument d;
+    controlproto::writeControlInfo(s, CooldownFan{60, 95}, WatchdogSettings{}, 'C', d.to<JsonObject>());
+    TEST_ASSERT_EQUAL(60, d["cooldownFan"]["stop"].as<int>());
+    TEST_ASSERT_EQUAL(95, d["cooldownFan"]["trip"].as<int>());
 }
 
 void test_protocol_watchdog() {
@@ -327,7 +356,7 @@ void test_protocol_watchdog() {
     Snapshot s;
     WatchdogSettings wd{false, 30};
     JsonDocument d;
-    controlproto::writeControlInfo(s, 100, wd, 'C', d.to<JsonObject>());
+    controlproto::writeControlInfo(s, CooldownFan{}, wd, 'C', d.to<JsonObject>());
     TEST_ASSERT_FALSE(d["watchdog"]["enabled"].as<bool>());
     TEST_ASSERT_EQUAL(30, d["watchdog"]["timeout"].as<int>());
 }
@@ -405,16 +434,17 @@ void test_protocol_yaeger_compat() {
     TEST_ASSERT_FALSE(p.hasPidInput);
 
     p = parseLegacy(R"({"command":"setPreferences","pidKp":4,"pidKi":0.2,"pidKd":1,"cooldownFanSpeed":70})");
-    TEST_ASSERT_TRUE(p.hasGains && p.hasCooldownFan);
+    TEST_ASSERT_TRUE(p.hasGains && p.hasCooldownStop);
+    TEST_ASSERT_FALSE(p.hasCooldownTrip);
     TEST_ASSERT_EQUAL_FLOAT(0.2f, p.gains.ki);
-    TEST_ASSERT_EQUAL_FLOAT(70.0f, p.cooldownFan);
+    TEST_ASSERT_EQUAL_FLOAT(70.0f, p.cooldownFan.stop);
 
     p = parseLegacy(R"({"command":"getData","id":5})"); // not a yaeger control message
     TEST_ASSERT_EQUAL(0, (int)p.count);
-    TEST_ASSERT_FALSE(p.hasGains || p.hasCooldownFan || p.hasPidInput);
+    TEST_ASSERT_FALSE(p.hasGains || p.hasCooldownStop || p.hasPidInput);
 
     JsonDocument d;
-    controlproto::writePreferences(PidGains{4, 0.5f, 1}, 70, d.to<JsonObject>());
+    controlproto::writePreferences(PidGains{4, 0.5f, 1}, CooldownFan{70, 100}, d.to<JsonObject>());
     char buf[160];
     serializeJson(d, buf, sizeof buf);
     TEST_ASSERT_EQUAL_STRING(R"({"type":"preferences","pidKp":4,"pidKi":0.5,"pidKd":1,"cooldownFanSpeed":70})", buf);
@@ -446,6 +476,7 @@ int main() {
     RUN_TEST(test_profile_in_fahrenheit);
     RUN_TEST(test_protocol_values);
     RUN_TEST(test_protocol_watchdog);
+    RUN_TEST(test_protocol_cooldown_fan);
     RUN_TEST(test_protocol_only_key);
     RUN_TEST(test_protocol_profile);
     RUN_TEST(test_protocol_basic_and_data);

@@ -125,7 +125,7 @@ checked on the bench (tickets T2, T3).
 Croaster's command handler records when it last accepted a message
 (`lastCommandMillis()`, WebSocket or BLE). If the heater is on (Manual, PID or
 Autotune) and that is older than the timeout (10 s by default), the plugin
-trips `comms`: heater off, fan to the cooldown speed. Profiles are exempt
+trips `comms`: heater off; the controller sets the fan to the trip speed. Profiles are exempt
 because they are meant to run on their own. The timeout and an off switch are
 settings; see the flex README, "Comms watchdog".
 

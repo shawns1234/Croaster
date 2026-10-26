@@ -47,6 +47,15 @@ void putNum(T&& v, float x, float scale = 10.0f) { // JSON has no NaN
 } // namespace
 
 namespace {
+bool fanPercent(JsonVariantConst v, float& out) {
+    if (!v.is<float>())
+        return false;
+    const float x = v.as<float>();
+    if (!(x >= 0 && x <= 100))
+        return false;
+    out = x;
+    return true;
+}
 bool parsePidInput(const char* t, PidInput& out) {
     if (!(eq(t, "ET") || eq(t, "BT") || eq(t, "MAX")))
         return false;
@@ -86,9 +95,14 @@ Parsed parseNested(JsonObjectConst c, char unit, const char* only) {
         add(p, Command::Kind::SetFan, c["fan"].as<float>());
     if (want("burner") && c["burner"].is<float>())
         add(p, Command::Kind::SetHeater, c["burner"].as<float>());
-    if (want("cooldownFan") && c["cooldownFan"].is<float>()) {
-        p.hasCooldownFan = true;
-        p.cooldownFan = c["cooldownFan"].as<float>();
+    if (want("cooldownFan")) {
+        JsonVariantConst v = c["cooldownFan"];
+        if (v.is<JsonObjectConst>()) {
+            p.hasCooldownStop = fanPercent(v["stop"], p.cooldownFan.stop);
+            p.hasCooldownTrip = fanPercent(v["trip"], p.cooldownFan.trip);
+        } else {
+            p.hasCooldownStop = fanPercent(v, p.cooldownFan.stop);
+        }
     }
     if (want("watchdog") && c["watchdog"].is<JsonObjectConst>()) {
         JsonObjectConst w = c["watchdog"];
@@ -124,10 +138,7 @@ Parsed parseLegacy(JsonObjectConst m) {
             p.gains = {m["pidKp"].as<float>(), m["pidKi"].as<float>(), m["pidKd"].as<float>()};
             add(p, Command::Kind::SetGains, p.gains.kp, p.gains.ki, p.gains.kd);
         }
-        if (m["cooldownFanSpeed"].is<float>()) {
-            p.hasCooldownFan = true;
-            p.cooldownFan = m["cooldownFanSpeed"].as<float>();
-        }
+        p.hasCooldownStop = fanPercent(m["cooldownFanSpeed"], p.cooldownFan.stop);
     }
     return p;
 }
@@ -159,21 +170,24 @@ void writeDataFields(const Snapshot& s, char unit, JsonObject d) {
     d["pidKd"] = s.gains.kd;
 }
 
-void writePreferences(const PidGains& g, float cooldownFan, JsonObject d) {
+void writePreferences(const PidGains& g, const CooldownFan& cooldownFan, JsonObject d) {
     d["type"] = "preferences";
     d["pidKp"] = g.kp;
     d["pidKi"] = g.ki;
     d["pidKd"] = g.kd;
-    d["cooldownFanSpeed"] = cooldownFan;
+    d["cooldownFanSpeed"] = cooldownFan.stop;
 }
 
-void writeControlInfo(const Snapshot& s, float cooldownFan, const WatchdogSettings& wd, char unit, JsonObject o) {
+void writeControlInfo(const Snapshot& s, const CooldownFan& cooldownFan, const WatchdogSettings& wd, char unit,
+                      JsonObject o) {
     o["mode"] = modeName(s.mode);
     o["pidInput"] = pidInputName(s.pidInput);
     putNum(o["setpoint"], fromCelsius(s.setpoint, unit));
     putNum(o["burner"], s.heaterPct);
     putNum(o["fan"], s.fanPct);
-    o["cooldownFan"] = cooldownFan;
+    JsonObject cf = o["cooldownFan"].to<JsonObject>();
+    cf["stop"] = cooldownFan.stop;
+    cf["trip"] = cooldownFan.trip;
     JsonObject w = o["watchdog"].to<JsonObject>();
     w["enabled"] = wd.enabled;
     w["timeout"] = wd.timeoutS;
