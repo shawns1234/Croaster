@@ -35,3 +35,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T28 | Bench findings 2026-10-26: Heater/Fan LCDs swapped and SV LCD empty (`.aset` `channel_nodes`); `Amb` 32 °F with no BT chip; leaving Autotune carried the relay's 100 % into Manual/PID; SV changes during Autotune ignored. Bench check: Heater/Fan/SV LCDs match the OLED, `Amb` near room temperature, Manual during Autotune → heater 0 | done (bench check todo) | — |
 | T29 | Visible autotune status (design D17) | todo | Shawn (D17) |
 | T30 | Roast rules: Artisan alarms first, firmware rules later if needed (design D20) | todo | Shawn (D20) |
+| T31 | Test plan from `docs/test-plan.md`: turn the running list into ordered bench procedures; clear the "bench todo" items (T28 fixes, 383 °F echo) | todo | AC wiring for heat items |

@@ -153,6 +153,38 @@ void test_pid_bumpless_reset() {
     TEST_ASSERT_FLOAT_WITHIN(1.0f, 42.0f, pid.update(180, 175));
 }
 
+// Controller::setMode() seeds the next mode with startOutputOnModeChange().
+// Autotune at 180 C with PV exactly at setpoint: the relay is still high (100 %),
+// and a PID at zero error should then output ~0, not the relay's 100 %.
+void test_leaving_autotune_starts_from_zero() {
+    RelayAutotune at;
+    RelayAutotune::Config cfg;
+    cfg.setpoint = 180;
+    at.start(cfg);
+    const float relay = at.update(180);
+    TEST_ASSERT_EQUAL_FLOAT(100.0f, relay);
+
+    const PidGains gains{1.0f, 0.1f, 0.01f}; // FLEX_PID_* defaults
+    const float toPid = startOutputOnModeChange(Mode::Autotune, Mode::Pid, relay);
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, toPid);
+    Pid pid(Pid::Config{});
+    pid.setGains(gains);
+    pid.reset(180, 180, toPid);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 0.0f, pid.update(180, 180));
+
+    // Seeding with the relay output (the behaviour before 067e316) holds 100 %.
+    Pid carried(Pid::Config{});
+    carried.setGains(gains);
+    carried.reset(180, 180, relay);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 100.0f, carried.update(180, 180));
+
+    // Manual takes the start value as its heater %.
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, startOutputOnModeChange(Mode::Autotune, Mode::Manual, relay));
+    // Other transitions stay bumpless.
+    TEST_ASSERT_EQUAL_FLOAT(60.0f, startOutputOnModeChange(Mode::Manual, Mode::Pid, 60.0f));
+    TEST_ASSERT_EQUAL_FLOAT(60.0f, startOutputOnModeChange(Mode::Pid, Mode::Manual, 60.0f));
+}
+
 // ---------- Relay autotune on a simulated roaster ----------
 // First-order-plus-dead-time plant: tau dT/dt = K*u - (T - Tamb), dead time L.
 struct Fopdt {
@@ -412,6 +444,7 @@ int main() {
     RUN_TEST(test_time_proportional_window);
     RUN_TEST(test_pid_integrator_does_not_wind_up);
     RUN_TEST(test_pid_bumpless_reset);
+    RUN_TEST(test_leaving_autotune_starts_from_zero);
     RUN_TEST(test_relay_autotune_identifies_and_controls);
     RUN_TEST(test_legacy_autotune_math_is_plant_independent);
     RUN_TEST(test_profile_matches_readme_example);

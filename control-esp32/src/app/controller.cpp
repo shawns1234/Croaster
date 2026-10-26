@@ -68,9 +68,7 @@ float Controller::pidInput(const ThermoSample& s) const {
 
 void Controller::setMode(Mode m, float pv) {
     const bool leavingAutotune = st_.mode == Mode::Autotune && m != Mode::Autotune;
-    // Bumpless transfer keeps the current heater output. The relay's 0/100 % is
-    // not an operating point, so a mode left mid-autotune starts from 0 instead.
-    const float carry = leavingAutotune ? 0 : heater_.requested();
+    const float carry = startOutputOnModeChange(st_.mode, m, heater_.requested());
     if (m == Mode::Pid || m == Mode::Profile) {
         if (st_.mode == Mode::Manual || st_.mode == Mode::Autotune)
             pid_.reset(st_.setpoint, pv, carry);

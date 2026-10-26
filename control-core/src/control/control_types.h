@@ -90,6 +90,13 @@ struct Snapshot {
     uint32_t uptimeMs = 0;
 };
 
+// Heater output a new mode starts from (bumpless transfer: keep the current
+// output). The autotune relay's 0/100 % is not an operating point, so a mode
+// entered from Autotune starts from 0 instead.
+inline float startOutputOnModeChange(Mode from, Mode to, float currentOutput) {
+    return from == Mode::Autotune && to != Mode::Autotune ? 0.0f : currentOutput;
+}
+
 inline const char* modeName(Mode m) {
     switch (m) {
     case Mode::Pid:
