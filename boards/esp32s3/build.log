@@ -1,24 +1,66 @@
 Processing esp32s3 (board: esp32-s3-devkitm-1; framework: arduino; platform: espressif32)
 --------------------------------------------------------------------------------
+Library Manager: Installing symlink://../../croaster
+Library Manager: Croaster@0.62.0 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing bblanchon/ArduinoJson @ ^7.4.3
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: ArduinoJson@7.4.3 has been installed!
+Library Manager: Installing links2004/WebSockets @ ^2.7.3
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: WebSockets@2.7.3 has been installed!
+Library Manager: Installing tzapu/WiFiManager @ ^2.0.17
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: WiFiManager@2.0.17 has been installed!
+Library Manager: Installing yuriisalimov/MAX6675_Thermocouple @ ^2.0.2
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: MAX6675_Thermocouple@2.0.2 has been installed!
+Library Manager: Installing adafruit/Adafruit ILI9341 @ ^1.6.3
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit ILI9341@1.7.0 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing Adafruit GFX Library
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit GFX Library@1.13.0 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing Adafruit BusIO
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit BusIO@1.17.4 has been installed!
+Library Manager: Installing Adafruit STMPE610
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit STMPE610@1.1.6 has been installed!
+Library Manager: Installing Adafruit TouchScreen
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit TouchScreen@1.1.6 has been installed!
+Library Manager: Installing Adafruit TSC2007
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit TSC2007@1.1.2 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing Adafruit SH110X
+Downloading 0% 10% 20%
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: Adafruit SH110X@2.1.15 has been installed!
+Library Manager: Resolving dependencies...
+Library Manager: Installing lvgl/lvgl @ ^9.5.0
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: lvgl@9.6.0 has been installed!
 Verbose mode can be enabled via `-v, --verbose` option
 CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s3-devkitm-1.html
-PLATFORM: Espressif 32 (8.0.0) > Espressif ESP32-S3-DevKitM-1
+PLATFORM: Espressif 32 (55.3.312) > Espressif ESP32-S3-DevKitM-1
 HARDWARE: ESP32S3 240MHz, 320KB RAM, 8MB Flash
-DEBUG: Current (esp-builtin) On-board (esp-builtin) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+DEBUG: Current (esp-builtin) On-board (esp-builtin) External (cmsis-dap, esp-bridge, esp-prog, esp-prog-2, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
 PACKAGES: 
- - framework-arduinoespressif32 @ 4.30312.261016 (3.3.12) 
- - framework-arduinoespressif32-esp32s3-libs @ 3.3.12 
- - tool-esptool @ 2.50400.0 (5.4.0) 
- - tool-mkfatfs @ 2.0.1 
- - tool-mklittlefs @ 1.203.210628 (2.3) 
- - tool-mkspiffs @ 2.230.0 (2.30) 
- - tool-riscv32-esp-elf-gdb @ 11.2.0+20220823 
- - tool-xtensa-esp-elf-gdb @ 11.2.0+20230208 
- - toolchain-riscv32-esp @ 14.2.0+20260121 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.12 
+ - framework-arduinoespressif32-libs @ 5.5.5+sha.b774170ff46 
+ - tool-esp-rom-elfs @ 2026.5.28 
+ - tool-esptoolpy @ 5.4.0 
+ - tool-openocd-esp32 @ 2.1200.20260703 (12.0) 
+ - tool-xtensa-esp-elf-gdb @ 17.1.0+20260402 
  - toolchain-xtensa-esp-elf @ 14.2.0+20260121
 LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
 LDF Modes: Finder ~ chain, Compatibility ~ soft
-Found 58 compatible libraries
+Found 57 compatible libraries
 Scanning dependencies...
 Dependency Graph
 |-- Croaster @ 0.62.0
@@ -31,10 +73,110 @@ Dependency Graph
 |-- WiFi @ 3.3.12
 |-- Wire @ 3.3.12
 Building in release mode
-Compiling .pio\build\esp32s3\src\CroasterDisplayS3.cpp.o
-Compiling .pio\build\esp32s3\src\main.cpp.o
-Compiling .pio\build\esp32s3\src\ui\LvglTouch.cpp.o
-Compiling .pio\build\esp32s3\src\ui\LvglUi.cpp.o
+Compiling .pio\build\esp32s3\liba2e\Network\NetworkClient.cpp.o
+Compiling .pio\build\esp32s3\liba2e\Network\NetworkEvents.cpp.o
+Compiling .pio\build\esp32s3\liba2e\Network\NetworkInterface.cpp.o
+Compiling .pio\build\esp32s3\liba2e\Network\NetworkManager.cpp.o
+Compiling .pio\build\esp32s3\liba2e\Network\NetworkServer.cpp.o
+Compiling .pio\build\esp32s3\liba2e\Network\NetworkUdp.cpp.o
+Compiling .pio\build\esp32s3\lib1dd\SPI\SPI.cpp.o
+Compiling .pio\build\esp32s3\lib3a9\Ethernet\ETH.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\AP.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\STA.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\WiFi.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\WiFiAP.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\WiFiGeneric.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\WiFiMulti.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\WiFiSTA.cpp.o
+Compiling .pio\build\esp32s3\libd67\WiFi\WiFiScan.cpp.o
+Compiling .pio\build\esp32s3\lib0f2\NetworkClientSecure\NetworkClientSecure.cpp.o
+Compiling .pio\build\esp32s3\lib0f2\NetworkClientSecure\ssl_client.cpp.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\SocketIOclient.cpp.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\WebSockets.cpp.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\WebSocketsClient.cpp.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\WebSocketsServer.cpp.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\libb64\cdecode.c.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\libb64\cencode.c.o
+Compiling .pio\build\esp32s3\liba4a\WebSockets\libsha1\libsha1.c.o
+Compiling .pio\build\esp32s3\lib539\AsyncUDP\AsyncUDP.cpp.o
+Compiling .pio\build\esp32s3\libf5c\DNSServer\DNSServer.cpp.o
+Compiling .pio\build\esp32s3\lib7b9\ESPmDNS\ESPmDNS.cpp.o
+Compiling .pio\build\esp32s3\lib98c\Hash\PBKDF2_HMACBuilder.cpp.o
+Compiling .pio\build\esp32s3\lib98c\Hash\SHA1Builder.cpp.o
+Compiling .pio\build\esp32s3\lib98c\Hash\SHA2Builder.cpp.o
+Compiling .pio\build\esp32s3\lib98c\Hash\SHA3Builder.cpp.o
+Compiling .pio\build\esp32s3\lib1ae\Update\HttpsOTAUpdate.cpp.o
+Compiling .pio\build\esp32s3\lib1ae\Update\Updater.cpp.o
+Compiling .pio\build\esp32s3\lib1ae\Update\UpdaterSHA256.cpp.o
+Compiling .pio\build\esp32s3\lib1ae\Update\UpdaterSHA512.cpp.o
+Compiling .pio\build\esp32s3\lib1ae\Update\Updater_Signing.cpp.o
+Compiling .pio\build\esp32s3\lib962\FS\FS.cpp.o
+Compiling .pio\build\esp32s3\lib962\FS\vfs_api.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\Parsing.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\WebServer.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\detail\mimetable.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\middleware\AuthenticationMiddleware.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\middleware\CorsMiddleware.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\middleware\LoggingMiddleware.cpp.o
+Compiling .pio\build\esp32s3\lib903\WebServer\middleware\MiddlewareChain.cpp.o
+Compiling .pio\build\esp32s3\libcca\WiFiManager\WiFiManager.cpp.o
+Compiling .pio\build\esp32s3\lib596\MAX6675_Thermocouple\AverageThermocouple.cpp.o
+Compiling .pio\build\esp32s3\lib596\MAX6675_Thermocouple\MAX6675_Thermocouple.cpp.o
+Compiling .pio\build\esp32s3\lib596\MAX6675_Thermocouple\SmoothThermocouple.cpp.o
+Compiling .pio\build\esp32s3\libafd\Preferences\Preferences.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLE2901.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLE2902.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLE2904.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEAddress.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEAdvertisedDevice.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEAdvertising.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEBeacon.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLECharacteristic.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLECharacteristicMap.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEClient.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEDescriptor.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEDescriptorMap.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEDevice.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEEddystoneTLM.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEEddystoneURL.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEExceptions.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEHIDDevice.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLERemoteCharacteristic.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLERemoteDescriptor.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLERemoteService.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEScan.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLESecurity.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEServer.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEService.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEServiceMap.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEUUID.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEUtils.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\BLEValue.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\FreeRTOS.cpp.o
+Compiling .pio\build\esp32s3\lib850\BLE\GeneralUtils.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterApp.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterBleManager.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterCommandHandler.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterCore.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterDeviceIdentity.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterOtaHandler.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterWebSocketManager.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\CroasterWiFiManager.cpp.o
+Compiling .pio\build\esp32s3\libc1a\croaster\SmoothThermocoupleFix.cpp.o
+Compiling .pio\build\esp32s3\lib49a\Wire\Wire.cpp.o
+Compiling .pio\build\esp32s3\libaeb\Adafruit BusIO\Adafruit_BusIO_Register.cpp.o
+Compiling .pio\build\esp32s3\libaeb\Adafruit BusIO\Adafruit_GenericDevice.cpp.o
+Compiling .pio\build\esp32s3\libaeb\Adafruit BusIO\Adafruit_I2CDevice.cpp.o
+Compiling .pio\build\esp32s3\libaeb\Adafruit BusIO\Adafruit_SPIDevice.cpp.o
+Compiling .pio\build\esp32s3\libd21\Adafruit GFX Library\Adafruit_GFX.cpp.o
+Compiling .pio\build\esp32s3\libd21\Adafruit GFX Library\Adafruit_GrayOLED.cpp.o
+Compiling .pio\build\esp32s3\libd21\Adafruit GFX Library\Adafruit_SPITFT.cpp.o
+Compiling .pio\build\esp32s3\libd21\Adafruit GFX Library\glcdfont.c.o
+Compiling .pio\build\esp32s3\libf10\Adafruit ILI9341\Adafruit_ILI9341.cpp.o
+Compiling .pio\build\esp32s3\lib3a5\LittleFS\LittleFS.cpp.o
+Compiling .pio\build\esp32s3\libb1d\SD\SD.cpp.o
+Compiling .pio\build\esp32s3\libb1d\SD\sd_diskio.cpp.o
+Compiling .pio\build\esp32s3\libb1d\SD\sd_diskio_crc.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_group.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\core\lv_obj_class.c.o
@@ -479,6 +621,7 @@ Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_pending.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_rb.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_style.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_style_gen.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_templ.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_text.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_text_ap.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\misc\lv_timer.c.o
@@ -513,10 +656,10 @@ Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\rtthread\lv_string_rtthread.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\stdlib\uefi\lv_mem_core_uefi.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\themes\default\lv_theme_default.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\themes\lv_theme.c.o
-.pio\libdeps\esp32s3\lvgl\src\stdlib\builtin\lv_tlsf.c:11:6: warning: #warning LV_MEM_POOL_EXPAND_SIZE is deprecated and will be removed in the next release. Use LV_MEM_SIZE to define LVGL pool size. [-Wcpp]
+Compiling .pio\build\esp32s3\libdd5\lvgl\themes\mono\lv_theme_mono.c.o
+.pio/libdeps/esp32s3/lvgl/src/stdlib/builtin/lv_tlsf.c:11:6: warning: #warning LV_MEM_POOL_EXPAND_SIZE is deprecated and will be removed in the next release. Use LV_MEM_SIZE to define LVGL pool size. [-Wcpp]
    11 |     #warning LV_MEM_POOL_EXPAND_SIZE is deprecated and will be removed in the next release. Use LV_MEM_SIZE to define LVGL pool size.
       |      ^~~~~~~
-Compiling .pio\build\esp32s3\libdd5\lvgl\themes\mono\lv_theme_mono.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\themes\simple\lv_theme_simple.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\tick\lv_tick.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\3dtexture\lv_3dtexture.c.o
@@ -534,18 +677,18 @@ Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\calendar\lv_calendar_header_dro
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\canvas\lv_canvas.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\chart\lv_chart.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\checkbox\lv_checkbox.c.o
-Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\dropdown\lv_dropdown.c.o
-Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\ffmpeg\lv_ffmpeg.c.o
-Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\gif\lv_gif.c.o
-.pio\libdeps\esp32s3\lvgl\src\widgets\calendar\lv_calendar.c:63:2: warning: #warning "LV_CALENDAR_DEFAULT_DAY_NAMES is deprecated and will be removed in the next release. Use LV_MONDAY_STR, LV_TUESDAY_STR,... to set each week day name" [-Wcpp]
+.pio/libdeps/esp32s3/lvgl/src/widgets/calendar/lv_calendar.c:63:2: warning: #warning "LV_CALENDAR_DEFAULT_DAY_NAMES is deprecated and will be removed in the next release. Use LV_MONDAY_STR, LV_TUESDAY_STR,... to set each week day name" [-Wcpp]
    63 | #warning "LV_CALENDAR_DEFAULT_DAY_NAMES is deprecated and will be removed in the next release. Use LV_MONDAY_STR, LV_TUESDAY_STR,... to set each week day name"
       |  ^~~~~~~
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\dropdown\lv_dropdown.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\ffmpeg\lv_ffmpeg.c.o
+.pio/libdeps/esp32s3/lvgl/src/widgets/calendar/lv_calendar_header_arrow.c:42:2: warning: #warning "LV_CALENDAR_DEFAULT_MONTH_NAMES is deprecated and will be removed in the next release. Use LV_JANUARY_STR, LV_FEBRUARY_STR,... to set each month name" [-Wcpp]
+   42 | #warning "LV_CALENDAR_DEFAULT_MONTH_NAMES is deprecated and will be removed in the next release. Use LV_JANUARY_STR, LV_FEBRUARY_STR,... to set each month name"
+      |  ^~~~~~~
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\gif\lv_gif.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\gstreamer\lv_gstreamer.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\image\lv_image.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\imagebutton\lv_imagebutton.c.o
-.pio\libdeps\esp32s3\lvgl\src\widgets\calendar\lv_calendar_header_arrow.c:42:2: warning: #warning "LV_CALENDAR_DEFAULT_MONTH_NAMES is deprecated and will be removed in the next release. Use LV_JANUARY_STR, LV_FEBRUARY_STR,... to set each month name" [-Wcpp]
-   42 | #warning "LV_CALENDAR_DEFAULT_MONTH_NAMES is deprecated and will be removed in the next release. Use LV_JANUARY_STR, LV_FEBRUARY_STR,... to set each month name"
-      |  ^~~~~~~
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\ime\lv_ime_pinyin.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\keyboard\lv_keyboard.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\label\lv_label.c.o
@@ -555,6 +698,7 @@ Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\list\lv_list.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\lottie\lv_lottie.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\menu\lv_menu.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\msgbox\lv_msgbox.c.o
+Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\objx_templ\lv_objx_templ.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_animimage_properties.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_arc_properties.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\property\lv_bar_properties.c.o
@@ -593,19 +737,98 @@ Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\tabview\lv_tabview.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\textarea\lv_textarea.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\tileview\lv_tileview.c.o
 Compiling .pio\build\esp32s3\libdd5\lvgl\widgets\win\lv_win.c.o
+Compiling .pio\build\esp32s3\src\CroasterDisplayS3.cpp.o
+Compiling .pio\build\esp32s3\src\main.cpp.o
+Compiling .pio\build\esp32s3\src\ui\LvglTouch.cpp.o
+Compiling .pio\build\esp32s3\src\ui\LvglUi.cpp.o
+Building .pio\build\esp32s3\bootloader.bin
+Generating partitions .pio\build\esp32s3\partitions.bin
+Compiling .pio\build\esp32s3\FrameworkArduino\ColorFormat.c.o
+esptool v5.4.0
+Creating ESP32-S3 image...
+Merged 2 ELF sections.
+Successfully created ESP32-S3 image.
+Compiling .pio\build\esp32s3\FrameworkArduino\Esp.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\FirmwareMSC.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\FunctionalInterrupt.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\HEXBuilder.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\HWCDC.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\HardwareSerial.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\HashBuilder.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\IPAddress.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\MD5Builder.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\MacAddress.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\Print.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\Stream.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\StreamString.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\StringUtils.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\Tone.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\USB.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\USBCDC.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\USBHost.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\USBMSC.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\WMath.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\WString.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\base64.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\cbuf.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\chip-debug-report.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-adc.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-bt.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-cpu.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-dac.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-gpio.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-hosted.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-i2c-ng.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-i2c-slave.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-i2c.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-ldo.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-ledc.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-log-wrapper.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-matrix.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-misc.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-periman.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-psram.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-rgb-led.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-rmt.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-sigmadelta.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-spi.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-time.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-timer.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-tinyusb.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-touch-ng.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-touch.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\esp32-hal-uart.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\firmware_msc_fat.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\freertos_stats.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\idf_openthread_mpool_wrapper.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\libb64\cdecode.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\libb64\cencode.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\main.cpp.o
+Compiling .pio\build\esp32s3\FrameworkArduino\stdlib_noniso.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\wiring_pulse.c.o
+Compiling .pio\build\esp32s3\FrameworkArduino\wiring_shift.c.o
+Archiving .pio\build\esp32s3\libFrameworkArduino.a
 Linking .pio\build\esp32s3\firmware.elf
+Firmware metrics can not be shown. Set the terminal codepage to "utf-8" or "cp65001" on Windows.
 Retrieving maximum program size .pio\build\esp32s3\firmware.elf
 Checking size .pio\build\esp32s3\firmware.elf
 Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
-RAM:   [===       ]  32.1% (used 105144 bytes from 327680 bytes)
-Flash: [====      ]  38.4% (used 2516822 bytes from 6553600 bytes)
+RAM:   [===       ]  32.8% (used 107504 bytes from 327680 bytes)
+Flash: [===       ]  27.7% (used 1818206 bytes from 6553600 bytes)
 Building .pio\build\esp32s3\firmware.bin
 esptool v5.4.0
 Creating ESP32-S3 image...
 Merged 3 ELF sections.
 Successfully created ESP32-S3 image.
+Creating binary "firmware.factory.bin" with:
+    Offset   | File
+ -  0x0000   | bootloader.bin
+ -  0x8000   | partitions.bin
+ -  0xe000   | boot_app0.bin
+ -  0x10000  | firmware.bin
+Successfully created combined binary image.
 Configuring upload protocol...
-AVAILABLE: cmsis-dap, esp-bridge, esp-builtin, esp-prog, espota, esptool, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa
+AVAILABLE: cmsis-dap, esp-bridge, esp-builtin, esp-prog, esp-prog-2, espota, esptool, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa
 CURRENT: upload_protocol = esptool
 Looking for upload port...
 Auto-detected: COM8
@@ -627,122 +850,45 @@ Changing baud rate to 921600...
 Changed.
 
 Configuring flash size...
+Auto-detected flash size: 16MB
 
 Writing 'W:\GitHub\Croaster\boards\esp32s3\.pio\build\esp32s3\bootloader.bin' at 0x00000000...
 SHA digest in image updated.
 Flash will be erased from 0x00000000 to 0x00004fff...
 Compressed 19968 bytes to 12994...
-Writing at 0x00004e00 ============================== 100.0% 12.69kB/12.69kB [0s] 
-Wrote 19968 bytes (12994 compressed) at 0x00000000 in 0.3 seconds (585.1 kbit/s).
-Verifying written data...
-Hash of data verified.
 
-Writing 'W:\GitHub\Croaster\boards\esp32s3\.pio\build\esp32s3\partitions.bin' at 0x00008000...
-Flash will be erased from 0x00008000 to 0x00008fff...
-Compressed 3072 bytes to 146...
-Writing at 0x00008c00 ============================== 100.0% 146B/146B [0s] 
-Wrote 3072 bytes (146 compressed) at 0x00008000 in 0.1 seconds (234.0 kbit/s).
-Verifying written data...
-Hash of data verified.
-
-Writing 'C:\pio\packages\framework-arduinoespressif32\tools\partitions\boot_app0.bin' at 0x0000e000...
-Flash will be erased from 0x0000e000 to 0x0000ffff...
-Compressed 8192 bytes to 47...
-Writing at 0x00010000 ============================== 100.0% 47B/47B [0s] 
-Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.1 seconds (624.1 kbit/s).
-Verifying written data...
-Hash of data verified.
-
-Writing '.pio\build\esp32s3\firmware.bin' at 0x00010000...
-Flash will be erased from 0x00010000 to 0x00285fff...
-Compressed 2579808 bytes to 1286193...
-Writing at 0x000181a0                                  1.3% 16.00kB/1.23MB [0s] 
-Writing at 0x00020a0f >                                2.5% 32.00kB/1.23MB [0s] 
-Writing at 0x0002b472 =                                3.8% 48.00kB/1.23MB [0s] 
-Writing at 0x00037279 =>                               5.1% 64.00kB/1.23MB [0s] 
-Writing at 0x000422db =>                               6.4% 80.00kB/1.23MB [0s] 
-Writing at 0x0004eb53 ==                               7.6% 96.00kB/1.23MB [1s] 
-Writing at 0x000567f8 ==>                              8.9% 112.00kB/1.23MB [1s] 
-Writing at 0x00060475 ===                             10.2% 128.00kB/1.23MB [1s] 
-Writing at 0x0006a689 ===                             11.5% 144.00kB/1.23MB [1s] 
-Writing at 0x000787a6 ===>                            12.7% 160.00kB/1.23MB [2s] 
-Writing at 0x0007e887 ====                            14.0% 176.00kB/1.23MB [2s] 
-Writing at 0x00085ee8 ====>                           15.3% 192.00kB/1.23MB [2s] 
-Writing at 0x0008f58f ====>                           16.6% 208.00kB/1.23MB [2s] 
-Writing at 0x0009930e =====                           17.8% 224.00kB/1.23MB [3s] 
-Writing at 0x000a43f5 =====>                          19.1% 240.00kB/1.23MB [3s] 
-Writing at 0x000af151 ======                          20.4% 256.00kB/1.23MB [3s] 
-Writing at 0x000b94a8 ======                          21.7% 272.00kB/1.23MB [3s] 
-Writing at 0x000c2a43 ======>                         22.9% 288.00kB/1.23MB [4s] 
-Writing at 0x000cbe34 =======                         24.2% 304.00kB/1.23MB [4s] 
-Writing at 0x000d6096 =======>                        25.5% 320.00kB/1.23MB [4s] 
-Writing at 0x000e097a ========                        26.8% 336.00kB/1.23MB [4s] 
-Writing at 0x000e9dc7 ========                        28.0% 352.00kB/1.23MB [4s] 
-Writing at 0x000f2f82 ========>                       29.3% 368.00kB/1.23MB [5s] 
-Writing at 0x000fbf4b =========                       30.6% 384.00kB/1.23MB [5s] 
-Writing at 0x00104c72 =========>                      31.8% 400.00kB/1.23MB [5s] 
-Writing at 0x0010e815 =========>                      33.1% 416.00kB/1.23MB [5s] 
-Writing at 0x00118dff ==========                      34.4% 432.00kB/1.23MB [5s] 
-Writing at 0x001248fb ==========>                     35.7% 448.00kB/1.23MB [6s] 
-Writing at 0x00135849 ===========                     36.9% 464.00kB/1.23MB [6s] 
-Writing at 0x001421ce ===========                     38.2% 480.00kB/1.23MB [6s] 
-Writing at 0x0014e23f ===========>                    39.5% 496.00kB/1.23MB [6s] 
-Writing at 0x00157870 ============                    40.8% 512.00kB/1.23MB [7s] 
-Writing at 0x0015dffd ============>                   42.0% 528.00kB/1.23MB [7s] 
-Writing at 0x0016384c ============>                   43.3% 544.00kB/1.23MB [7s] 
-Writing at 0x00169012 =============                   44.6% 560.00kB/1.23MB [7s] 
-Writing at 0x0016e1f7 =============>                  45.9% 576.00kB/1.23MB [7s] 
-Writing at 0x001737c1 ==============                  47.1% 592.00kB/1.23MB [8s] 
-Writing at 0x00178975 ==============>                 48.4% 608.00kB/1.23MB [8s] 
-Writing at 0x0017dde1 ==============>                 49.7% 624.00kB/1.23MB [8s] 
-Writing at 0x00183542 ===============                 51.0% 640.00kB/1.23MB [8s] 
-Writing at 0x00188b0b ===============>                52.2% 656.00kB/1.23MB [8s] 
-Writing at 0x0018de18 ================                53.5% 672.00kB/1.23MB [9s] 
-Writing at 0x00193108 ================                54.8% 688.00kB/1.23MB [9s] 
-Writing at 0x00198d15 ================>               56.0% 704.00kB/1.23MB [9s] 
-Writing at 0x0019e5ab =================               57.3% 720.00kB/1.23MB [9s] 
-Writing at 0x001a3fda =================>              58.6% 736.00kB/1.23MB [9s] 
-Writing at 0x001a99ec =================>              59.9% 752.00kB/1.23MB [10s] 
-Writing at 0x001af08d ==================              61.1% 768.00kB/1.23MB [10s] 
-Writing at 0x001b457d ==================>             62.4% 784.00kB/1.23MB [10s] 
-Writing at 0x001b9c5a ===================             63.7% 800.00kB/1.23MB [10s] 
-Writing at 0x001bedf1 ===================             65.0% 816.00kB/1.23MB [10s] 
-Writing at 0x001c4078 ===================>            66.2% 832.00kB/1.23MB [10s] 
-Writing at 0x001c97f8 ====================            67.5% 848.00kB/1.23MB [11s] 
-Writing at 0x001ceec5 ====================>           68.8% 864.00kB/1.23MB [11s] 
-Writing at 0x001d42f4 =====================           70.1% 880.00kB/1.23MB [11s] 
-Writing at 0x001d96d9 =====================           71.3% 896.00kB/1.23MB [11s] 
-Writing at 0x001dec95 =====================>          72.6% 912.00kB/1.23MB [11s] 
-Writing at 0x001e4e97 ======================          73.9% 928.00kB/1.23MB [12s] 
-Writing at 0x001ea6fa ======================>         75.2% 944.00kB/1.23MB [12s] 
-Writing at 0x001f198a ======================>         76.4% 960.00kB/1.23MB [12s] 
-Writing at 0x001fb6fd =======================         77.7% 976.00kB/1.23MB [12s] 
-Writing at 0x00205674 =======================>        79.0% 992.00kB/1.23MB [12s] 
-Writing at 0x00210fb5 ========================        80.3% 1008.00kB/1.23MB [13s] 
-Writing at 0x0021c958 ========================        81.5% 1.00MB/1.23MB [13s] 
-Writing at 0x00226bd2 ========================>       82.8% 1.02MB/1.23MB [13s] 
-Writing at 0x0022c758 =========================       84.1% 1.03MB/1.23MB [13s] 
-Writing at 0x00232400 =========================>      85.3% 1.05MB/1.23MB [13s] 
-Writing at 0x00237d23 =========================>      86.6% 1.06MB/1.23MB [14s] 
-Writing at 0x0023e546 ==========================      87.9% 1.08MB/1.23MB [14s] 
-Writing at 0x00247e21 ==========================>     89.2% 1.09MB/1.23MB [14s] 
-Writing at 0x00250b05 ===========================     90.4% 1.11MB/1.23MB [14s] 
-Writing at 0x0025de28 ===========================>    91.7% 1.12MB/1.23MB [14s] 
-Writing at 0x00266768 ===========================>    93.0% 1.14MB/1.23MB [15s] 
-Writing at 0x0026b864 ============================    94.3% 1.16MB/1.23MB [15s] 
-Writing at 0x0027143c ============================>   95.5% 1.17MB/1.23MB [15s] 
-Writing at 0x00276dc1 =============================   96.8% 1.19MB/1.23MB [15s] 
-Writing at 0x0027c919 =============================   98.1% 1.20MB/1.23MB [15s] 
-Writing at 0x00282bbb =============================>  99.4% 1.22MB/1.23MB [16s] 
-Writing at 0x00285d60 ============================== 100.0% 1.23MB/1.23MB [16s] 
-Wrote 2579808 bytes (1286193 compressed) at 0x00010000 in 16.2 seconds (1271.8 kbit/s).
-Verifying written data...
-Hash of data verified.
-
-Hard resetting via RTS pin...
-========================= [SUCCESS] Took 56.45 seconds =========================
-
-Environment    Status    Duration
--------------  --------  ------------
-esp32s3        SUCCESS   00:00:56.448
-========================= 1 succeeded in 00:00:56.448 =========================
+Exception in thread Thread-15 (run):
+Traceback (most recent call last):
+  File "C:\Users\Media\AppData\Roaming\uv\python\cpython-3.13-windows-x86_64-none\Lib\threading.py", line 1044, in _bootstrap_inner
+    self.run()
+    ~~~~~~~~^^
+  File "C:\Users\Media\AppData\Roaming\uv\python\cpython-3.13-windows-x86_64-none\Lib\threading.py", line 995, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\pio\penv\Lib\site-packages\platformio\proc.py", line 48, in run
+    self.do_reading()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\pio\penv\Lib\site-packages\platformio\proc.py", line 103, in do_reading
+    self.line_callback(line)
+    ~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\pio\penv\Lib\site-packages\platformio\platform\_run.py", line 137, in _on_stdout_line
+    self._echo_line(line, level=1)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\pio\penv\Lib\site-packages\platformio\platform\_run.py", line 158, in _echo_line
+    click.secho(line, fg=fg, err=level > 1, nl=False)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\pio\penv\Lib\site-packages\platformio\__main__.py", line 90, in <lambda>
+    click.secho = lambda *args, **kwargs: _safe_echo(1, *args, **kwargs)
+                                          ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\pio\penv\Lib\site-packages\platformio\__main__.py", line 83, in _safe_echo
+    click_echo_origin[origin](*args, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\pio\penv\Lib\site-packages\click\termui.py", line 811, in secho
+    return echo(message, file=file, nl=nl, err=err, color=color)
+  File "C:\pio\penv\Lib\site-packages\click\utils.py", line 345, in echo
+    file.write(out)  # type: ignore
+    ~~~~~~~~~~^^^^^
+  File "C:\Users\Media\AppData\Roaming\uv\python\cpython-3.13-windows-x86_64-none\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 23-52: character maps to <undefined>
