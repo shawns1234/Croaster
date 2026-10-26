@@ -38,7 +38,7 @@ ControlPlugin plugin(roaster, pluginConfig());          // Croaster glue
 void setup() {
     heater.begin(); fan.begin(); probes.begin();        // outputs off first
     auto s = ConfigStore::load(defaults());             // NVS
-    controller.begin(s.gains, s.pidInput, core, prio);
+    controller.begin(s.gains, s.pidInput, s.cooldownFan.trip, core, prio);
     plugin.attach(app, s);                              // registers commands + data hook
     app.begin();                                        // Croaster: WiFi, WS, BLE, display
     plugin.begin();                                     // starts the watchdog clock

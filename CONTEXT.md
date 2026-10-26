@@ -54,6 +54,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `onCommand`). yaeger's flat keys (`{"BurnerVal":60}`) are not accepted (D8).
   Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`, `Target`,
   `pidKp/Ki/Kd`, `wifiStrength`.
+- PID input defaults to BT (D18, `FLEX_PID_INPUT`); `pidInput` command and
+  NVS key `in` still switch it, and a saved value overrides the default.
+  Without a BT probe, PID mode trips `sensor`: send `pidInput` ET. Default
+  gains are yaeger's (tuned for ET); autotune on BT.
 - Comms watchdog: no message through Croaster's command handler
   (`lastCommandMillis()`, WebSocket or BLE) for the timeout while heating
   (not in Profile) → heater off, `trip:"comms"`.

@@ -47,7 +47,10 @@ Status tags:
 - Integral doesn't wind up while saturated; output leaves 100 % soon after PV passes SV. **host** `test_pid_integrator_does_not_wind_up`
 - Manual → PID keeps the current heater output (bumpless). **host** `test_pid_bumpless_reset`
 - PID holds SV on the real heater without sustained oscillation. **untested** (needs AC)
-- `{"command":{"pidInput":"BT"}}` → `Target` reads BT and survives a reboot. **untested**
+- Fresh NVS, no `pidInput` sent → `Target` reads BT (D18). **host** (default only, `test_protocol_basic_and_data`); bench untested
+- `{"command":{"pidInput":"ET"}}` → `Target` reads ET and survives a reboot; the BT default doesn't override it. **untested**
+- PID input BT with no BT probe → PID mode trips `sensor` after 2 s; autotune refused. **untested**
+- Autotune on BT on the real heater → gains that hold a BT setpoint. **untested** (needs BT probe and AC)
 
 ## Autotune entry, exit and gates
 - Autotune with SV below 212 °F → refused, mode stays Manual. **bench 2026-10-26**

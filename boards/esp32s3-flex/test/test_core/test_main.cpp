@@ -399,7 +399,7 @@ void test_protocol_basic_and_data() {
     controlproto::writeDataFields(s, 'F', data);
     char buf[384];
     serializeJson(d, buf, sizeof buf);
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"Target\":\"ET\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"Target\":\"BT\"")); // default PID input (D18)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"pidKp\":0"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"Amb\":null"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"BurnerVal\":55"));

@@ -53,6 +53,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **PID input defaults to BT (D18).** `FLEX_PID_INPUT` in `config.h`
+  (default `FLEX_PID_INPUT_BT`); `{"command":{"pidInput":"ET"}}` still
+  switches at runtime and a saved choice in NVS wins over the default.
+  Default gains stay yaeger's; autotune on BT.
 - **Cooldown fan: 65 % after stop, 100 % after any trip (D19).** `cooldownFan`
   has `stop` and `trip` values: `FLEX_COOLDOWN_FAN_STOP`/`_TRIP` in `config.h`
   (replaces `FLEX_COOLDOWN_FAN`), `{"command":{"cooldownFan":{"stop":N,"trip":N}}}`

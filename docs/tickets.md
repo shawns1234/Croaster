@@ -36,5 +36,6 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T29 | Visible autotune status (design D17) | todo | Shawn (D17) |
 | T30 | Roast rules: Artisan alarms first, firmware rules later if needed (design D20) | todo | Shawn (D20) |
 | T31 | Test plan from `docs/test-plan.md`: turn the running list into ordered bench procedures; clear the "bench todo" items (T28 fixes, 383 °F echo) | todo | AC wiring for heat items |
+| T34 | PID input BT by default (design D18): `FLEX_PID_INPUT`, `pidInput` command and NVS kept. Bench check: `Target` reads BT; autotune on BT once BT and AC are wired | done (bench check todo) | BT probe, AC |
 | T33 | Cooldown fan: 65 % after `stop`, 100 % when any trip starts; `cooldownFan` `stop`/`trip` in config, command, NVS and `getControl` (design D19). Bench check: Stop → 65 %, comms trip → 100 % | done (bench check todo) | — |
 | T32 | Drop yaeger flat keys and the `onOtherJson` core hook (design D8, Shawn 2026-10-26) | done | — |

@@ -81,7 +81,18 @@
 #define FLEX_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
 
 // ---- Control and safety (always Celsius, whatever FLEX_TEMP_UNIT is) --------
-#define FLEX_PID_KP 1.0f // defaults until set over WebSocket or autotuned (then NVS)
+// PID input: the probe the firmware PID and autotune regulate. First-boot
+// default; {"command":{"pidInput":"ET"}} changes it at runtime and saves it in
+// NVS, and a saved value wins over this default. Telemetry "Target" shows the
+// active input. BT needs a BT probe: without one, PID mode trips "sensor".
+#define FLEX_PID_INPUT_ET 0
+#define FLEX_PID_INPUT_BT 1
+#define FLEX_PID_INPUT_MAX 2 // the hotter of ET and BT
+#define FLEX_PID_INPUT FLEX_PID_INPUT_BT
+// Gains: defaults until set over WebSocket or autotuned (then NVS). These are
+// yaeger's values, chosen for ET. BT lags the heater by tens of seconds, so run
+// autotune with the PID input on BT before relying on PID control.
+#define FLEX_PID_KP 1.0f
 #define FLEX_PID_KI 0.1f
 #define FLEX_PID_KD 0.01f
 #define FLEX_OVER_TEMP_C 275      // 527 F; any probe above: heater off, fan 100 %

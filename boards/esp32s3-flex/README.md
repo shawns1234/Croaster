@@ -118,7 +118,7 @@ the next reboot. Limits and the PID still work in °C. The flex board adds:
 | `{"command":{"fan":0..100}}` | fan % |
 | `{"command":{"setpoint":T}}` | PID setpoint |
 | `{"command":{"mode":"manual"\|"pid"}}` | mode |
-| `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved) |
+| `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved; default BT, `FLEX_PID_INPUT`; a saved value wins over the default) |
 | `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved) |
 | `{"command":{"cooldownFan":{"stop":0..100,"trip":0..100}}}` | fan after `stop` (default 65) and when any safety trip starts (default 100); either field alone works; a plain number sets `stop` (saved) |
 | `{"command":{"watchdog":{"enabled":bool,"timeout":s}}}` | comms watchdog on/off and timeout, 2..600 s (saved; either field alone works) |

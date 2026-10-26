@@ -5,10 +5,10 @@
 #include "control/control_types.h"
 
 struct ControlSettings {
-    PidGains gains; // defaults from config.h (FLEX_PID_KP/KI/KD)
-    PidInput pidInput = PidInput::ET;
-    CooldownFan cooldownFan;   // defaults from config.h (FLEX_COOLDOWN_FAN_STOP/TRIP)
-    WatchdogSettings watchdog; // defaults from config.h (FLEX_WATCHDOG_*)
+    PidGains gains;                   // defaults from config.h (FLEX_PID_KP/KI/KD)
+    PidInput pidInput = PidInput::BT; // default from config.h (FLEX_PID_INPUT)
+    CooldownFan cooldownFan;          // defaults from config.h (FLEX_COOLDOWN_FAN_STOP/TRIP)
+    WatchdogSettings watchdog;        // defaults from config.h (FLEX_WATCHDOG_*)
 };
 
 namespace ConfigStore {

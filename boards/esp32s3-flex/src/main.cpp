@@ -68,9 +68,14 @@ CroasterDisplay* const displayPtr = nullptr;
 CroasterApp app(core, displayPtr, FLEX_PIN_LED, FLEX_LED_ON_LEVEL);
 
 #if FLEX_HEATER != FLEX_HEATER_NONE
+static_assert(FLEX_PID_INPUT_ET == static_cast<int>(PidInput::ET) &&
+                  FLEX_PID_INPUT_BT == static_cast<int>(PidInput::BT) &&
+                  FLEX_PID_INPUT_MAX == static_cast<int>(PidInput::MAX),
+              "config.h: FLEX_PID_INPUT_* values must match PidInput");
 ControlSettings defaults() {
     ControlSettings d;
     d.gains = {FLEX_PID_KP, FLEX_PID_KI, FLEX_PID_KD};
+    d.pidInput = static_cast<PidInput>(FLEX_PID_INPUT);
     d.cooldownFan = {FLEX_COOLDOWN_FAN_STOP, FLEX_COOLDOWN_FAN_TRIP};
     d.watchdog = {FLEX_WATCHDOG_ENABLED != 0, FLEX_WATCHDOG_TIMEOUT_S};
     return d;

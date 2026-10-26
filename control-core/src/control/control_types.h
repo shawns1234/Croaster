@@ -88,7 +88,7 @@ struct Snapshot {
     float fanPct = 0;
     float setpoint = 0;
     Mode mode = Mode::Manual;
-    PidInput pidInput = PidInput::ET;
+    PidInput pidInput = PidInput::BT;
     PidGains gains;
     SafetyTrip trip = SafetyTrip::None;
     bool mainsOk = false;

@@ -208,6 +208,7 @@ Resolved by Shawn on 2026-10-26:
 | Decision | Choice |
 |:---|:---|
 | D8 | Drop flat keys and the `onOtherJson` hook (option 2). |
+| D18 | PID input defaults to BT (option 2); `pidInput` command and NVS kept; yaeger's gains kept until autotuned on BT. |
 | D19 | Cooldown fan 65 % after `stop`, 100 % after any trip (option 3). |
 
 ### D1. Where the control libraries live — **DECISION**
@@ -556,7 +557,23 @@ oscillation too small) or aborted. The reason is only in `getControl`'s
    existing field, but mixes a refused command with safety trips.
 Recommendation: 3.
 
-### D18. PID input and default gains — **DECISION (new 2026-10-26, open)**
+### D18. PID input and default gains — resolved 2026-10-26: BT by default (option 2)
+Shawn chose option 2. `FLEX_PID_INPUT` in `config.h` (`FLEX_PID_INPUT_BT`)
+is the first-boot default; `{"command":{"pidInput":"ET"}}` still switches at
+runtime and saves to NVS. yaeger's gains stay as defaults, with a `config.h`
+note that they were chosen for ET and need an autotune on BT.
+
+NVS: the input is stored (key `in`) only when a `pidInput` command (or,
+before D8, a flat `Target`) was received. A board that never got one follows
+the new default. A board that did keeps its saved input, because that was an
+explicit choice; the firmware doesn't overwrite it. Telemetry `Target` and
+`getControl` `pidInput` show the active input; `{"command":{"pidInput":"BT"}}`
+sets BT and saves it.
+
+Without a BT probe, PID mode trips `sensor` after 2 s and autotune refuses to
+start ("valid probe"). Use `{"command":{"pidInput":"ET"}}` until BT is fitted.
+
+Analysis before the decision:
 The firmware PID follows `Target` (ET by default, as in yaeger, saved in NVS;
 `{"command":{"pidInput":"BT"}}` changes it). Default gains are yaeger's
 `Kp 1, Ki 0.1, Kd 0.01` (`FLEX_PID_KP/KI/KD`), in % heater per °C, per °C·s
@@ -564,17 +581,17 @@ and %·s per °C. They are the controller's live gains, not leftover fields.
 They are gentle: a 10 °C error asks for 10 % heater plus 1 % per second from
 the integral, so the output moves slowly (the 0.5 %/s decay seen on the bench
 is the integral at work). Autotune replaces them.
-1. **Keep ET, autotune on the real heater (no change).** ET responds within
+1. Keep ET, autotune on the real heater. ET responds within
    seconds of a heater change, so the loop is stable; BT targets are reached
    by choosing ET setpoints (profiles or Artisan alarms).
-2. Default to BT. Matches roast thinking, but BT lags the heater by tens of
+2. **Default to BT (implemented).** Matches roast thinking, but BT lags the heater by tens of
    seconds and sits in the bean mass, so a single PID on BT overshoots and
    oscillates unless tuned very softly.
 3. Cascade: an outer BT loop sets the ET setpoint of the inner ET loop. Best
    tracking of BT, but new code and two sets of gains.
 4. Raise the defaults (e.g. Kp 4, Ki 0.05, Kd 0) so an untuned controller is
    less sluggish. Guesswork until measured on the hardware.
-Recommendation: 1 now, run autotune on ET once mains and the heater are
+Recommendation was: 1 now, run autotune on ET once mains and the heater are
 connected; consider 3 if BT tracking matters after real roasts.
 
 ### D19. Cooldown fan default — resolved 2026-10-26: 65 % after stop, 100 % after a trip (option 3)
