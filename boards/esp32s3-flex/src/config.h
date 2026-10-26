@@ -61,7 +61,7 @@
 #define FLEX_PIN_ZERO_CROSS 6 // dimmer Z-C output (AC dimmer only)
 #define FLEX_MAINS_HZ 60      // 50 or 60 (AC dimmer only); US mains = 60
 #define FLEX_FAN_PWM_HZ 25000 // PWM fan only
-#define FLEX_REQUIRE_MAINS 1  // AC dimmer: refuse heat when no zero-cross is seen
+#define FLEX_REQUIRE_MAINS 0  // AC dimmer: refuse heat when no zero-cross is seen
 
 // ---- Display ----------------------------------------------------------------
 #define FLEX_DISPLAY_NONE 0
