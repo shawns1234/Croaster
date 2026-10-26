@@ -77,9 +77,6 @@ ControlSettings defaults() {
 ControlPluginConfig pluginConfig() {
     ControlPluginConfig c;
     c.commsTimeoutMs = FLEX_COMMS_TIMEOUT_S * 1000UL;
-    c.arduinoOta = FLEX_ENABLE_ARDUINO_OTA;
-    c.otaHostname = "croaster-flex";
-    c.otaPassword = FLEX_OTA_PASSWORD;
     return c;
 }
 ControlPlugin plugin(controller, pluginConfig());

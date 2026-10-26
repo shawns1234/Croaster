@@ -62,7 +62,7 @@ that wiring.
 ## ⚙️ Configure: `src/config.h`
 
 The one file to edit: thermocouple chip, heater, fan driver, display, pins,
-features (BLE, ArduinoOTA), PID defaults, safety limits, control core. It is
+features (BLE), PID defaults, safety limits, control core. It is
 force-included into every translation unit (`-include src/config.h`) so it can
 also switch Croaster library features (`CROASTER_HAS_BLE`).
 
@@ -85,7 +85,6 @@ cd boards/esp32s3-flex
 pio run -e esp32s3-flex                    # release (what ../../build_all.sh builds)
 pio run -e esp32s3-flex -t upload          # flash over USB
 ../../upload_monitor.sh esp32s3-flex       # debug build + upload + monitor
-pio run -e esp32s3-flex-ota -t upload      # after the first flash: espota to croaster-flex.local
 pio test -e native                            # host unit tests (control-core)
 ```
 
@@ -93,7 +92,6 @@ pio test -e native                            # host unit tests (control-core)
 |:---|:---|:---|
 | `esp32s3-flex` | `platformio/espressif32 @ 8.0.0` (Arduino 3.3.12 / IDF 5.5) | release |
 | `esp32s3-flex-debug` | same | `CORE_DEBUG_LEVEL=3` |
-| `esp32s3-flex-ota` | same | espota upload |
 | `esp32s3-flex-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
 | `esp32s3-flex-pioarduino-sdkconfig` | pioarduino + `custom_sdkconfig` | rebuilds IDF with `esp32s3-sdkconfig.defaults` (slow first build; not needed: no TLS) |
 
@@ -143,7 +141,7 @@ cooldown fan) all turn the heater off and latch a trip until `clearTrip`.
 ## ☕ Artisan
 
 Load `artisan/croaster-flex.aset` (Help → Load Settings). Host
-`croaster-flex.local` (or the IP on the OLED), port 81, path `WebSocket`,
+`192.168.4.1` on Croaster's access point (or the IP on the OLED), port 81, path `WebSocket`,
 one `getData` per second. Curves: BT, ET, Heater, Fan, SV. Sliders: Fan,
 Setpoint, Heater. Buttons: heater 50–70 %/Off, PID, Manual, Autotune, Stop,
 Clear trip. Artisan's own PID ("Control") is off, because ours runs on the

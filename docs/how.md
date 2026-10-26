@@ -119,7 +119,7 @@ Profiles are exempt because they are meant to run on their own.
 | `control-core/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding |
 | `control-esp32/src/app/controller.*` | The control task |
 | `control-esp32/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
-| `control-esp32/src/ControlPlugin.*` | Commands, data fields, watchdog, ArduinoOTA |
+| `control-esp32/src/ControlPlugin.*` | Commands, data fields, watchdog |
 | `croaster/src/` | Croaster library (WiFi, WebSocket, BLE, OTA, RoR) |
 
 ## Gotchas

@@ -88,7 +88,7 @@ config stays in the board; control logic is reusable by any future board
 | PID, autotune, profiles | `control-core` | Pure logic, unit-tested on the host (16 tests). |
 | SSR, dimmer, PWM fan, probe reading, NVS | `control-esp32/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 control board. |
 | Control loop + safety | `control-esp32/app/controller` | Own FreeRTOS task (see Threading). |
-| Commands, data fields, watchdog, ArduinoOTA | `control-esp32/ControlPlugin` | Uses only Croaster's public extension points. |
+| Commands, data fields, watchdog | `control-esp32/ControlPlugin` | Uses only Croaster's public extension points. |
 | Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
 
@@ -182,8 +182,8 @@ because Shawn asked for compile-time selection with static checks.
 ### D5. Board id — resolved: `esp32s3-flex`, chosen by Shawn 2026-10-26
 Ids must be lowercase and match ICRM's `CroasterBoardTypes`
 (`esp32s3`/`esp32c3`/`esp8266`/`unknown`). Folder `boards/esp32s3-flex/`,
-envs `esp32s3-flex[-debug|-ota|-pioarduino|-pioarduino-sdkconfig]`, board id
-`"esp32s3-flex"`, mDNS/OTA hostname `croaster-flex`. "roaster" was dropped
+envs `esp32s3-flex[-debug|-pioarduino|-pioarduino-sdkconfig]`, board id
+`"esp32s3-flex"`. "roaster" was dropped
 because the whole project is a roaster, so it told you nothing. Options that
 were considered:
 1. **`"esp32s3-flex"` (chosen).** Distinct, so the app never offers the

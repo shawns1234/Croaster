@@ -48,7 +48,7 @@ PlatformIO only; release envs for `build_all.sh`, `-debug` envs for
 | WiFi provisioning | Croaster (WiFiManager) | captive portal; yaeger needed creds over WS |
 | Network transport | Croaster WebSocket :81 | already speaks Artisan; sync server, no AsyncTCP |
 | Bluetooth | Croaster (ICRM app) | yaeger has none |
-| OTA | Croaster (WS/BLE) + ArduinoOTA (`espota`) | ElegantOTA needs an HTTP server we no longer run |
+| OTA | Croaster (WS/BLE, ICRM app) | ElegantOTA needs an HTTP server; ArduinoOTA was yaeger carry-over (D13) |
 | RoR | Croaster, clamp fixed | see design.md core changes |
 | Thermocouple | new MAX31855 decode (both repos' ideas) | control task owns the bus; fault bits; filter reset |
 | Heater | rewritten from yaeger | SSR time-proportional window, not 50 Hz PWM (zero-cross SSR cannot follow 50 Hz PWM) |
@@ -92,7 +92,7 @@ NeoPixel (Arduino 3.x drives the WS2812 via `digitalWrite(LED_BUILTIN)`).
   (no `command` key), so the `.aset` sends `{"command":{"burner":v}}` /
   `{"command":{"fan":v}}`. Full list: board README.
 - `boards/esp32s3-flex/artisan/croaster-flex.aset` = yaeger's settings
-  with port 81, empty path, host `croaster-flex.local`, new slider/button
+  with port 81, empty path, host `192.168.4.1`, new slider/button
   commands, personal paths cleared.
 
 ## 6. Bluetooth
@@ -106,7 +106,7 @@ Artisan has no BLE path for this protocol; use WiFi.
   `CROASTER_HAS_BLE`.
 - Selects: converter (MAX31855/MAX6675), heater (NONE/SSR), fan
   (NONE/AC_DIMMER/PWM), display (NONE/SSD1306),
-  pins, BLE, ArduinoOTA, PID defaults, limits, control core.
+  pins, BLE, PID defaults, limits, control core.
 - `ConfigCheck.h` (included first by `main.cpp`): `#error` for invalid enums
   and combinations (heater without fan, `REQUIRE_MAINS` without dimmer, mains
   not 50/60); `static_assert` for reserved/duplicate pins, dimmer gate < 32,
@@ -124,9 +124,9 @@ Artisan has no BLE path for this protocol; use WiFi.
    `esp_http_server` (in IDF, maintained, works on any core) rather than
    reintroducing AsyncTCP.
 2. **ElegantOTA vs plain OTA?** Plain. Croaster already does OTA over WebSocket
-   and BLE (ICRM app) and ArduinoOTA adds `pio run -t upload` over WiFi; ElegantOTA
-   would require an HTTP server and a third-party UI. All paths trip the heater
-   off before writing flash.
+   and BLE (ICRM app); ElegantOTA would require an HTTP server and a
+   third-party UI. The control task turns the heater off while an update runs
+   (`Update.isRunning()`).
 3. **Moving average?** Keep a short one (4 samples) on raw readings for control
    and reset it after 3 consecutive faults so a stale average never feeds the
    PID. RoR smoothing stays Croaster's; heavier smoothing belongs in Artisan, not
@@ -141,7 +141,7 @@ Artisan has no BLE path for this protocol; use WiFi.
    host-tested on a simulated plant; still validate on the real roaster (T8)
    and treat results as a starting point.
 6. **WiFi best practice?** WiFiManager portal for first setup (no creds in
-   code), STA with auto-reconnect, mDNS name `croaster-flex`, WiFi on core 0
+   code), STA with auto-reconnect, IP shown on the OLED, WiFi on core 0
    while control runs on core 1 at higher priority, and attach the IPEX antenna
    before power-up. Never let the network path gate the heater: the control
    task keeps running and the comms watchdog turns heat off if the client is gone.

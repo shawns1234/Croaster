@@ -73,9 +73,7 @@
 #define FLEX_LED_ON_LEVEL HIGH
 
 // ---- Features ---------------------------------------------------------------
-#define FLEX_ENABLE_BLE 1         // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
-#define FLEX_ENABLE_ARDUINO_OTA 1 // espota / `pio run -e esp32s3-flex-ota -t upload`
-#define FLEX_OTA_PASSWORD ""      // ArduinoOTA password ("" = none)
+#define FLEX_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
 
 // ---- Control and safety (Celsius; the app may display F) --------------------
 #define FLEX_PID_KP 1.0f // defaults until set over WebSocket or autotuned (then NVS)

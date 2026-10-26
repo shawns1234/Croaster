@@ -1,7 +1,6 @@
 #include "ControlPlugin.h"
 
 #include <ArduinoJson.h>
-#include <ArduinoOTA.h>
 #include <CroasterApp.h>
 #include <WiFi.h>
 
@@ -129,22 +128,9 @@ String ControlPlugin::handleBasic(const char* name) {
 void ControlPlugin::begin() {
     autotuneSeq_ = controller_.snapshot().autotuneSeq;
     touch();
-    if (!cfg_.arduinoOta)
-        return;
-    ArduinoOTA.setHostname(cfg_.otaHostname);
-    if (cfg_.otaPassword && *cfg_.otaPassword)
-        ArduinoOTA.setPassword(cfg_.otaPassword);
-    ArduinoOTA.onStart([this]() {
-        Command trip{Command::Kind::Trip};
-        trip.a = static_cast<float>(SafetyTrip::Firmware);
-        controller_.submit(trip);
-    });
-    ArduinoOTA.begin();
 }
 
 void ControlPlugin::loop() {
-    if (cfg_.arduinoOta)
-        ArduinoOTA.handle();
     const Snapshot s = controller_.snapshot();
 
     if (s.autotuneSeq != autotuneSeq_) { // autotune finished: keep the new gains

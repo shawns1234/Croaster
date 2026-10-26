@@ -27,7 +27,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-flex` | 27.2% (1 783 391 B), RAM 61 300 B |
+| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-flex` | 26.2% (1 718 351 B), RAM 56 780 B |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -46,7 +46,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   publishes a snapshot; `RoasterProbe` feeds it to `CroasterCore` via the
   sensor-injection constructor; `ControlPlugin` registers control commands
   (`onJsonCommand`/`onCommand`), adds data fields via `CroasterCore::onJsonData`,
-  runs the comms watchdog and ArduinoOTA. Details: `docs/design.md`.
+  runs the comms watchdog. Details: `docs/design.md`.
 - Heater/fan control is 100 % firmware-side (PID on the ESP32). Clients send
   setpoints/modes/percentages only. Two wire formats reach the same parser
   (`controlproto`): nested `{"command":{...}}` and yaeger's flat keys /
@@ -71,7 +71,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
   `CroasterCommandHandler::onOtherJson()`.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
-  by Shawn): folder, envs, board id, hostname `croaster-flex`, `.aset`.
+  by Shawn): folder, envs, board id, `.aset`.
 - Decisions pending (Shawn): design.md D1 (top-level control libs), D3
   (force-included config), D6 (watchdog via `getData` alias), D10 (flex ini
   vs Croaster's `boards/esp32s3` ini), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s

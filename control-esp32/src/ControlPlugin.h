@@ -3,14 +3,15 @@
 // points: onCommand()/onJsonCommand() for control, core().onJsonData() to add
 // heater/fan/setpoint/mode to every data payload. Also accepts yaeger's message
 // format (flat keys via onOtherJson(), setBurner/setFan/get|setPreferences). Croaster keeps WiFi, WebSocket
-// (port 81), BLE, OTA, display and RoR. Commands: see core/control_protocol.h.
+// (port 81), BLE, OTA, display and RoR. Commands: see control/control_protocol.h.
 //
-// Also owns three network-side safety/housekeeping jobs (loop task):
+// Also owns two network-side safety/housekeeping jobs (loop task):
 //  - comms watchdog: heater on and no client command/poll for commsTimeoutMs ->
 //    trip CommsLost (heater off, fan to the cooldown speed). Profile runs are
 //    exempt (they are autonomous).
 //  - persists PID gains after a successful autotune.
-//  - optional ArduinoOTA (espota / `pio run -t upload` over WiFi).
+// Firmware updates use Croaster's own OTA (WebSocket/BLE); the control task
+// turns the heater off while one runs (Update.isRunning()).
 #include <Arduino.h>
 
 #include "app/config_store.h"
@@ -21,9 +22,6 @@ class CroasterApp;
 
 struct ControlPluginConfig {
     uint32_t commsTimeoutMs = 10000; // 0 disables the watchdog
-    bool arduinoOta = false;
-    const char* otaHostname = "roaster";
-    const char* otaPassword = "";
 };
 
 class ControlPlugin {

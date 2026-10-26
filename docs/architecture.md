@@ -41,7 +41,7 @@ void setup() {
     controller.begin(s.gains, s.pidInput, core, prio);
     plugin.attach(app, s);                              // registers commands + data hook
     app.begin();                                        // Croaster: WiFi, WS, BLE, display
-    plugin.begin();                                     // ArduinoOTA
+    plugin.begin();                                     // starts the watchdog clock
 }
 void loop() { app.loop(); plugin.loop(); }              // plugin.loop = watchdog
 ```

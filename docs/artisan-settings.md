@@ -49,7 +49,7 @@ sequenceDiagram
 | Section / key | Value | Why | Source |
 |:---|:---|:---|:---|
 | `[Device] id` | `111` | 111 = the "WebSocket" device | `device_registry.py:152` |
-| `[WebSocket] host` | `croaster-flex.local` | ArduinoOTA advertises this mDNS name. **If Windows can't resolve `.local`, put in the IP shown on the OLED.** | `main.cpp` `otaHostname`; `ControlPlugin.cpp` (`ArduinoOTA.setHostname`) |
+| `[WebSocket] host` | `192.168.4.1` | Croaster's own access point address (README, "Option 1"). **On your home WiFi, put in the IP shown on the OLED.** Croaster advertises no mDNS name, so `.local` does not resolve (design D13). | `README.md` "How to Connect Croaster with Artisan" |
 | `[WebSocket] port` | `81` | Croaster's WebSocket server port | `croaster/src/CroasterWebSocketManager.*` |
 | `[WebSocket] path` | `WebSocket` | Artisan connects to `ws://host:port/path`. Croaster's server answers on any path; `WebSocket` is what Croaster's own setup screenshot uses. | `wsport.py` (URL build); `images/Connect-Artisan-Same-Network.png` |
 | `[WebSocket] request_data_command` | `getData` | One request fills **all** inputs. We answer it with the same `id` and also count it as client activity for the comms watchdog. | `comm.py:1944-1955`; `ControlPlugin.cpp` `getData` |

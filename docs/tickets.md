@@ -10,7 +10,7 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T3 | Probe check: both probes read room temp; boiling water ≈ 100 °C; grounded-probe fault shows as `trip:"sensor"` | todo | T2 |
 | T4 | Fan on mains: dimmer Z-C detected (`mainsDetected`), fan 30/60/100 % audibly different; unplug mains → `trip:"nomains"` | todo | T2 |
 | T5 | Heater on bench lamp/load via SSR: `burner` 0/50/100 % gives correct window duty; fan interlock (heat forces fan ≥ 30 %) | todo | T4 |
-| T6 | Safety drills: over-temp (set `FLEX_OVER_TEMP_C` low), close Artisan while heating → `trip:"comms"` after 10 s and fan to cooldown, OTA start → heater off | todo | T5 |
+| T6 | Safety drills: over-temp (set `FLEX_OVER_TEMP_C` low), close Artisan while heating → `trip:"comms"` after 10 s and fan to cooldown, Croaster OTA (ICRM app) start → heater off | todo | T5 |
 | T7 | Artisan: load `artisan/croaster-flex.aset`; BT on Input 1, ET on Input 2; Heater/Fan/SV curves; Fan/Setpoint/Heater sliders; PID/Manual/Autotune/Stop/Clear trip buttons act on the firmware (`docs/artisan-settings.md`) | todo | T5 |
 | T8 | PID: setpoint hold on the roaster empty; autotune run; gains saved to NVS survive reboot | todo | T6 |
 | T9 | Profile: load the README example profile, `startProfile`, setpoint follows ramps, `stop` → cooldown fan | todo | T8 |
@@ -26,3 +26,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T19 | Decide D10 (flex vs Croaster's esp32s3 ini: standalone / extends / shared base ini) | blocked | Shawn |
 | T20 | Flex screen: Croaster's shared SSD1306 display + `setHeaderText()`; drop `RoasterOledDisplay`/U8g2 | done | — |
 | T21 | Rename roaster-named code to flex/control (map in `docs/design.md`) | done | — |
+| T22 | Croaster's OTA only (ArduinoOTA and `-ota` env removed), `default_16MB.csv`, flex `lib_deps` trimmed | done | — |
