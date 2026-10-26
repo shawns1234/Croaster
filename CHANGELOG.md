@@ -64,8 +64,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `RoasterOledDisplay`, the U8g2 dependency and the SH1106 option are gone.
 - **Board renamed `esp32s3-roaster` → `esp32s3-flex`**: folder (history kept
   via `git mv`), envs `esp32s3-flex[-debug|-pioarduino|-pioarduino-sdkconfig]`,
-  board id `esp32s3-flex`, mDNS/OTA hostname `croaster-flex`,
+  board id `esp32s3-flex`,
   `artisan/croaster-flex.aset`.
+- design.md: decisions D11–D15 (MAX31855 decoders, display, OTA, config
+  wizard, MAX6675 dependency), D8 rewritten, a file-by-file inventory against
+  Croaster, and a table of decisions changed on 2026-10-26.
 - Comms watchdog: 10 s (was 30 s), and a trip also sets the cooldown fan.
 - Display default confirmed: 0.96" I2C 128×64 SSD1306.
 - **RoR keeps negative values** (falling temperature was reported as 0).

@@ -3,7 +3,7 @@
 Written with the `/architect` method, applied to what's already built: ground
 it (see `how.md`), set out the shape and the alternatives, screen it against
 the design red flags, and list open decisions. Decision details with options
-are in `design.md` (D1–D9).
+are in `design.md` (D1–D15).
 
 ## Problem
 
@@ -155,8 +155,9 @@ Taken from Croaster: everything about connectivity, display and boards.
   logic and reuse by a future second control board.
 - A force-included `config.h` (D3), in exchange for one master config file.
 - A comms watchdog on traffic, not on disconnect events (D9), in exchange for
-  also catching silent WiFi loss. The cost is a 10 s worst case instead of
-  yaeger's instant cut on a clean disconnect.
+  also catching silent WiFi loss. The cost is a timeout (10 s default,
+  2–600 s, can be switched off) instead of yaeger's instant cut on a clean
+  disconnect.
 - A Croaster core hook `onOtherJson` (D8), in exchange for exact yaeger wire
   compatibility.
 
@@ -171,14 +172,20 @@ Taken from Croaster: everything about connectivity, display and boards.
 ## Open questions (DECISIONs for Shawn)
 1. D1: top-level `control-core/` + `control-esp32/` folders. OK?
 2. D3: force-include `config.h` into every unit. OK?
-3. D6/D9: is the 10 s comms watchdog (heater off, fan to cooldown) the
-   behaviour you want, or yaeger's instant cut on disconnect as well?
+3. D6/D9: is the comms watchdog (heater off, fan to cooldown; 10 s default,
+   configurable, can be off) the behaviour you want, or yaeger's instant cut
+   on disconnect as well?
 4. D8: keep yaeger flat-key compatibility (needs the `onOtherJson` core hook),
-   or nested commands only?
+   or drop flat keys and the hook? Nothing of ours sends them.
 5. Cooldown fan default: 100 % (ours) or 65 % (yaeger)?
 6. D10: how the flex board's `platformio.ini` relates to Croaster's
    `boards/esp32s3` (standalone, `extends` his env, or a shared chip-level base
    ini). See design.md.
+7. D11: one MAX31855 decoder in core, or drop core's `CroasterMAX31855` and
+   flex's monitor build?
+8. D13: is typing the IP into Artisan fine, or add `ESPmDNS` for
+   `croaster-flex.local`?
+9. D14: config wizard as a Python script (recommended) or another option?
 
 Resolved: D5, board id `esp32s3-flex` (Shawn, 2026-10-26).
 

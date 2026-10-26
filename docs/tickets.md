@@ -15,17 +15,18 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T8 | PID: setpoint hold on the roaster empty; autotune run; gains saved to NVS survive reboot | todo | T6 |
 | T9 | Profile: load the README example profile, `startProfile`, setpoint follows ramps, `stop` → cooldown fan | todo | T8 |
 | T10 | ICRM app over BLE + WebSocket with board id `esp32s3-flex` (design D5) | todo | T2 |
-| T11 | Decide D1/D3/D6/D8/D9/D10 with Shawn (list in `docs/architecture.md`); update AGENTS.md layout if D1 accepted | blocked | Shawn |
+| T11 | Decide D1/D3/D6/D8/D9/D10/D11/D13/D14 with Shawn (list in `docs/architecture.md`); update AGENTS.md layout if D1 accepted | blocked | Shawn |
 | T12 | Watchdog sees all client traffic via core `CroasterCommandHandler::lastCommandMillis()` (D6 option 1); `getData` alias removed | done | — |
 | T13 | Existing boards: fix `boards/esp32s3` platformio.ini (`boards_dir = ..`, `-Wno-deprecated-declarations`), pin c3/s3 platform versions | todo | — |
 | T14 | Web UI (phase 2): control page served from LittleFS or embedded | todo | T9 |
 | T15 | yaeger parity on hardware: flat keys (`BurnerVal`, `Mode`, `Setpoint`, `Target`), `setPreferences`/`getPreferences`, `Amb`/`wifiStrength` in data, setpoint 0→>0 PID reset (`docs/control-parity.md`) | todo | T8 |
 | T16 | Test that parses the `.aset` slider/button commands and runs each through `controlproto`, so the file and the firmware can't drift | todo | — |
 | T17 | Artisan setting check against source + docs (`docs/artisan-settings.md`) | done | — |
-| T18 | Board renamed `esp32s3-roaster` → `esp32s3-flex` (folder, envs, board id, hostname `croaster-flex`, `.aset`) | done | — |
+| T18 | Board renamed `esp32s3-roaster` → `esp32s3-flex` (folder, envs, board id, `.aset`) | done | — |
 | T19 | Decide D10 (flex vs Croaster's esp32s3 ini: standalone / extends / shared base ini) | blocked | Shawn |
 | T20 | Flex screen: Croaster's shared SSD1306 display + `setHeaderText()`; drop `RoasterOledDisplay`/U8g2 | done | — |
 | T21 | Rename roaster-named code to flex/control (map in `docs/design.md`) | done | — |
 | T22 | Croaster's OTA only (ArduinoOTA and `-ota` env removed), `default_16MB.csv`, flex `lib_deps` trimmed | done | — |
 | T23 | Watchdog settings: `FLEX_WATCHDOG_ENABLED`/`FLEX_WATCHDOG_TIMEOUT_S` defaults, `{"command":{"watchdog":...}}` saved in NVS, shown in `getControl` | done | — |
 | T24 | Two-probe path documented end to end (`docs/how.md`); per-probe fault filter moved to pure `ProbeChannel`; host tests for fault bits and independent channels | done | — |
+| T25 | Config wizard `tools/flex-config.py` (design D14): questions or an answers file in, `src/config.h` out, same checks as `ConfigCheck.h`; README section | todo | Shawn (D14) |

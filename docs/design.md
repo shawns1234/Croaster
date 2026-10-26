@@ -70,7 +70,7 @@ control-esp32/  (Arduino/ESP32)   ControlPlugin  --registers-->  CroasterApp com
         |
         v
 control-core/     (pure C++, host-tested)  PID, relay autotune, roast profile,
-                                    MAX31855/MAX6675 decode, moving average,
+                                    MAX31855/MAX6675 decode, probe filter,
                                     time-proportional window, command protocol
 croaster/         (Croaster library) WiFi, WebSocket, BLE, OTA, RoR, display iface
 ```
@@ -85,12 +85,53 @@ config stays in the board; control logic is reusable by any future board
 |:---|:---|:---|
 | MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
 | MAX31855/MAX6675 decode for control | `control-core/control/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
+| Per-probe filter and fault count | `control-core/control/probe_channel.h` | Pure logic; both channels tested on the host. |
 | PID, autotune, profiles | `control-core` | Pure logic, unit-tested on the host. |
 | SSR, dimmer, PWM fan, probe reading, NVS | `control-esp32/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 control board. |
 | Control loop + safety | `control-esp32/app/controller` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog | `control-esp32/ControlPlugin` | Uses only Croaster's public extension points. |
 | Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
+
+### Every file we added, against Croaster (review point 9, 2026-10-26)
+
+Relation: **new** (Croaster has nothing like it), **extends** (adds to a
+Croaster part through its own extension point), **duplicates** (a second copy
+of something Croaster or our code already has).
+
+Board folder `boards/esp32s3-flex/`:
+
+| File | Relation | Why it is here |
+|:---|:---|:---|
+| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Has two builds: control (`FLEX_HEATER_*`) and monitor (`FLEX_HEATER_NONE`, plain Croaster with MAX31855). |
+| `src/config.h` | new | The one master file for pins, chips, drivers and limits (D2). Croaster boards set pins in `main.cpp`. |
+| `src/ConfigCheck.h` | new | Compile-time checks on `config.h` (reserved pins, duplicates, ranges). |
+| `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
+| `esp32s3-sdkconfig.defaults` | duplicates | Same content as `boards/esp32s3/`'s (line endings differ). Used only by the pioarduino env. Sharing it is part of D10. |
+| `artisan/croaster-flex.aset` | new | Artisan settings for heater, fan, PID and the data request. |
+| `test/test_core/test_main.cpp` | new | Host tests for `control-core`. |
+| `README.md`, `.gitignore` | new | Wiring, settings and generated-file ignores. |
+
+Libraries `control-core/` (pure C++) and `control-esp32/` (ESP32):
+
+| File | Relation | Why it is here |
+|:---|:---|:---|
+| `control/max31855.h` | duplicates | Same decode as core's `CroasterMAX31855`. The control task needs the decode without core's bus code. D11. |
+| `control/max6675.h` | duplicates | Same decode as the `MAX6675_Thermocouple` library, which reads the bus itself and has no fault bit API. Used only if a control board picks MAX6675. |
+| `control/moving_average.h`, `probe_channel.h` | new | Per-probe filter and fault count for the control loop. Croaster's `SmoothThermocouple` wraps a sensor that reads the bus, and has no fault count, so it can't sit on the control task's readings. |
+| `control/pid.*`, `relay_autotune.*`, `roast_profile.*`, `time_proportional.h` | new | Control features Croaster doesn't have. |
+| `control/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands, named commands, flat keys via D8); builds the extra data fields. |
+| `ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
+| `RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
+| `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
+| `app/config_store.*` | new | NVS for PID gains, cooldown fan and watchdog. Croaster core stores nothing. |
+| `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
+
+Clear wins done this round: the board's own SSD1306 class (now Croaster's
+display plus a hook, D12), `partitions.csv` (identical to `default_16MB.csv`),
+ArduinoOTA (D13), and the probe filter moved out of `hw/` into a pure,
+tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
+(D11) and the copied sdkconfig file (D10, option C can carry it).
 
 ## Data flow
 1. Control task (core 1, every 10 ms tick): reads both converters on its own
@@ -129,13 +170,30 @@ config stays in the board; control logic is reusable by any future board
 | `CroasterCommandHandler::onOtherJson(fn)` | needed for yaeger wire compatibility | Messages without `"command"` (yaeger's `{"BurnerVal":60}`) were dropped. Additive fallback, called only when no other branch matched; WebSocket and BLE. See D8. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
-Existing boards still build: `esp32c3` built with the changes (RAM 44 696 B,
-flash 1 741 985 B = 91.7 %; pinned to espressif32 8.0.0 for the check,
-2026-10-26).
+Existing boards still build: `esp32c3` built with every change above,
+`lastCommandMillis()` included (2026-10-26, its unpinned `espressif32`, which
+resolves to pioarduino 55.03.312 on this machine: RAM 47 136 B, flash
+1 505 073 B = 79.2 %; release and debug both SUCCESS).
 
 ## Decisions where Croaster's rules and Shawn's goals rub
 
-Each lists alternatives; the recommended one is implemented (all reversible).
+Each lists alternatives; the recommended one is implemented (all reversible)
+unless the heading says otherwise.
+
+Changes from Shawn's nine review points (2026-10-26):
+
+| Decision | Status | What moved |
+|:---|:---|:---|
+| D1, D3 | names only | Folder and macro names (see "Names"); the choice is unchanged. |
+| D6 | changed | Watchdog reads core `lastCommandMillis()`; the `getData` alias is gone. |
+| D8 | changed | Rewritten: why flat keys need the hook; dropping them is now an option. |
+| D9 | changed | Watchdog timeout and an off switch are settings (config.h, command, NVS). |
+| D10 | facts updated | Partition table and display libs now match the shared defaults. |
+| D11 | new, open | Two MAX31855 implementations. |
+| D12 | new | Croaster's SSD1306 display with a header hook; U8g2 and SH1106 dropped. |
+| D13 | new | Croaster's OTA only; ArduinoOTA and its mDNS name dropped. |
+| D14 | new, design only | Config wizard. |
+| D15 | new | `MAX6675_Thermocouple` stays a core dependency. |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -162,7 +220,7 @@ checks), Kconfig menus (pioarduino only).
 ### D3. Library feature switches from board config — **DECISION**
 `CROASTER_HAS_BLE` must be seen when `croaster/` compiles.
 1. **Force-include `config.h` into every unit (`-include`, implemented).** One
-   file really is the master; cost: every library sees the `ROASTER_*` macros
+   file really is the master; cost: every library sees the `FLEX_*` macros
    (prefixed, so collisions are unlikely).
 2. `-D CROASTER_HAS_BLE=0` in `platformio.ini`. Croaster style, but the master
    config is then split across two files.
@@ -219,24 +277,39 @@ avoid. Options: loop-only (simplest, unsafe stalls), hardware-timer ISR (no SPI
 reads in ISR), dedicated task (implemented), task on core 0 (shares core with
 WiFi). Task on core 1 at high priority chosen.
 
-### D8. yaeger wire compatibility (flat keys) — **DECISION**
-Shawn wants yaeger's level of control. yaeger's clients send flat keys with no
-`"command"` (`{"BurnerVal":60}`, `{"Mode":"PID"}`, `{"Setpoint":200}`) plus
-`setBurner`/`setFan`/`setPreferences`/`getPreferences`. Croaster's handler only
-routes messages that have `"command"`. The named commands fit `onCommand` with
-no core change. Flat keys don't.
-1. Nested only. Configure every client (Artisan `.aset`) to send
-   `{"command":{...}}`. No core change, but yaeger's web UI and older settings
-   files silently do nothing.
-2. **`onOtherJson(fn)` fallback in `CroasterCommandHandler` (implemented).**
-   About 5 lines, additive, called only for JSON objects without `"command"`,
-   and works over WebSocket and BLE. Parsing stays in `controlproto::parseLegacy`.
-3. Pre-parse in `CroasterWebSocketManager` before the handler. WebSocket
-   only (BLE misses out), and it touches transport code.
-4. Fork/replace the handler in the plugin. No upstream change, but it
+### D8. yaeger's flat keys need a core hook — **DECISION** (changed 2026-10-26)
+yaeger's clients send two kinds of message. Named commands
+(`setBurner`, `setFan`, `setPreferences`, `getPreferences`) carry a string
+`"command"`, so they use Croaster's `onCommand` with no core change (done,
+`kLegacyBasicNames`). Flat keys (`{"BurnerVal":60}`, `{"FanVal":80}`,
+`{"Setpoint":200}`, `{"Mode":"PID"}`, `{"Target":"BT"}`) carry no `"command"`
+member at all.
+
+Why flat keys can't use Croaster's mechanism: `CroasterCommandHandler::handle()`
+dispatches on the `"command"` member only. A string goes to the `onCommand`
+table, keyed by that string; an object goes to the `onJsonCommand` table, keyed
+by the members *inside* `"command"`. A message without `"command"` matches
+neither branch, and upstream `handle()` returns false before any registered
+callback runs. WebSocket and BLE pass the raw text straight to `handle()`, so
+no other layer sees it either. No registration call can reach `BurnerVal`.
+
+Who sends flat keys today: nothing of ours. The `.aset` sends nested commands
+(`{"command":{"burner":60}}`). Only yaeger's own web UI and older yaeger
+`.aset` files do.
+1. **`onOtherJson(fn)` fallback in `CroasterCommandHandler` (implemented).**
+   About 5 lines, additive, runs only for JSON objects without `"command"`,
+   over WebSocket and BLE. Parsing stays in `controlproto::parseLegacy`.
+2. Drop flat-key support: remove the hook, the registration and the flat-key
+   half of `parseLegacy`; keep the named yaeger commands. No core change for
+   this feature. yaeger's web UI and old settings files stop working; ours
+   don't notice.
+3. Pre-parse in `CroasterWebSocketManager` before the handler. WebSocket only
+   (BLE misses out), and it touches transport code.
+4. Translate in the plugin by replacing the handler. No upstream change, but it
    duplicates Croaster's routing (two ways to do one thing).
-Recommendation: 2. It is reversible: delete the hook and the registration.
-The `.aset` uses nested commands, so Artisan doesn't depend on it.
+Recommendation: 1 while yaeger-parity is a goal (T15). If Shawn doesn't need
+yaeger's web UI or old `.aset` files, take 2: it removes a core change.
+Reversible either way.
 
 ### D9. What happens when the client goes away — **DECISION** (changed 2026-10-26)
 yaeger: on a clean WebSocket disconnect, in Manual with heater > 0, heater 0
@@ -263,7 +336,7 @@ Settings (changed 2026-10-26, Shawn's point 4): `FLEX_WATCHDOG_ENABLED` and
 Both are saved in NVS and reported by `getControl`. Usage: flex README,
 "Comms watchdog".
 
-### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made)**
+### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made; facts updated 2026-10-26)**
 
 Shawn asked (2026-10-26) whether a "flex" board's `platformio.ini` could `extends = core`,
 or otherwise reuse what `boards/esp32s3/platformio.ini` already says. This is a discussion
@@ -279,11 +352,10 @@ board json, platform, framework, flash size, upload and monitor options, and com
 
 **What flex and his esp32s3 actually have in common:** the chip and module (ESP32-S3 N16R8,
 `esp32-s3-devkitm1-n16r8.json`), 16 MB flash, USB-CDC flags, `BOARD_HAS_PSRAM`, and the
-upload and monitor speeds. **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
-SSD1306/U8g2 + ControlCore/ControlEsp32), build_flags (his `LV_CONF_PATH` points into his
+upload and monitor speeds, and the partition table (`default_16MB.csv`). **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
+Adafruit SSD1306 + ControlCore/ControlEsp32), build_flags (his `LV_CONF_PATH` points into his
 `src/ui`; ours does `-include src/config.h`), PSRAM mode (`dio_opi` vs `qio_opi`),
-sdkconfig (his uses `esp32s3-sdkconfig.defaults`; ours is off by default), the partition
-table, and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
+sdkconfig (his uses `esp32s3-sdkconfig.defaults`; ours is off by default), and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
 
 | | How | Pros | Cons |
 |---|---|---|---|
@@ -316,6 +388,105 @@ reversible. C keeps the one useful property Shawn is after (the "esp32s3" facts 
 place) without B's hidden coupling. Avoid B: it looks like reuse but needs nearly every
 option overridden, and it makes our build depend on edits to his file.
 **Reversible:** yes. Moving A→C only touches ini files.
+
+### D11. Two MAX31855 implementations — **DECISION (new 2026-10-26, open, no change made)**
+There are two: `croaster/src/CroasterMAX31855.*` (added by us, bit-banged,
+decodes inline, used only by flex's monitor build `FLEX_HEATER_NONE` and by
+any stock board that picks it) and `control-core/src/control/max31855.h`
+(pure, host-tested decoder) read by `control-esp32/src/hw/thermocouples.cpp`
+on hardware SPI. They decode the same 32-bit frame twice.
+
+Adafruit_MAX31855 was weighed against the in-house decoder: keep ours. One
+32-bit read gives temperature, cold junction and fault bits together, where
+Adafruit's `readCelsius()` and `readInternal()` each read the chip again. Ours
+is host-tested and needs no Adafruit BusIO.
+1. Keep both (today). Core stays independent of `control-core`; the decode is
+   written twice.
+2. One decoder in core: move `max31855::decode` into `croaster/src`
+   (e.g. `CroasterMAX31855::decode(uint32_t)`), have `CroasterMAX31855` and
+   `hw/thermocouples` both call it, and point the host tests at it. One copy;
+   `control-core` then includes a core header.
+3. Drop `CroasterMAX31855` and flex's monitor build. Core goes back to
+   MAX6675-only, removing one of our core changes; a temperature-only board
+   then uses Croaster's stock MAX6675 boards.
+4. Use Adafruit_MAX31855 in core. Smallest new code, but two reads per sample
+   and a new dependency.
+Recommendation: 2, after Shawn says whether core should offer MAX31855 to
+other boards at all (if not, 3).
+
+### D12. Flex screen uses Croaster's SSD1306 display — **DECISION (new 2026-10-26)**
+Flex had its own `RoasterOledDisplay` (U8g2), a second SSD1306 class next to
+Croaster's `boards/common` one.
+1. **Croaster's `CroasterDisplaySSD1306` plus `setHeaderText(fn)` (implemented).**
+   The header shows heater %, fan % and mode, or the trip, alternating with the
+   IP. One display class; drops U8g2.
+2. Keep the U8g2 class. Supports SH1106 1.3" modules too, but duplicates
+   Croaster's display.
+3. Subclass `CroasterDisplaySSD1306` in the board. Needs its draw methods made
+   virtual or protected, a bigger core edit than a hook.
+4. No status on screen (plain Croaster screen). No core change; heater, fan and
+   trip are visible only in Artisan.
+Lost with 1: SH1106 modules and address 0x3D. Shawn's module is a 0x3C
+SSD1306, so nothing he has changes. Reversible.
+
+### D13. Firmware updates over Croaster's OTA only — **DECISION (new 2026-10-26)**
+ArduinoOTA (espota) came from yaeger. Croaster already updates over WebSocket
+and BLE (`OTA_BEGIN:<size>`, then binary chunks; the ICRM app uses it), and the
+control task turns the heater off while `Update.isRunning()`. The
+ArduinoOTA heater trip and the comms watchdog were separate code; they only
+sat next to each other in `ControlPlugin`.
+1. **Croaster's OTA only (implemented).** No espota env, no OTA password
+   macro. Side effect: ArduinoOTA was also what advertised `croaster-flex.local`
+   over mDNS, so the `.aset` host is now Croaster's AP address `192.168.4.1`;
+   on home WiFi the user types the IP from the screen, as Croaster's README says.
+2. Keep ArduinoOTA for `pio run -t upload` over WiFi. Handy for development,
+   but a second update path with its own password.
+3. Croaster's OTA plus `ESPmDNS` in the board's `main.cpp` (about 3 lines) so
+   `croaster-flex.local` keeps working. A small new system Croaster doesn't
+   have.
+4. Croaster's OTA plus an mDNS option in core's WiFi setup, for every board.
+   Most useful, but a core feature change for upstream to accept.
+Recommendation: 1; take 3 if typing the IP into Artisan gets annoying.
+
+### D14. Config wizard for `config.h` — **DECISION (new 2026-10-26, design only)**
+Goal: someone builds flex without reading `config.h`: they answer questions
+(probe chip, heater, fan driver, display, pins) and get a valid `config.h`.
+`ConfigCheck.h` stays the authority: whatever the wizard writes must still
+pass it at compile time.
+1. **Standalone Python script `tools/flex-config.py` (recommended).** Asks
+   questions in the terminal (or reads answers from a file), validates them
+   with the same rules as `ConfigCheck.h` (reserved pins, duplicates, mains
+   requires the dimmer), and writes `src/config.h` from a template. Run once,
+   commit the result. No PlatformIO coupling; works from any shell.
+2. PlatformIO `extra_scripts = pre:` that generates `config.h` from a
+   `flex.ini` or JSON answers file on every build. The answers file becomes the
+   master and `config.h` a build product, which reverses D2 (the header is no
+   longer the file you edit) and hides errors in build logs.
+3. JSON/ini answers file turned into a header by a small generator, run by
+   hand. Like 1 with a file instead of questions; good for keeping several
+   machines' configs side by side.
+4. A web page (static HTML/JS in `tools/`) that renders `config.h` for
+   copy-paste. Friendliest; a second implementation of the validation, in
+   JavaScript.
+Recommendation: 1, with 3's answers file as its non-interactive mode, so one
+script serves both. Feasible: the template is today's `config.h` with
+placeholders; the validation table is the `ConfigCheck.h` rules (pin list,
+`unique()`, mains/dimmer). Ticket T25.
+
+### D15. `MAX6675_Thermocouple` stays a core dependency — **DECISION (new 2026-10-26)**
+Shawn asked to remove the MAX6675 library. Core needs it to compile:
+`croaster/library.json` lists it, and `CroasterCore.h` includes
+`MAX6675_Thermocouple.h`, `SmoothThermocouple.h` and `Thermocouple.h`. The
+`Thermocouple` base class that `RoasterProbe` implements comes from it.
+1. **Leave it to core (implemented).** Removed from flex's `lib_deps`;
+   PlatformIO still installs it through `croaster/library.json`. No core change.
+2. Define a `CroasterThermocouple` interface in core and include the MAX6675
+   library only where `CroasterThermocoupleType::MAX6675` is built. Removes
+   the dependency from control builds; touches every core sensor path.
+3. Vendor the ~100 lines of the MAX6675 library into core. No external
+   dependency, but upstream fixes stop flowing in.
+Recommendation: 1. The library costs nothing in a control build beyond
+compile time (the linker drops unused code).
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

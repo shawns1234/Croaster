@@ -18,7 +18,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `control-core/` | Pure control logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
 | `control-esp32/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `ControlPlugin` (hooks into `CroasterApp`) |
-| `docs/` | `design.md` (architecture + decisions D1–D10), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D15), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -75,10 +75,14 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `CroasterCommandHandler::onOtherJson()`.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
-- Decisions pending (Shawn): design.md D1 (top-level control libs), D3
-  (force-included config), D6 (watchdog via core `lastCommandMillis()`), D10 (flex ini
-  vs Croaster's `boards/esp32s3` ini), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s
-  traffic watchdog vs instant cut on disconnect).
+- Decisions pending (Shawn), all in design.md: D1 (top-level control libs),
+  D3 (force-included config), D6 (watchdog via core `lastCommandMillis()`),
+  D8 (`onOtherJson` for yaeger flat keys, or drop them), D9 (traffic watchdog,
+  configurable, vs instant cut on disconnect), D10 (flex ini vs Croaster's
+  `boards/esp32s3` ini), D11 (two MAX31855 decoders), D12 (Croaster display
+  plus header hook), D13 (Croaster OTA only, no mDNS), D14 (config wizard,
+  design only), D15 (MAX6675 library stays a core dependency). design.md
+  lists which of these changed on 2026-10-26.
 
 ## Git state (2026-08-30, upstream)
 - Branch `dev` (HEAD `3f52109`, tracks `origin/dev`); the `boards/` + `croaster/`
