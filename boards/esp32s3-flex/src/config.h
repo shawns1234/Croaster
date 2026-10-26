@@ -23,7 +23,7 @@
 // Board id reported in getDeviceInfo. The Croaster app (ICRM) picks OTA images
 // by this id; lowercase per AGENTS.md, but NOT "esp32s3": that id belongs to
 // the ES3C28P LCD image, and an app OTA would replace the roaster firmware.
-#define ROASTER_BOARD_NAME "esp32s3-roaster"
+#define ROASTER_BOARD_NAME "esp32s3-flex"
 #define ROASTER_DUMMY_DATA 0 // 1 = report fake temperatures (no probes needed)
 
 // ---- Thermocouple converters (ET + BT share SCK/MISO, one CS each) --------
@@ -76,7 +76,7 @@
 
 // ---- Features ---------------------------------------------------------------
 #define ROASTER_ENABLE_BLE 1         // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
-#define ROASTER_ENABLE_ARDUINO_OTA 1 // espota / `pio run -e esp32s3-roaster-ota -t upload`
+#define ROASTER_ENABLE_ARDUINO_OTA 1 // espota / `pio run -e esp32s3-flex-ota -t upload`
 #define ROASTER_OTA_PASSWORD ""      // ArduinoOTA password ("" = none)
 
 // ---- Control and safety (Celsius; the app may display F) --------------------

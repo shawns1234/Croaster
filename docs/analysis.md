@@ -92,8 +92,8 @@ NeoPixel (Arduino 3.x drives the WS2812 via `digitalWrite(LED_BUILTIN)`).
 - Control: yaeger's flat `{"BurnerVal":v}` is not routable by Croaster
   (no `command` key), so the `.aset` sends `{"command":{"burner":v}}` /
   `{"command":{"fan":v}}`. Full list: board README.
-- `boards/esp32s3-roaster/artisan/croaster-roaster.aset` = yaeger's settings
-  with port 81, empty path, host `croaster-roaster.local`, new slider/button
+- `boards/esp32s3-flex/artisan/croaster-flex.aset` = yaeger's settings
+  with port 81, empty path, host `croaster-flex.local`, new slider/button
   commands, personal paths cleared.
 
 ## 6. Bluetooth
@@ -102,7 +102,7 @@ commands, OTA over BLE). Kept, on by default (`ROASTER_ENABLE_BLE`); roaster
 commands work over BLE too because they register in the shared command handler.
 Artisan has no BLE path for this protocol; use WiFi.
 
-## 7. Master config (`boards/esp32s3-roaster/src/config.h`)
+## 7. Master config (`boards/esp32s3-flex/src/config.h`)
 - Only `#define`s; force-included into every unit so it also sets Croaster's
   `CROASTER_HAS_BLE`.
 - Selects: converter (MAX31855/MAX6675), heater (NONE/SSR), fan
@@ -142,7 +142,7 @@ Artisan has no BLE path for this protocol; use WiFi.
    host-tested on a simulated plant; still validate on the real roaster (T8)
    and treat results as a starting point.
 6. **WiFi best practice?** WiFiManager portal for first setup (no creds in
-   code), STA with auto-reconnect, mDNS name `croaster-roaster`, WiFi on core 0
+   code), STA with auto-reconnect, mDNS name `croaster-flex`, WiFi on core 0
    while control runs on core 1 at higher priority, and attach the IPEX antenna
    before power-up. Never let the network path gate the heater: the control
    task keeps running and the comms watchdog turns heat off if the client is gone.
@@ -154,15 +154,15 @@ Artisan has no BLE path for this protocol; use WiFi.
 
 | Build | Result | RAM | Flash |
 |:---|:---|---:|---:|
-| `esp32s3-roaster` (espressif32 8.0.0) | ok | 62 316 B (19.0 %) | 1 765 159 B (26.9 %) |
-| `esp32s3-roaster-pioarduino` (55.03.312) | ok | 62 656 B | 1 425 327 B |
-| `esp32s3-roaster-pioarduino-sdkconfig` | ok (clean, 2 min) | 62 448 B | 1 431 815 B |
+| `esp32s3-flex` (espressif32 8.0.0) | ok | 62 316 B (19.0 %) | 1 765 159 B (26.9 %) |
+| `esp32s3-flex-pioarduino` (55.03.312) | ok | 62 656 B | 1 425 327 B |
+| `esp32s3-flex-pioarduino-sdkconfig` | ok (clean, 2 min) | 62 448 B | 1 431 815 B |
 | variant MAX6675 + PWM + SH1106, BLE off | ok | 60 008 B | 1 451 014 B |
 | monitor (no heater/fan, Croaster SSD1306) | ok | 55 716 B | 1 669 131 B |
 | negative config tests (3) | fail as intended | | |
 | `pio test -e native` | 15/15 pass | | |
 | `boards/esp32c3` with core changes (8.0.0) | ok | 44 680 B | 1 741 489 B (91.6 %) |
-| `./build_all.sh esp32s3-roaster` | ok | | `builds/Croaster_esp32s3-roaster_0.62.bin` |
+| `./build_all.sh esp32s3-flex` | ok | | `builds/Croaster_esp32s3-flex_0.62.bin` |
 
 Platform note: 8.0.0 and pioarduino link the same Arduino core; pioarduino's
 images are ~340 KB smaller (different prebuilt IDF lib config). Both are fine.

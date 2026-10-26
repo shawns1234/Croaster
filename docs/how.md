@@ -41,7 +41,7 @@ thermometer library, and the roaster logic sits next to it.
 ## How it works
 
 ### Boot
-`boards/esp32s3-roaster/src/main.cpp` `setup()`:
+`boards/esp32s3-flex/src/main.cpp` `setup()`:
 1. Heater and fan outputs start **off** before anything else.
 2. Saved settings (PID gains, PID input, cooldown fan) load from NVS.
 3. The control task starts on core 1.
@@ -110,12 +110,12 @@ Profiles are exempt because they are meant to run on their own.
 
 | Path | What |
 |:---|:---|
-| `boards/esp32s3-roaster/src/config.h` | **The one file to edit**: pins, parts, limits, PID defaults |
-| `boards/esp32s3-roaster/src/ConfigCheck.h` | Compile-time checks on config.h (bad pins, conflicts) |
-| `boards/esp32s3-roaster/src/main.cpp` | Wires everything together |
-| `boards/esp32s3-roaster/src/RoasterOledDisplay.*` | The OLED screen (SSD1306 via U8g2) |
-| `boards/esp32s3-roaster/artisan/croaster-roaster.aset` | Artisan settings (see `artisan-settings.md`) |
-| `boards/esp32s3-roaster/test/` | Host unit tests (`pio test -e native`) |
+| `boards/esp32s3-flex/src/config.h` | **The one file to edit**: pins, parts, limits, PID defaults |
+| `boards/esp32s3-flex/src/ConfigCheck.h` | Compile-time checks on config.h (bad pins, conflicts) |
+| `boards/esp32s3-flex/src/main.cpp` | Wires everything together |
+| `boards/esp32s3-flex/src/RoasterOledDisplay.*` | The OLED screen (SSD1306 via U8g2) |
+| `boards/esp32s3-flex/artisan/croaster-flex.aset` | Artisan settings (see `artisan-settings.md`) |
+| `boards/esp32s3-flex/test/` | Host unit tests (`pio test -e native`) |
 | `roaster-core/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding |
 | `roaster-control/src/app/roaster.*` | The control task |
 | `roaster-control/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |

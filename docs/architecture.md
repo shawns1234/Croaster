@@ -58,7 +58,7 @@ A client sees JSON only:
 
 ```mermaid
 flowchart TB
-    subgraph board["boards/esp32s3-roaster (board)"]
+    subgraph board["boards/esp32s3-flex (board)"]
         CFG[config.h + ConfigCheck.h]
         MAIN[main.cpp]
         OLED[RoasterOledDisplay]
@@ -171,13 +171,16 @@ Taken from Croaster: everything about connectivity, display and boards.
 ## Open questions (DECISIONs for Shawn)
 1. D1: top-level `roaster-core/` + `roaster-control/` folders. OK?
 2. D3: force-include `config.h` into every unit. OK?
-3. D5: board id `esp32s3-roaster` (ICRM shows it as unknown until its enum
-   grows). OK?
-4. D6/D9: is the 10 s comms watchdog (heater off, fan to cooldown) the
+3. D6/D9: is the 10 s comms watchdog (heater off, fan to cooldown) the
    behaviour you want, or yaeger's instant cut on disconnect as well?
-5. D8: keep yaeger flat-key compatibility (needs the `onOtherJson` core hook),
+4. D8: keep yaeger flat-key compatibility (needs the `onOtherJson` core hook),
    or nested commands only?
-6. Cooldown fan default: 100 % (ours) or 65 % (yaeger)?
+5. Cooldown fan default: 100 % (ours) or 65 % (yaeger)?
+6. D10: how the flex board's `platformio.ini` relates to Croaster's
+   `boards/esp32s3` (standalone, `extends` his env, or a shared chip-level base
+   ini). See design.md.
+
+Resolved: D5, board id `esp32s3-flex` (Shawn, 2026-10-26).
 
 ## Next implementation step
 Bench bring-up (T2): flash, confirm the OLED, both probes and `getData` in

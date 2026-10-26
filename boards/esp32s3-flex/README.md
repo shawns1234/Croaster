@@ -1,6 +1,7 @@
-# Croaster — ESP32-S3 Roaster (heater + fan control)
+# Croaster — ESP32-S3 Flex board (heater + fan control)
 
-Standalone **PlatformIO** project, like every `boards/<board>/` folder. It is a
+Board `esp32s3-flex` ("flex": named by Shawn, since the whole project is a
+roaster). Standalone **PlatformIO** project, like every `boards/<board>/` folder. It is a
 Croaster board that also **controls** the roaster: PID heater through an SSR,
 AC-dimmer (or PWM) fan, roast profiles, relay autotune, safety trips, and
 Artisan control over Croaster's WebSocket. It consumes:
@@ -13,6 +14,8 @@ Artisan control over Croaster's WebSocket. It consumes:
 | `RoasterControl=symlink://../../roaster-control` | ESP32 side: control task, SSR, dimmer/PWM fan, probes, NVS, `RoasterPlugin` |
 
 Design notes and decisions: [`docs/design.md`](../../docs/design.md).
+Whether this ini should share chip-level settings with `boards/esp32s3` (standalone,
+`extends`, or a shared base ini) is open decision D10 there; today it is standalone.
 
 ---
 
@@ -78,21 +81,21 @@ monitor (no control libs used) with either converter.
 ## 🔧 Build, upload, test
 
 ```bash
-cd boards/esp32s3-roaster
-pio run -e esp32s3-roaster                    # release (what ../../build_all.sh builds)
-pio run -e esp32s3-roaster -t upload          # flash over USB
-../../upload_monitor.sh esp32s3-roaster       # debug build + upload + monitor
-pio run -e esp32s3-roaster-ota -t upload      # after the first flash: espota to croaster-roaster.local
+cd boards/esp32s3-flex
+pio run -e esp32s3-flex                    # release (what ../../build_all.sh builds)
+pio run -e esp32s3-flex -t upload          # flash over USB
+../../upload_monitor.sh esp32s3-flex       # debug build + upload + monitor
+pio run -e esp32s3-flex-ota -t upload      # after the first flash: espota to croaster-flex.local
 pio test -e native                            # host unit tests (roaster-core)
 ```
 
 | Env | Platform | Use |
 |:---|:---|:---|
-| `esp32s3-roaster` | `platformio/espressif32 @ 8.0.0` (Arduino 3.3.12 / IDF 5.5) | release |
-| `esp32s3-roaster-debug` | same | `CORE_DEBUG_LEVEL=3` |
-| `esp32s3-roaster-ota` | same | espota upload |
-| `esp32s3-roaster-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
-| `esp32s3-roaster-pioarduino-sdkconfig` | pioarduino + `custom_sdkconfig` | rebuilds IDF with `esp32s3-sdkconfig.defaults` (slow first build; not needed: no TLS) |
+| `esp32s3-flex` | `platformio/espressif32 @ 8.0.0` (Arduino 3.3.12 / IDF 5.5) | release |
+| `esp32s3-flex-debug` | same | `CORE_DEBUG_LEVEL=3` |
+| `esp32s3-flex-ota` | same | espota upload |
+| `esp32s3-flex-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
+| `esp32s3-flex-pioarduino-sdkconfig` | pioarduino + `custom_sdkconfig` | rebuilds IDF with `esp32s3-sdkconfig.defaults` (slow first build; not needed: no TLS) |
 
 Serial logs: native USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`). Using the other
 (USB-UART) port? Set `ARDUINO_USB_CDC_ON_BOOT=0` in `platformio.ini`.
@@ -139,8 +142,8 @@ cooldown fan) all turn the heater off and latch a trip until `clearTrip`.
 
 ## ☕ Artisan
 
-Load `artisan/croaster-roaster.aset` (Help → Load Settings). Host
-`croaster-roaster.local` (or the IP on the OLED), port 81, path `WebSocket`,
+Load `artisan/croaster-flex.aset` (Help → Load Settings). Host
+`croaster-flex.local` (or the IP on the OLED), port 81, path `WebSocket`,
 one `getData` per second. Curves: BT, ET, Heater, Fan, SV. Sliders: Fan,
 Setpoint, Heater. Buttons: heater 50–70 %/Off, PID, Manual, Autotune, Stop,
 Clear trip. Artisan's own PID ("Control") is off, because ours runs on the

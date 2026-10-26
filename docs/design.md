@@ -2,6 +2,7 @@
 
 Status: skeleton, builds and host-tests pass; not yet run on hardware.
 Owner decisions still open are marked **DECISION**.
+Board renamed `esp32s3-roaster` → `esp32s3-flex` on 2026-10-26 (D5).
 
 ## Goal
 Shawn's roaster (SSR heater, AC-dimmer fan, 2 × MAX31855, I2C OLED, Lonely
@@ -24,7 +25,7 @@ Croaster's library/board split and extension model.
 ## Layers
 
 ```
-boards/esp32s3-roaster/          board: config.h, ConfigCheck.h, main.cpp, RoasterOledDisplay
+boards/esp32s3-flex/          board: config.h, ConfigCheck.h, main.cpp, RoasterOledDisplay
         |  constructs + injects
         v
 roaster-control/  (Arduino/ESP32)   RoasterPlugin  --registers-->  CroasterApp commands / onJsonData
@@ -53,8 +54,8 @@ config stays in the board; roaster logic is reusable by any future board
 | SSR, dimmer, PWM fan, probe reading, NVS | `roaster-control/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 roaster board. |
 | Control loop + safety | `roaster-control/app/roaster` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog, ArduinoOTA | `roaster-control/RoasterPlugin` | Uses only Croaster's public extension points. |
-| Pins, chip/driver/display choice, limits | `boards/esp32s3-roaster/src/config.h` | Board config never in a library (AGENTS.md). |
-| Roaster OLED screen | `boards/esp32s3-roaster/src/RoasterOledDisplay.*` | Board display code, a `CroasterDisplay` subclass. |
+| Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
+| Roaster OLED screen | `boards/esp32s3-flex/src/RoasterOledDisplay.*` | Board display code, a `CroasterDisplay` subclass. |
 
 ## Data flow
 1. Control task (core 1, every 10 ms tick): reads both converters on its own
@@ -110,7 +111,7 @@ AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
 3. Fold into `croaster/src/roaster/`. One library, but every board (ESP8266
    too) compiles heater/fan code and it breaks "monitor library, no board
    specifics" intent.
-4. Keep everything inside `boards/esp32s3-roaster/src/`. Zero layout change,
+4. Keep everything inside `boards/esp32s3-flex/src/`. Zero layout change,
    but nothing is reusable for a second roaster board and tests live with one board.
 Recommendation: 1; update AGENTS.md's layout section if accepted.
 
@@ -142,17 +143,20 @@ runtime selection (all drivers linked, invalid configs only caught at boot),
 or templates (more C++ than the codebase uses). Kept `#if` + `ConfigCheck.h`
 because Shawn asked for compile-time selection with static checks.
 
-### D5. Board id — **DECISION**
+### D5. Board id — resolved: `esp32s3-flex`, chosen by Shawn 2026-10-26
 Ids must be lowercase and match ICRM's `CroasterBoardTypes`
-(`esp32s3`/`esp32c3`/`esp8266`/`unknown`).
-1. **`"esp32s3-roaster"` (implemented).** Distinct, so the app never offers the
-   ES3C28P LCD image as an update; ICRM may show it as unknown until the enum
+(`esp32s3`/`esp32c3`/`esp8266`/`unknown`). Folder `boards/esp32s3-flex/`,
+envs `esp32s3-flex[-debug|-ota|-pioarduino|-pioarduino-sdkconfig]`, board id
+`"esp32s3-flex"`, mDNS/OTA hostname `croaster-flex`. "roaster" was dropped
+because the whole project is a roaster, so it told you nothing. Options that
+were considered:
+1. **`"esp32s3-flex"` (chosen).** Distinct, so the app never offers the
+   ES3C28P LCD image as an update. ICRM may show it as unknown until its enum
    is extended.
 2. `"esp32s3"`. Matches the enum, but an ICRM OTA would flash the LCD firmware
-   over the roaster firmware (heater control lost).
+   over this firmware (heater control lost).
 3. `"unknown"`. Safe, but the app learns nothing.
-4. Add `esp32s3Roaster` to ICRM's enum (needs the app author).
-Recommendation: 1 now, 4 later.
+4. Add `esp32s3Flex` to ICRM's enum (needs the app author). Still worth doing later.
 
 ### D6. Comms watchdog vs built-in `getArtisanData` — **DECISION**
 The heater must stop if Artisan disappears, but `getArtisanData` is handled
@@ -214,6 +218,60 @@ and fan 100. No protection in PID, and none for silent WiFi loss.
 Recommendation: 1; add 2 later if a faster cut on clean disconnects is
 wanted. Set `ROASTER_COMMS_TIMEOUT_S 0` to disable it.
 
+### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made)**
+
+Shawn asked (2026-10-26) whether a "flex" board's `platformio.ini` could `extends = core`,
+or otherwise reuse what `boards/esp32s3/platformio.ini` already says. This is a discussion
+item. Nothing in the build has changed; flex is still option A.
+
+**First, what "core" is.** Croaster core (`croaster/`) is a **library**, not an ini section.
+It has a `library.json`, and each board pulls it in with
+`lib_deps = Croaster=symlink://../../croaster`. PlatformIO's `extends` only works between
+ini sections (`[env:x]` or a plain `[section]`), so `extends = core` isn't something
+PlatformIO can do. The flex board already gets every line of core code through that same
+symlink. The only things two boards could share at the ini level are build *settings*:
+board json, platform, framework, flash size, upload and monitor options, and common flags.
+
+**What flex and his esp32s3 actually have in common:** the chip and module (ESP32-S3 N16R8,
+`esp32-s3-devkitm1-n16r8.json`), 16 MB flash, USB-CDC flags, `BOARD_HAS_PSRAM`, and the
+upload and monitor speeds. **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
+SSD1306/U8g2 + RoasterCore/RoasterControl), build_flags (his `LV_CONF_PATH` points into his
+`src/ui`; ours does `-include src/config.h`), PSRAM mode (`dio_opi` vs `qio_opi`),
+sdkconfig (his uses `esp32s3-sdkconfig.defaults`; ours is off by default), the partition
+table, and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
+
+| | How | Pros | Cons |
+|---|---|---|---|
+| **A** (today) | Standalone `boards/esp32s3-flex/platformio.ini` | The AGENTS.md model: each board owns its config, and an edit to one board can't break another. No change to his files. | About 10 chip-level lines are duplicated. A fix to his esp32s3 ini (e.g. upload flags) has to be copied by hand. |
+| **B** | Flex ini has `[platformio] extra_configs = ../esp32s3/platformio.ini` plus `[env:esp32s3-flex] extends = env:esp32s3`, and overrides lib_deps, build_flags, memory_type, sdkconfig_path, partitions and platform | No edit to his files. Reuses his env literally. | Most of his env has to be overridden, so very little is actually reused. His `[env]` section merges into our project too: if we leave out our own lib_deps we silently inherit his (ILI9341, LVGL, ...). His `env:esp32s3` and `env:esp32s3-debug` show up in our project's env list. Any later edit he makes to `env:esp32s3` silently changes our build. It also couples us to his file layout and needs `boards_dir = ..`, which his ini lacks (T13). |
+| **C** | Shared chip-level base `boards/common/esp32s3-base.ini` with an `[esp32s3_base]` section (board, framework, flash size, upload/monitor, PSRAM/USB flags). Both boards do `extra_configs = ../common/esp32s3-base.ini` and `extends = esp32s3_base`, and each keeps its own lib_deps, flags, PSRAM mode and sdkconfig. | Shares only what is truly the same chip. Nothing leaks between boards: no `[env]` merge and no foreign envs. Each board's diffs stay visible in its own ini. Fits Croaster's "board owns its config" rule, with the chip facts in one place. `boards/common` is a library dir without a `platformio.ini`, so `build_all.sh` doesn't pick up the base ini as a board. | Needs a small edit to his `boards/esp32s3/platformio.ini` (extra_configs, extends, `boards_dir = ..`, and `${esp32s3_base.build_flags}`), which upstream has to accept. An edit to the base affects both boards, though that's intended. The platform pin has to be decided: either the base pins it for everyone, or each board pins its own. |
+| **D** | Flex as a second env inside `boards/esp32s3`, separated with `build_src_filter` | One ini and one folder for the "esp32s3 chip". | Awkward: `src_dir`, `include`, `test` and `config.h` are per *project*, so two firmwares end up sharing one `src/` tree, filtered file by file. `-include src/config.h` and his `src/ui` collide. It breaks the AGENTS.md "one board = one folder + config" model and Croaster's env naming (`<board>`, `<board>-debug`). |
+
+**Throwaway test builds (2026-10-26, espressif32 @ 8.0.0; test folders deleted afterwards):**
+
+- **B builds.** I made a copy of flex with `extra_configs = ../esp32s3/platformio.ini` and
+  `extends = env:esp32s3` plus the overrides above. `pio run` gave SUCCESS: RAM 62,332 B,
+  flash 1,773,207 B, byte-for-byte the same sizes as standalone A.
+  `pio project config` showed sections `env`, `env:esp32s3` and `env:esp32s3-debug` from his
+  file inside our project. In a variant without our own lib_deps, the resolved flex env
+  inherited his `[env]` lib_deps (Croaster, WebSockets, ArduinoJson, Adafruit ILI9341,
+  MAX6675, WiFiManager, lvgl). That confirms the silent-leak risk.
+- **C builds, both sides.** I made a base ini with `[esp32s3_base]`. The flex copy with
+  `extends = esp32s3_base` gave SUCCESS: RAM 62,332 B, flash 1,773,207 B (same as A).
+  The copy of *his* esp32s3 board with `extends = esp32s3_base` (plus `boards_dir = ..`) also
+  built `-e esp32s3`: SUCCESS, RAM 105,184 B, flash 2,518,962 B. Comparing his resolved
+  env against the original, the only differences were build_flags order (same flags;
+  `-W no-deprecated-declarations` normalized to `-Wno-...`) and the platform pin, because
+  the test base pinned `@ 8.0.0`. If he wants to stay unpinned, leave `platform` out of the
+  base and set it per board.
+
+**Recommendation: C**, when Shawn is ready and upstream is OK with the small edit to the
+esp32s3 ini. Until then, stay on **A**, which is what's in the tree now and is fully
+reversible. C keeps the one useful property Shawn is after (the "esp32s3" facts live in one
+place) without B's hidden coupling. Avoid B: it looks like reuse but needs nearly every
+option overridden, and it makes our build depend on edits to his file.
+**Reversible:** yes. Moving A→C only touches ini files.
+
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
   Arduino builds ignore `board_build.sdkconfig_path`; stock libs already have
@@ -231,7 +289,7 @@ wanted. Set `ROASTER_COMMS_TIMEOUT_S 0` to disable it.
   - This firmware uses no TLS (plain `ws://`), so none of it is required.
 
 ## Hardware notes driving defaults
-See `boards/esp32s3-roaster/README.md` (pins, power, probe isolation, IPEX).
+See `boards/esp32s3-flex/README.md` (pins, power, probe isolation, IPEX).
 - Display **confirmed by Shawn (2026-10-26)**: 0.96" I2C 128×64 SSD1306
   module. It is the default (`ROASTER_DISPLAY_ROASTER_SSD1306`, U8g2 full-buffer HW
   I2C, probes 0x3C then 0x3D).

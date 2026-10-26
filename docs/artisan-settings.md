@@ -1,4 +1,4 @@
-# Artisan settings — `boards/esp32s3-roaster/artisan/croaster-roaster.aset`
+# Artisan settings — `boards/esp32s3-flex/artisan/croaster-flex.aset`
 
 What each setting in the `.aset` does, why it has that value, and where that was
 checked. Artisan sources are cited at commit `5be39f6` of
@@ -49,7 +49,7 @@ sequenceDiagram
 | Section / key | Value | Why | Source |
 |:---|:---|:---|:---|
 | `[Device] id` | `111` | 111 = the "WebSocket" device | `device_registry.py:152` |
-| `[WebSocket] host` | `croaster-roaster.local` | ArduinoOTA advertises this mDNS name. **If Windows can't resolve `.local`, put in the IP shown on the OLED.** | `main.cpp` `otaHostname`; `RoasterPlugin.cpp` (`ArduinoOTA.setHostname`) |
+| `[WebSocket] host` | `croaster-flex.local` | ArduinoOTA advertises this mDNS name. **If Windows can't resolve `.local`, put in the IP shown on the OLED.** | `main.cpp` `otaHostname`; `RoasterPlugin.cpp` (`ArduinoOTA.setHostname`) |
 | `[WebSocket] port` | `81` | Croaster's WebSocket server port | `croaster/src/CroasterWebSocketManager.*` |
 | `[WebSocket] path` | `WebSocket` | Artisan connects to `ws://host:port/path`. Croaster's server answers on any path; `WebSocket` is what Croaster's own setup screenshot uses. | `wsport.py` (URL build); `images/Connect-Artisan-Same-Network.png` |
 | `[WebSocket] request_data_command` | `getData` | One request fills **all** inputs. We answer it with the same `id` and also count it as client activity for the comms watchdog. | `comm.py:1944-1955`; `RoasterPlugin.cpp` `getData` |
@@ -94,7 +94,7 @@ There are two different PIDs, and only one is in use.
   for 10 s while heating, the comms watchdog turns the heater off.
 
 ## Using it
-1. Help → Load Settings… → `croaster-roaster.aset`.
+1. Help → Load Settings… → `croaster-flex.aset`.
 2. Config → Port → WebSocket: set the host to the IP on the OLED if `.local`
    doesn't resolve.
 3. Press ON. BT, ET, Heater, Fan and SV should plot.

@@ -15,10 +15,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32c3/` | ESP32-C3 Super Mini — SSD1306 OLED; custom OTA partition (`custom32c3sm.csv` lives in this folder) |
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
-| `boards/esp32s3-roaster/` | Roaster **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
-| `roaster-core/` | Pure roaster logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-roaster/test` (`pio test -e native`) |
+| `boards/esp32s3-flex/` | Roaster **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
+| `roaster-core/` | Pure roaster logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
 | `roaster-control/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `RoasterPlugin` (hooks into `CroasterApp`) |
-| `docs/` | `design.md` (architecture + decisions D1–D9), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D10), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -27,7 +27,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-roaster` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (U8g2; confirmed by Shawn) | `esp32s3-roaster` | 27.1% (1 773 207 B), RAM 62 332 B |
+| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (U8g2; confirmed by Shawn) | `esp32s3-flex` | 27.1% (1 773 207 B), RAM 62 332 B |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -70,9 +70,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
   `CroasterCommandHandler::onOtherJson()`.
+- Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
+  by Shawn): folder, envs, board id, hostname `croaster-flex`, `.aset`.
 - Decisions pending (Shawn): design.md D1 (top-level roaster libs), D3
-  (force-included config), D5 (board id `esp32s3-roaster`), D6 (watchdog via
-  `getData` alias), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s
+  (force-included config), D6 (watchdog via `getData` alias), D10 (flex ini
+  vs Croaster's `boards/esp32s3` ini), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s
   traffic watchdog vs instant cut on disconnect).
 
 ## Git state (2026-08-30, upstream)
@@ -114,7 +116,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   installed (a pioarduino install made `esp32c3` fail); pin the version.
 - `custom_sdkconfig` (pioarduino) writes `managed_components/`, `sdkconfig.*`,
   `CMakeLists.txt`, `src/idf_component.yml` into the board folder (gitignored in
-  `esp32s3-roaster`). `MBEDTLS_SSL_IN/OUT_CONTENT_LEN` need
+  `esp32s3-flex`). `MBEDTLS_SSL_IN/OUT_CONTENT_LEN` need
   `MBEDTLS_ASYMMETRIC_CONTENT_LEN=y` to take effect.
 - `.clang-format` is LLVM-based with attached braces; AGENTS.md says Allman.
   Sources follow `.clang-format`.

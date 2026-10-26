@@ -85,7 +85,7 @@ RoasterPluginConfig pluginConfig() {
     RoasterPluginConfig c;
     c.commsTimeoutMs = ROASTER_COMMS_TIMEOUT_S * 1000UL;
     c.arduinoOta = ROASTER_ENABLE_ARDUINO_OTA;
-    c.otaHostname = "croaster-roaster";
+    c.otaHostname = "croaster-flex";
     c.otaPassword = ROASTER_OTA_PASSWORD;
     return c;
 }

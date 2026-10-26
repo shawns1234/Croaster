@@ -8,7 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — roaster control (branch rework/roaster)
 
 ### Added
-- **`boards/esp32s3-roaster`** — roaster control board for the Lonely Binary
+- **`boards/esp32s3-flex`** ("flex") — roaster control board for the Lonely Binary
   ESP32-S3 N16R8: PID heater via SSR (time-proportional window), RobotDyn AC
   dimmer or PWM fan, roast profiles, relay autotune, safety trips (over-temp,
   sensor fault, no mains, OTA, comms lost), roaster OLED screen (SSD1306/SH1106),
@@ -39,6 +39,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Board renamed `esp32s3-roaster` → `esp32s3-flex`**: folder (history kept
+  via `git mv`), envs `esp32s3-flex[-debug|-ota|-pioarduino|-pioarduino-sdkconfig]`,
+  board id `esp32s3-flex`, mDNS/OTA hostname `croaster-flex`,
+  `artisan/croaster-flex.aset`.
 - Comms watchdog: 10 s (was 30 s), and a trip also sets the cooldown fan.
 - Display default confirmed: 0.96" I2C 128×64 SSD1306.
 - **RoR keeps negative values** (falling temperature was reported as 0).
