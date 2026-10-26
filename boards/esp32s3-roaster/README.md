@@ -26,7 +26,7 @@ Design notes and decisions: [`docs/design.md`](../../docs/design.md).
 | ET probe | K probe from the Inkbird kit | **check grounded vs ungrounded** (see below) |
 | Heater | SSR-40DA from the Inkbird PID kit (kit PID unused) | input 3–32 VDC, on > 2.4 V: 3.3 V GPIO drives it directly |
 | Fan | RobotDyn 1-ch AC dimmer (BTA16 triac, Z-C output) | VCC from **3V3** so Z-C swings 0–3.3 V |
-| Display | 0.96" 128×64 I2C OLED, SSD1306, yellow/blue | top 16 rows are yellow: the IP header sits there |
+| Display | 0.96" 128×64 I2C OLED, SSD1306 (**confirmed**), yellow/blue | address 0x3C (0x3D also probed); top 16 rows are yellow: the IP header sits there |
 
 All modules run from the board's 3V3 pin (AMS1117, ~500 mA budget: OLED ~20 mA,
 2 × MAX31855 < 3 mA, dimmer logic < 10 mA, SSR input ~7.5 mA).
@@ -117,19 +117,34 @@ Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
 | `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getRoaster"` | actions / query |
 | `{"command":"getData","id":N}` | same as `getArtisanData`, and counts as client activity for the comms watchdog |
 
-Data broadcasts gain `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`.
+yaeger's formats also work (same parser, see `docs/control-parity.md`):
+
+| JSON | Effect |
+|:---|:---|
+| `{"BurnerVal":v}` `{"FanVal":v}` `{"Setpoint":T}` `{"Mode":"Manual"\|"PID"}` `{"Target":"ET"\|"BT"\|"MAX"}` | as above (no `"command"` key) |
+| `{"command":"setBurner","value":v}` / `setFan` | heater / fan % |
+| `{"command":"setPreferences","pidKp":..,"pidKi":..,"pidKd":..,"cooldownFanSpeed":..}` | gains + cooldown fan (saved); replies with preferences |
+| `{"command":"getPreferences","id":N}` | `{"id":N,"data":{"type":"preferences","pidKp",...,"cooldownFanSpeed"}}` |
+
+Data broadcasts gain `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`,
+`Target`, `pidKp`/`pidKi`/`pidKd`, `wifiStrength`.
+
+The PID runs on the ESP32. Clients (Artisan, ICRM, a browser) only send targets
+and commands.
 
 Safety: over-temperature, probe fault, no mains (dimmer sees no zero-cross),
 OTA in progress, and **comms lost** (heating, not running a profile, and no
-client traffic for `ROASTER_COMMS_TIMEOUT_S`) all turn the heater off and latch
-a trip until `clearTrip`.
+client traffic for `ROASTER_COMMS_TIMEOUT_S`, default 10 s; also sets the
+cooldown fan) all turn the heater off and latch a trip until `clearTrip`.
 
 ## ☕ Artisan
 
-Load `artisan/croaster-roaster.aset` (Help → Load Settings). It is yaeger's
-settings with Croaster's WebSocket: port 81, host `croaster-roaster.local`
-(or the IP on the OLED), `getData` polling, and the burner/fan sliders sending
-`{"command":{"burner":v}}` / `{"command":{"fan":v}}`.
+Load `artisan/croaster-roaster.aset` (Help → Load Settings). Host
+`croaster-roaster.local` (or the IP on the OLED), port 81, path `WebSocket`,
+one `getData` per second. Curves: BT, ET, Heater, Fan, SV. Sliders: Fan,
+Setpoint, Heater. Buttons: heater 50–70 %/Off, PID, Manual, Autotune, Stop,
+Clear trip. Artisan's own PID ("Control") is off, because ours runs on the
+ESP32. Every setting and its source: [`docs/artisan-settings.md`](../../docs/artisan-settings.md).
 
 ## ⚠️ Check before first power-up
 - IPEX antenna attached (transmitting without it can damage the RF stage).

@@ -25,6 +25,10 @@ void CroasterCommandHandler::onJsonCommand(const String& key, CommandFn fn) {
     customJsonCommands[key] = fn;
 }
 
+void CroasterCommandHandler::onOtherJson(CommandFn fn) {
+    otherJson = fn;
+}
+
 void CroasterCommandHandler::begin() {
     if (ledPin >= 0) {
         pinMode(ledPin, OUTPUT);
@@ -76,6 +80,12 @@ bool CroasterCommandHandler::handle(const String& json, String& responseOut) {
         JsonObject obj = doc["command"];
 
         handleJsonCommand(obj, responseOut);
+
+        return true;
+    }
+
+    if (otherJson && doc["command"].isNull() && doc.is<JsonObject>()) {
+        responseOut = otherJson(doc.as<JsonObject>());
 
         return true;
     }

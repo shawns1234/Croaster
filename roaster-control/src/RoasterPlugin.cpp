@@ -3,8 +3,9 @@
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
 #include <CroasterApp.h>
+#include <WiFi.h>
 
-#include "core/roaster_protocol.h"
+#include <cstring>
 
 namespace {
 String reply(const char* command, const JsonDocument& response) {
@@ -37,6 +38,16 @@ void RoasterPlugin::attach(CroasterApp& app, const RoasterSettings& settings) {
             return handleBasic(name);
         });
     }
+    for (size_t i = 0; i < roasterproto::kLegacyBasicNameCount; i++) {
+        const char* name = roasterproto::kLegacyBasicNames[i];
+        app.commands().onCommand(name, [this, name](const JsonObject& json) {
+            return handleLegacy(json, name);
+        });
+    }
+    // yaeger's flat keys ({"BurnerVal":50}, {"Mode":"PID"}, ...) carry no "command".
+    app.commands().onOtherJson([this](const JsonObject& json) {
+        return handleLegacy(json, nullptr);
+    });
     // Same payload as Croaster's built-in getArtisanData, but counts as client
     // activity for the watchdog. The supplied Artisan .aset polls with this.
     app.commands().onCommand("getData", [this](const JsonObject& json) {
@@ -45,6 +56,8 @@ void RoasterPlugin::attach(CroasterApp& app, const RoasterSettings& settings) {
     });
     app.core().onJsonData([this](JsonObject& data) {
         roasterproto::writeDataFields(roaster_.snapshot(), unit(), data);
+        if (WiFi.status() == WL_CONNECTED)
+            data["wifiStrength"] = WiFi.RSSI();
     });
 }
 
@@ -53,6 +66,33 @@ String RoasterPlugin::handleNested(const JsonObject& json, const char* key) {
         return "";
     touch();
     roasterproto::Parsed p = roasterproto::parseNested(json, unit(), key);
+    apply(p);
+    if (p.hasProfile || p.profileError) {
+        JsonDocument r;
+        r["loaded"] = p.hasProfile && roaster_.loadProfile(p.profile);
+        r["steps"] = p.profile.size();
+        return reply("profile", r);
+    }
+    return "";
+}
+
+String RoasterPlugin::handleLegacy(const JsonObject& json, const char* name) {
+    roasterproto::Parsed p = roasterproto::parseLegacy(json, unit());
+    if (p.count == 0 && !p.hasCooldownFan && !name)
+        return ""; // unrelated message without "command"
+    touch();
+    apply(p);
+    if (!name || std::strcmp(name, "setFan") == 0 || std::strcmp(name, "setBurner") == 0)
+        return "";
+    JsonDocument r; // yaeger answers set/getPreferences with the stored values
+    r["id"] = json["id"] | 0;
+    roasterproto::writePreferences(settings_.gains, settings_.cooldownFan, r["data"].to<JsonObject>());
+    String out;
+    serializeJson(r, out);
+    return out;
+}
+
+void RoasterPlugin::apply(const roasterproto::Parsed& p) {
     for (size_t i = 0; i < p.count; i++)
         roaster_.submit(p.commands[i]);
     if (p.hasGains) {
@@ -67,13 +107,6 @@ String RoasterPlugin::handleNested(const JsonObject& json, const char* key) {
         settings_.cooldownFan = p.cooldownFan;
         ConfigStore::saveCooldownFan(p.cooldownFan);
     }
-    if (p.hasProfile || p.profileError) {
-        JsonDocument r;
-        r["loaded"] = p.hasProfile && roaster_.loadProfile(p.profile);
-        r["steps"] = p.profile.size();
-        return reply("profile", r);
-    }
-    return "";
 }
 
 String RoasterPlugin::handleBasic(const char* name) {
@@ -126,6 +159,11 @@ void RoasterPlugin::loop() {
         Command trip{Command::Kind::Trip};
         trip.a = static_cast<float>(SafetyTrip::CommsLost);
         roaster_.submit(trip);
+        if (settings_.cooldownFan >= 0) { // yaeger: client gone -> heater 0, fan 100
+            Command fan{Command::Kind::SetFan};
+            fan.a = settings_.cooldownFan;
+            roaster_.submit(fan);
+        }
         touch(); // one trip per timeout, not one per loop
     }
 }

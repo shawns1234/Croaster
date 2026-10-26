@@ -92,9 +92,15 @@ void Roaster::apply(const Command& c) {
     case Command::Kind::SetFan:
         fan_.set(c.a);
         break;
-    case Command::Kind::SetSetpoint:
+    case Command::Kind::SetSetpoint: {
+        const float prev = st_.setpoint;
         st_.setpoint = fmaxf(0, fminf(c.a, lim_.maxSetpointC));
+        // legacy Control::setSetpoint: going from 0 to a real setpoint clears the
+        // PID history so it starts from zero output, not from stale state.
+        if (prev <= 0 && st_.setpoint > 0 && st_.mode == Mode::Pid)
+            pid_.reset(st_.setpoint, pv, 0);
         break;
+    }
     case Command::Kind::SetMode: {
         const Mode m = static_cast<Mode>(static_cast<int>(c.a));
         if (m == Mode::Manual || m == Mode::Pid)

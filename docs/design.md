@@ -49,7 +49,7 @@ config stays in the board; roaster logic is reusable by any future board
 |:---|:---|:---|
 | MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
 | MAX31855/MAX6675 decode for control | `roaster-core/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
-| PID, autotune, profiles | `roaster-core` | Pure logic, unit-tested on the host (15 tests). |
+| PID, autotune, profiles | `roaster-core` | Pure logic, unit-tested on the host (16 tests). |
 | SSR, dimmer, PWM fan, probe reading, NVS | `roaster-control/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 roaster board. |
 | Control loop + safety | `roaster-control/app/roaster` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog, ArduinoOTA | `roaster-control/RoasterPlugin` | Uses only Croaster's public extension points. |
@@ -88,10 +88,12 @@ config stays in the board; roaster logic is reusable by any future board
 | `CroasterCore::onJsonData(fn)` | needed | Artisan must see heater/fan/setpoint in the same `getArtisanData` payload; no existing hook. Additive. |
 | `CroasterThermocoupleType` + `CroasterMAX31855` | requested | MAX31855 alongside MAX6675 for monitor builds; default stays MAX6675. |
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
+| `CroasterCommandHandler::onOtherJson(fn)` | needed for yaeger wire compatibility | Messages without `"command"` (yaeger's `{"BurnerVal":60}`) were dropped. Additive fallback, called only when no other branch matched; WebSocket and BLE. See D8. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
-Existing boards still build: `esp32c3` built with the changes (RAM 44 680 B,
-flash 1 741 489 B = 91.6 %; pinned to espressif32 8.0.0 for the check).
+Existing boards still build: `esp32c3` built with the changes (RAM 44 696 B,
+flash 1 741 985 B = 91.7 %; pinned to espressif32 8.0.0 for the check,
+2026-10-26).
 
 ## Decisions where Croaster's rules and Shawn's goals rub
 
@@ -165,6 +167,8 @@ inside Croaster and boards cannot see it.
    catches drops, not a hung Artisan.
 4. No watchdog (yaeger had none). Simplest, least safe.
 Recommendation: 1 for now; 2 if the author accepts a core hook.
+Update 2026-10-26: timeout cut from 30 s to 10 s (Artisan polls every 1 s),
+and the trip now also sets the cooldown fan; see D9.
 
 ### D7. Control in a FreeRTOS task, not `loop()`
 Croaster is loop-driven. A blocking WiFiManager portal, WebSocket burst or BLE
@@ -172,6 +176,43 @@ OTA can stall `loop()` for seconds; an SSR left on for seconds is the failure to
 avoid. Options: loop-only (simplest, unsafe stalls), hardware-timer ISR (no SPI
 reads in ISR), dedicated task (implemented), task on core 0 (shares core with
 WiFi). Task on core 1 at high priority chosen.
+
+### D8. yaeger wire compatibility (flat keys) — **DECISION**
+Shawn wants yaeger's level of control. yaeger's clients send flat keys with no
+`"command"` (`{"BurnerVal":60}`, `{"Mode":"PID"}`, `{"Setpoint":200}`) plus
+`setBurner`/`setFan`/`setPreferences`/`getPreferences`. Croaster's handler only
+routes messages that have `"command"`. The named commands fit `onCommand` with
+no core change. Flat keys don't.
+1. Nested only. Configure every client (Artisan `.aset`) to send
+   `{"command":{...}}`. No core change, but yaeger's web UI and older settings
+   files silently do nothing.
+2. **`onOtherJson(fn)` fallback in `CroasterCommandHandler` (implemented).**
+   About 5 lines, additive, called only for JSON objects without `"command"`,
+   and works over WebSocket and BLE. Parsing stays in `roasterproto::parseLegacy`.
+3. Pre-parse in `CroasterWebSocketManager` before the handler. WebSocket
+   only (BLE misses out), and it touches transport code.
+4. Fork/replace the handler in the plugin. No upstream change, but it
+   duplicates Croaster's routing (two ways to do one thing).
+Recommendation: 2. It is reversible: delete the hook and the registration.
+The `.aset` uses nested commands, so Artisan doesn't depend on it.
+
+### D9. What happens when the client goes away — **DECISION**
+yaeger: on a clean WebSocket disconnect, in Manual with heater > 0, heater 0
+and fan 100. No protection in PID, and none for silent WiFi loss.
+1. **Traffic watchdog (implemented):** no client traffic for 10 s while
+   heating (Manual, PID or Autotune) → heater off, fan to cooldown,
+   `trip:"comms"`. Profiles are exempt (they are meant to run unattended).
+   Catches clean disconnects and silent drops; worst case 10 s.
+2. Core `onClientDisconnected` hook for an instant cut on a clean disconnect,
+   plus option 1 for silent loss. Fastest, but `CroasterApp` doesn't expose
+   `wsManager`, so it needs a new core API.
+3. yaeger's exact rule (disconnect + Manual only). Matches yaeger, but PID
+   keeps heating with nobody watching, and silent drops are missed.
+4. No cut-off: the firmware PID keeps going and only the over-temperature trip
+   protects. That is how a standalone PID controller behaves, but it is unsafe
+   for Manual.
+Recommendation: 1; add 2 later if a faster cut on clean disconnects is
+wanted. Set `ROASTER_COMMS_TIMEOUT_S 0` to disable it.
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
@@ -191,3 +232,11 @@ WiFi). Task on core 1 at high priority chosen.
 
 ## Hardware notes driving defaults
 See `boards/esp32s3-roaster/README.md` (pins, power, probe isolation, IPEX).
+- Display **confirmed by Shawn (2026-10-26)**: 0.96" I2C 128×64 SSD1306
+  module. It is the default (`ROASTER_DISPLAY_ROASTER_SSD1306`, U8g2 full-buffer HW
+  I2C, probes 0x3C then 0x3D).
+
+## Related docs
+`how.md` (walkthrough), `architecture.md` (shape, red flags, open questions),
+`control-parity.md` (yaeger vs ours, item by item), `artisan-settings.md`
+(every `.aset` setting with its source).

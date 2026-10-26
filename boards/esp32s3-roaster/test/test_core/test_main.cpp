@@ -254,8 +254,11 @@ void test_protocol_basic_and_data() {
     JsonDocument d;
     JsonObject data = d["data"].to<JsonObject>();
     roasterproto::writeDataFields(s, 'F', data);
-    char buf[256];
+    char buf[384];
     serializeJson(d, buf, sizeof buf);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"Target\":\"ET\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"pidKp\":0"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"Amb\":null"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"BurnerVal\":55"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"FanVal\":70"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"SV\":392"));
@@ -264,6 +267,48 @@ void test_protocol_basic_and_data() {
     roasterproto::writeDataFields(s, 'C', data);
     serializeJson(d, buf, sizeof buf);
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"SV\":null"));
+}
+
+static roasterproto::Parsed parseLegacy(const char* json, char unit = 'C') {
+    JsonDocument d;
+    deserializeJson(d, json);
+    return roasterproto::parseLegacy(d.as<JsonObjectConst>(), unit);
+}
+
+void test_protocol_yaeger_compat() {
+    // yaeger's Artisan sliders/buttons send flat keys plus Artisan's id/roasterID
+    auto p = parseLegacy(R"({"BurnerVal":60,"id":123,"roasterID":0})");
+    TEST_ASSERT_EQUAL(1, (int)p.count);
+    TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetHeater);
+    TEST_ASSERT_EQUAL_FLOAT(60.0f, p.commands[0].a);
+
+    p = parseLegacy(R"({"Setpoint":428,"Mode":"PID","FanVal":55,"Target":"MAX"})", 'F');
+    TEST_ASSERT_EQUAL(4, (int)p.count); // Mode first, as in yaeger's CommandLoop
+    TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetMode);
+    TEST_ASSERT_EQUAL_FLOAT((float)Mode::Pid, p.commands[0].a);
+    TEST_ASSERT_TRUE(p.commands[1].kind == Command::Kind::SetSetpoint);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 220.0f, p.commands[1].a);
+    TEST_ASSERT_TRUE(p.commands[2].kind == Command::Kind::SetFan);
+    TEST_ASSERT_TRUE(p.hasPidInput && p.pidInput == PidInput::MAX);
+
+    p = parseLegacy(R"({"command":"setFan","value":80})");
+    TEST_ASSERT_EQUAL(1, (int)p.count);
+    TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetFan);
+
+    p = parseLegacy(R"({"command":"setPreferences","pidKp":4,"pidKi":0.2,"pidKd":1,"cooldownFanSpeed":70})");
+    TEST_ASSERT_TRUE(p.hasGains && p.hasCooldownFan);
+    TEST_ASSERT_EQUAL_FLOAT(0.2f, p.gains.ki);
+    TEST_ASSERT_EQUAL_FLOAT(70.0f, p.cooldownFan);
+
+    p = parseLegacy(R"({"command":"getData","id":5})"); // not a yaeger control message
+    TEST_ASSERT_EQUAL(0, (int)p.count);
+    TEST_ASSERT_FALSE(p.hasGains || p.hasCooldownFan || p.hasPidInput);
+
+    JsonDocument d;
+    roasterproto::writePreferences(PidGains{4, 0.5f, 1}, 70, d.to<JsonObject>());
+    char buf[160];
+    serializeJson(d, buf, sizeof buf);
+    TEST_ASSERT_EQUAL_STRING(R"({"type":"preferences","pidKp":4,"pidKi":0.5,"pidKd":1,"cooldownFanSpeed":70})", buf);
 }
 
 void test_unit_conversion() {
@@ -289,6 +334,7 @@ int main() {
     RUN_TEST(test_protocol_only_key);
     RUN_TEST(test_protocol_profile);
     RUN_TEST(test_protocol_basic_and_data);
+    RUN_TEST(test_protocol_yaeger_compat);
     RUN_TEST(test_unit_conversion);
     return UNITY_END();
 }

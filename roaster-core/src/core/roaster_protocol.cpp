@@ -9,6 +9,8 @@ const char* const kNestedKeys[] = {"burner", "fan", "setpoint", "mode", "pidInpu
 const size_t kNestedKeyCount = sizeof(kNestedKeys) / sizeof(kNestedKeys[0]);
 const char* const kBasicNames[] = {"startProfile", "stop", "autotune", "clearTrip", "getRoaster"};
 const size_t kBasicNameCount = sizeof(kBasicNames) / sizeof(kBasicNames[0]);
+const char* const kLegacyBasicNames[] = {"setBurner", "setFan", "setPreferences", "getPreferences"};
+const size_t kLegacyBasicNameCount = sizeof(kLegacyBasicNames) / sizeof(kLegacyBasicNames[0]);
 
 namespace {
 void add(Parsed& p, Command::Kind k, float a = 0, float b = 0, float c = 0) {
@@ -43,6 +45,15 @@ void putNum(T&& v, float x, float scale = 10.0f) { // JSON has no NaN
 }
 } // namespace
 
+namespace {
+bool parsePidInput(const char* t, PidInput& out) {
+    if (!(eq(t, "ET") || eq(t, "BT") || eq(t, "MAX")))
+        return false;
+    out = eq(t, "BT") ? PidInput::BT : (eq(t, "MAX") ? PidInput::MAX : PidInput::ET);
+    return true;
+}
+} // namespace
+
 Parsed parseNested(JsonObjectConst c, char unit, const char* only) {
     Parsed p;
     auto want = [only](const char* k) {
@@ -56,9 +67,7 @@ Parsed parseNested(JsonObjectConst c, char unit, const char* only) {
             add(p, Command::Kind::SetMode, (float)Mode::Manual);
     }
     if (want("pidInput") && c["pidInput"].is<const char*>()) {
-        const char* t = c["pidInput"];
-        p.hasPidInput = eq(t, "ET") || eq(t, "BT") || eq(t, "MAX");
-        p.pidInput = eq(t, "BT") ? PidInput::BT : (eq(t, "MAX") ? PidInput::MAX : PidInput::ET);
+        p.hasPidInput = parsePidInput(c["pidInput"], p.pidInput);
         if (p.hasPidInput)
             add(p, Command::Kind::SetPidInput, (float)p.pidInput);
     }
@@ -87,6 +96,46 @@ Parsed parseNested(JsonObjectConst c, char unit, const char* only) {
     return p;
 }
 
+Parsed parseLegacy(JsonObjectConst m, char unit) {
+    Parsed p;
+    // Same order as yaeger's CommandLoop: Mode, BurnerVal, Setpoint, FanVal, Target.
+    if (m["Mode"].is<const char*>()) {
+        const char* s = m["Mode"];
+        if (eq(s, "manual"))
+            add(p, Command::Kind::SetMode, (float)Mode::Manual);
+        if (eq(s, "pid"))
+            add(p, Command::Kind::SetMode, (float)Mode::Pid);
+    }
+    if (m["BurnerVal"].is<float>())
+        add(p, Command::Kind::SetHeater, m["BurnerVal"].as<float>());
+    if (m["Setpoint"].is<float>())
+        add(p, Command::Kind::SetSetpoint, toCelsius(m["Setpoint"].as<float>(), unit));
+    if (m["FanVal"].is<float>())
+        add(p, Command::Kind::SetFan, m["FanVal"].as<float>());
+    if (m["Target"].is<const char*>()) {
+        p.hasPidInput = parsePidInput(m["Target"], p.pidInput);
+        if (p.hasPidInput)
+            add(p, Command::Kind::SetPidInput, (float)p.pidInput);
+    }
+    const char* cmd = m["command"].is<const char*>() ? m["command"].as<const char*>() : nullptr;
+    if (eq(cmd, "setBurner") && m["value"].is<float>())
+        add(p, Command::Kind::SetHeater, m["value"].as<float>());
+    if (eq(cmd, "setFan") && m["value"].is<float>())
+        add(p, Command::Kind::SetFan, m["value"].as<float>());
+    if (eq(cmd, "setPreferences")) {
+        if (m["pidKp"].is<float>() && m["pidKi"].is<float>() && m["pidKd"].is<float>()) {
+            p.hasGains = true;
+            p.gains = {m["pidKp"].as<float>(), m["pidKi"].as<float>(), m["pidKd"].as<float>()};
+            add(p, Command::Kind::SetGains, p.gains.kp, p.gains.ki, p.gains.kd);
+        }
+        if (m["cooldownFanSpeed"].is<float>()) {
+            p.hasCooldownFan = true;
+            p.cooldownFan = m["cooldownFanSpeed"].as<float>();
+        }
+    }
+    return p;
+}
+
 bool basicCommand(const char* name, Command& out) {
     if (eq(name, "startProfile"))
         out = Command{Command::Kind::StartProfile};
@@ -107,6 +156,19 @@ void writeDataFields(const Snapshot& s, char unit, JsonObject d) {
     putNum(d["SV"], fromCelsius(s.setpoint, unit));
     d["Mode"] = modeName(s.mode);
     d["trip"] = tripName(s.trip);
+    putNum(d["Amb"], fromCelsius(s.ambient, unit));
+    d["Target"] = pidInputName(s.pidInput);
+    d["pidKp"] = s.gains.kp;
+    d["pidKi"] = s.gains.ki;
+    d["pidKd"] = s.gains.kd;
+}
+
+void writePreferences(const PidGains& g, float cooldownFan, JsonObject d) {
+    d["type"] = "preferences";
+    d["pidKp"] = g.kp;
+    d["pidKi"] = g.ki;
+    d["pidKd"] = g.kd;
+    d["cooldownFanSpeed"] = cooldownFan;
 }
 
 void writeRoasterInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject o) {

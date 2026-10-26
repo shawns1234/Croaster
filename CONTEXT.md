@@ -18,7 +18,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-roaster/` | Roaster **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `roaster-core/` | Pure roaster logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-roaster/test` (`pio test -e native`) |
 | `roaster-control/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `RoasterPlugin` (hooks into `CroasterApp`) |
-| `docs/` | `design.md` (architecture + decisions), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review) |
+| `docs/` | `design.md` (architecture + decisions D1–D9), `tickets.md` (remaining work), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -27,7 +27,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-roaster` | ESP32-S3 N16R8 | 128×64 SSD1306 (U8g2) | `esp32s3-roaster` | 26.9% (1 765 159 B), RAM 62 316 B |
+| `esp32s3-roaster` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (U8g2; confirmed by Shawn) | `esp32s3-roaster` | 27.1% (1 773 207 B), RAM 62 332 B |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -47,6 +47,18 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   sensor-injection constructor; `RoasterPlugin` registers roaster commands
   (`onJsonCommand`/`onCommand`), adds data fields via `CroasterCore::onJsonData`,
   runs the comms watchdog and ArduinoOTA. Details: `docs/design.md`.
+- Roaster control is 100 % firmware-side (PID on the ESP32). Clients send
+  setpoints/modes/percentages only. Two wire formats reach the same parser
+  (`roasterproto`): nested `{"command":{...}}` and yaeger's flat keys /
+  `setBurner`/`setFan`/`setPreferences`/`getPreferences` (`parseLegacy`, routed
+  via the new `CroasterCommandHandler::onOtherJson` hook for messages without
+  `"command"`). Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`,
+  `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
+- Comms watchdog: 10 s without client traffic while heating (not in Profile)
+  → heater off, fan to cooldown, `trip:"comms"` (`ROASTER_COMMS_TIMEOUT_S`).
+- Artisan: `.aset` verified against Artisan source (`docs/artisan-settings.md`).
+  Input 1 = BT, Input 2 = ET, one `getData` per second, extra devices
+  112/113 for Heater/Fan/SV, Artisan's own PID buttons off.
 - Library features added in 0.52: roast timer (`CroasterCore::roastTimerStart/
   Pause/Reset`), `getDeviceInfo` now reports `board`/`darkMode`/`brightness`
   (display state via `CroasterDisplay::isDarkMode()/getBrightness()`), and a
@@ -56,10 +68,12 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Shawn's fork: local branch `rework/roaster` off `master` (`0845ba8`), **not
   pushed**. Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
-  `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0.
+  `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
+  `CroasterCommandHandler::onOtherJson()`.
 - Decisions pending (Shawn): design.md D1 (top-level roaster libs), D3
   (force-included config), D5 (board id `esp32s3-roaster`), D6 (watchdog via
-  `getData` alias).
+  `getData` alias), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s
+  traffic watchdog vs instant cut on disconnect).
 
 ## Git state (2026-08-30, upstream)
 - Branch `dev` (HEAD `3f52109`, tracks `origin/dev`); the `boards/` + `croaster/`
@@ -87,6 +101,13 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 ## Gotchas
 - `onJsonCommand(key, fn)`: every registered callback gets the **whole**
   `command` object when its key is present; parse only your own key.
+- `onOtherJson(fn)` gets every JSON object without `"command"` (any client,
+  WebSocket or BLE): return `""` for messages that aren't yours.
+- Artisan WebSocket: replies must echo the request `id`. Command strings in the
+  `.aset` go through Python `str.format`, so literal braces are doubled.
+  Artisan's "Control" button is its own PC-side PID; keep it off.
+- Keep Croaster's unit and Artisan both in °C: command temperatures are read
+  in Croaster's unit.
 - NVS (`Preferences`) is not usable from global constructors: load settings in
   `setup()`.
 - Unpinned `platform = espressif32` resolves to whatever espressif32 is

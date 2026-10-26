@@ -34,6 +34,7 @@ private:
 
     std::map<String, CommandFn> customCommands;     ///< Custom basic commands.
     std::map<String, CommandFn> customJsonCommands; ///< Custom nested JSON commands.
+    CommandFn otherJson;                            ///< Fallback for JSON objects without "command".
 
     /**
      * @brief Handles basic commands such as restart or erase.
@@ -115,6 +116,15 @@ public:
      *           "command" object and returns a response string (empty = none).
      */
     void onJsonCommand(const String& key, CommandFn fn);
+
+    /**
+     * @brief Registers a fallback for JSON objects that carry no "command" key
+     *        (e.g. a legacy flat format such as {"BurnerVal":50}). Without it such
+     *        messages are ignored, as before.
+     * @param fn Callback receiving the whole message; returns a response string
+     *           (empty = none).
+     */
+    void onOtherJson(CommandFn fn);
 
     /**
      * @brief Generates a JSON response for a given command (usable by custom

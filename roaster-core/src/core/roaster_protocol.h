@@ -18,6 +18,14 @@
 //   {"command":"startProfile"} {"command":"stop"} {"command":"autotune"}
 //   {"command":"clearTrip"}    {"command":"getRoaster"}
 // Several keys may be combined in one nested object.
+//
+// yaeger compatibility (same wire format as yaeger's CommandLoop.cpp, so its web
+// UI and its Artisan settings keep working; see docs/control-parity.md):
+//   flat keys, no "command":  {"BurnerVal":v} {"FanVal":v} {"Setpoint":T}
+//                             {"Mode":"Manual"|"PID"} {"Target":"ET"|"BT"|"MAX"}
+//   {"command":"setBurner","value":v}   {"command":"setFan","value":v}
+//   {"command":"setPreferences","pidKp":..,"pidKi":..,"pidKd":..,"cooldownFanSpeed":..}
+//   {"command":"getPreferences"}  -> {"id":..,"data":{"type":"preferences",...}}
 #include <ArduinoJson.h>
 
 #include <cstddef>
@@ -33,6 +41,10 @@ extern const size_t kNestedKeyCount;
 // Names handled by basicCommand(); register each one with onCommand().
 extern const char* const kBasicNames[];
 extern const size_t kBasicNameCount;
+
+// yaeger command names handled by parseLegacy(); register each with onCommand().
+extern const char* const kLegacyBasicNames[];
+extern const size_t kLegacyBasicNameCount;
 
 struct Parsed {
     static constexpr size_t kMax = 8;
@@ -54,12 +66,20 @@ struct Parsed {
 // callback with the whole object, so each callback handles its own key once.
 Parsed parseNested(JsonObjectConst cmd, char unit, const char* onlyKey = nullptr);
 
+// Parses a whole message in yaeger's format (flat keys and/or a legacy command
+// name). Ignores everything else, so it is safe on any message.
+Parsed parseLegacy(JsonObjectConst msg, char unit);
+
 // Maps a basic command name to a control command. "getRoaster" returns false
 // (it is a query, answered with writeRoasterInfo()).
 bool basicCommand(const char* name, Command& out);
 
-// Adds BurnerVal, FanVal, SV (setpoint), Mode, trip to Croaster's "data" object.
+// Adds BurnerVal, FanVal, SV (setpoint), Mode, trip and yaeger's Amb, Target,
+// pidKp/pidKi/pidKd to Croaster's "data" object.
 void writeDataFields(const Snapshot& s, char unit, JsonObject data);
+
+// yaeger's preferences reply body: type, pidKp, pidKi, pidKd, cooldownFanSpeed.
+void writePreferences(const PidGains& g, float cooldownFan, JsonObject data);
 
 // Response body for {"command":"getRoaster"}.
 void writeRoasterInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject out);

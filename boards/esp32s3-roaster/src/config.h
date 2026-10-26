@@ -11,7 +11,8 @@
 // BLE. Keep it to #defines: no includes, no code.
 //
 // Defaults below: Lonely Binary ESP32-S3 Gold Edition N16R8 (IPEX antenna),
-// MAX31855 x2, RobotDyn AC dimmer (fan), SSR-40DA (heater), 0.96" SSD1306 OLED.
+// MAX31855 x2, RobotDyn AC dimmer (fan), SSR-40DA (heater), 0.96" SSD1306 OLED
+// (128x64, I2C, address 0x3C; confirmed by Shawn 2026-10-26).
 // Pins avoid: 0/3/45/46 (strapping), 19/20 (native USB), 26-34 (flash, not on
 // the header), 35-37 (octal PSRAM, ON the header: never use), 43/44 (UART0 to
 // the USB-UART bridge), 48 (RGB LED). All modules run from the 3V3 pin:
@@ -59,10 +60,10 @@
 
 // ---- Display ----------------------------------------------------------------
 #define ROASTER_DISPLAY_NONE 0
-#define ROASTER_DISPLAY_CROASTER_SSD1306 1 // Croaster's shared screen (boards/common): BT/ET + RoR
-#define ROASTER_DISPLAY_ROASTER_SSD1306 2  // roaster screen: temps + heater/fan/mode (U8g2)
-#define ROASTER_DISPLAY_ROASTER_SH1106 3   // same, SH1106 controller (some 1.3" GME12864)
-#define ROASTER_DISPLAY ROASTER_DISPLAY_ROASTER_SSD1306
+#define ROASTER_DISPLAY_CROASTER_SSD1306 1              // Croaster's shared screen (boards/common): BT/ET + RoR
+#define ROASTER_DISPLAY_ROASTER_SSD1306 2               // roaster screen: temps + heater/fan/mode (U8g2)
+#define ROASTER_DISPLAY_ROASTER_SH1106 3                // same, SH1106 controller (some 1.3" GME12864)
+#define ROASTER_DISPLAY ROASTER_DISPLAY_ROASTER_SSD1306 // Shawn's 0.96" 128x64 SSD1306 (confirmed)
 
 #define ROASTER_PIN_I2C_SDA 8 // Arduino default Wire pins (also what Croaster's display uses)
 #define ROASTER_PIN_I2C_SCL 9
@@ -86,7 +87,7 @@
 #define ROASTER_MAX_SETPOINT_C 250
 #define ROASTER_MIN_FAN_WITH_HEAT 30 // fan forced to at least this while heating
 #define ROASTER_COOLDOWN_FAN 100     // fan % after "stop" (changeable, stored in NVS)
-#define ROASTER_COMMS_TIMEOUT_S 30   // heater off if no client traffic while heating; 0 = off
+#define ROASTER_COMMS_TIMEOUT_S 10   // heater off + cooldown fan if no client traffic while heating; 0 = off
 #define ROASTER_CONTROL_CORE 1       // control task core; WiFi/BLE stacks run on core 0
 
 // ---- Derived settings (do not edit) -----------------------------------------
