@@ -74,7 +74,7 @@ until the comms watchdog stops the heater.
 
 | yaeger | Ours | Status |
 |:---|:---|:---|
-| Client disconnects while Manual and heating → heater 0, fan 100 | Comms watchdog: no client traffic for 10 s while heating (Manual, PID or Autotune) → heater 0, fan to cooldown, `trip:"comms"`. Profiles keep running on their own. | **closed** (was 30 s and didn't set the fan). See D9. |
+| Client disconnects while Manual and heating → heater 0, fan 100 | Comms watchdog: no client message for the timeout (10 s default, configurable, can be turned off) while heating (Manual, PID or Autotune) → heater 0, fan to cooldown, `trip:"comms"`. Profiles keep running on their own. | **closed** (was 30 s and didn't set the fan). See D9. |
 | — | Over-temperature (any probe > 275 °C) → heater off, fan 100 | **better** |
 | — | Probe fault (open, short) for 2 s in PID, Profile or Autotune → heater off (Manual keeps going, as yaeger did) | **better** |
 | — | AC dimmer sees no mains → heater off | **better** |
@@ -92,7 +92,7 @@ until the comms watchdog stops the heater.
 | `Target` | same | **closed** |
 | `pidKp/pidKi/pidKd` | same | **closed** |
 | `wifiStrength` | same (RSSI) | **closed** |
-| 100 ms broadcast with no `id` | Croaster broadcast (id 0) **and** a correct reply to Artisan's `getData` with its `id` | **better**: yaeger never answers `getData` with the id, so current Artisan can't read it |
+| 100 ms broadcast with no `id` | Croaster broadcast (id 0) **and** a correct reply to Artisan's `getArtisanData` with its `id` | **better**: yaeger never answers `getData` with the id, so current Artisan can't read it |
 
 ## Gaps found and closed in this change
 1. yaeger's flat-key messages (`BurnerVal`, `FanVal`, `Setpoint`, `Mode`,

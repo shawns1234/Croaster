@@ -35,6 +35,7 @@ private:
     std::map<String, CommandFn> customCommands;     ///< Custom basic commands.
     std::map<String, CommandFn> customJsonCommands; ///< Custom nested JSON commands.
     CommandFn otherJson;                            ///< Fallback for JSON objects without "command".
+    unsigned long lastCommandMs = 0;                ///< millis() of the last handled message.
 
     /**
      * @brief Handles basic commands such as restart or erase.
@@ -125,6 +126,13 @@ public:
      *           (empty = none).
      */
     void onOtherJson(CommandFn fn);
+
+    /**
+     * @brief millis() when handle() last accepted a message (any command,
+     *        including getArtisanData, from WebSocket or BLE); 0 before the first.
+     *        Lets add-ons tell whether a client is still connected and talking.
+     */
+    unsigned long lastCommandMillis() const;
 
     /**
      * @brief Generates a JSON response for a given command (usable by custom

@@ -72,14 +72,10 @@ ControlSettings defaults() {
     ControlSettings d;
     d.gains = {FLEX_PID_KP, FLEX_PID_KI, FLEX_PID_KD};
     d.cooldownFan = FLEX_COOLDOWN_FAN;
+    d.watchdog = {FLEX_WATCHDOG_ENABLED != 0, FLEX_WATCHDOG_TIMEOUT_S};
     return d;
 }
-ControlPluginConfig pluginConfig() {
-    ControlPluginConfig c;
-    c.commsTimeoutMs = FLEX_COMMS_TIMEOUT_S * 1000UL;
-    return c;
-}
-ControlPlugin plugin(controller, pluginConfig());
+ControlPlugin plugin(controller);
 
 // Header line for the SSD1306 (20 chars): "H 50 F 60 PID" or "TRIP overtemp F100".
 String statusLine(const Snapshot& s) {

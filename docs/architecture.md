@@ -50,7 +50,7 @@ A client sees JSON only:
 
 ```json
 {"command":{"setpoint":200}}      {"command":{"mode":"pid"}}
-{"command":"autotune"}            {"command":"getData","id":7}
+{"command":"autotune"}            {"command":"getArtisanData","id":7}
 {"BurnerVal":60}                  {"command":"setPreferences","pidKp":5}
 ```
 
@@ -145,7 +145,7 @@ Taken from Croaster: everything about connectivity, display and boards.
 | Hand-synced list | `.aset` command strings vs `controlproto` keys; `kNestedKeys` vs `parseNested` | Inside the firmware, registration loops over `kNestedKeys`/`kBasicNames`, so it's derived. The `.aset` is a separate file Artisan reads. `artisan-settings.md` documents every key. A future test could parse the `.aset` and run each command through `controlproto` (ticket T16). |
 | Pass-through | `RoasterProbe` (Croaster `Thermocouple` → snapshot) | An adapter that adds policy (NaN on fault, unit), so not a plain pass-through |
 | Importable internals | Boards can include `app/controller.h`, `hw/*` | Needed: the board constructs the drivers. Not hidden. |
-| Shallow module | `ControlPlugin` public API: `attach`/`begin`/`loop` | Deep: hides all JSON routing, NVS, watchdog and OTA |
+| Shallow module | `ControlPlugin` public API: `attach`/`begin`/`loop` | Deep: hides all JSON routing, NVS and the watchdog |
 
 ## Tradeoffs accepted
 - A dedicated control task, in exchange for one more concept (queue/snapshot)
@@ -183,5 +183,5 @@ Taken from Croaster: everything about connectivity, display and boards.
 Resolved: D5, board id `esp32s3-flex` (Shawn, 2026-10-26).
 
 ## Next implementation step
-Bench bring-up (T2): flash, confirm the OLED, both probes and `getData` in
+Bench bring-up (T2): flash, confirm the OLED, both probes and `getArtisanData` in
 Artisan with the new `.aset`.

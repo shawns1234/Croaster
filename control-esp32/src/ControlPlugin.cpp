@@ -47,12 +47,6 @@ void ControlPlugin::attach(CroasterApp& app, const ControlSettings& settings) {
     app.commands().onOtherJson([this](const JsonObject& json) {
         return handleLegacy(json, nullptr);
     });
-    // Same payload as Croaster's built-in getArtisanData, but counts as client
-    // activity for the watchdog. The supplied Artisan .aset polls with this.
-    app.commands().onCommand("getData", [this](const JsonObject& json) {
-        touch();
-        return app_->core().getJsonData(json["id"] | 0);
-    });
     app.core().onJsonData([this](JsonObject& data) {
         controlproto::writeDataFields(controller_.snapshot(), unit(), data);
         if (WiFi.status() == WL_CONNECTED)
@@ -63,7 +57,6 @@ void ControlPlugin::attach(CroasterApp& app, const ControlSettings& settings) {
 String ControlPlugin::handleNested(const JsonObject& json, const char* key) {
     if (json[key].isNull())
         return "";
-    touch();
     controlproto::Parsed p = controlproto::parseNested(json, unit(), key);
     apply(p);
     if (p.hasProfile || p.profileError) {
@@ -79,7 +72,6 @@ String ControlPlugin::handleLegacy(const JsonObject& json, const char* name) {
     controlproto::Parsed p = controlproto::parseLegacy(json, unit());
     if (p.count == 0 && !p.hasCooldownFan && !name)
         return ""; // unrelated message without "command"
-    touch();
     apply(p);
     if (!name || std::strcmp(name, "setFan") == 0 || std::strcmp(name, "setBurner") == 0)
         return "";
@@ -106,10 +98,17 @@ void ControlPlugin::apply(const controlproto::Parsed& p) {
         settings_.cooldownFan = p.cooldownFan;
         ConfigStore::saveCooldownFan(p.cooldownFan);
     }
+    if (p.hasWatchdogEnabled || p.hasWatchdogTimeout) {
+        if (p.hasWatchdogEnabled)
+            settings_.watchdog.enabled = p.watchdogEnabled;
+        if (p.hasWatchdogTimeout)
+            settings_.watchdog.timeoutS = p.watchdogTimeoutS;
+        ConfigStore::saveWatchdog(settings_.watchdog);
+        watchdogArmedMs_ = millis();
+    }
 }
 
 String ControlPlugin::handleBasic(const char* name) {
-    touch();
     Command c;
     if (controlproto::basicCommand(name, c)) {
         controller_.submit(c);
@@ -121,13 +120,14 @@ String ControlPlugin::handleBasic(const char* name) {
         return "";
     }
     JsonDocument r; // getControl
-    controlproto::writeControlInfo(controller_.snapshot(), settings_.cooldownFan, unit(), r.to<JsonObject>());
+    controlproto::writeControlInfo(controller_.snapshot(), settings_.cooldownFan, settings_.watchdog, unit(),
+                                   r.to<JsonObject>());
     return reply(name, r);
 }
 
 void ControlPlugin::begin() {
     autotuneSeq_ = controller_.snapshot().autotuneSeq;
-    touch();
+    watchdogArmedMs_ = millis();
 }
 
 void ControlPlugin::loop() {
@@ -139,9 +139,15 @@ void ControlPlugin::loop() {
         ConfigStore::saveGains(s.gains);
     }
 
+    // Quiet time = since the last message Croaster's command handler accepted
+    // (WebSocket or BLE, any command) or since the watchdog was (re)armed.
+    const unsigned long now = millis();
+    const unsigned long sinceCommand = now - app_->commands().lastCommandMillis();
+    const unsigned long sinceArmed = now - watchdogArmedMs_;
+    const unsigned long quietMs = sinceCommand < sinceArmed ? sinceCommand : sinceArmed;
     const bool heating = s.heaterPct > 0 || s.mode == Mode::Pid || s.mode == Mode::Autotune;
-    if (cfg_.commsTimeoutMs && heating && s.mode != Mode::Profile && s.trip == SafetyTrip::None &&
-        millis() - lastActivityMs_ > cfg_.commsTimeoutMs) {
+    if (settings_.watchdog.enabled && heating && s.mode != Mode::Profile && s.trip == SafetyTrip::None &&
+        quietMs > settings_.watchdog.timeoutS * 1000UL) {
         Command trip{Command::Kind::Trip};
         trip.a = static_cast<float>(SafetyTrip::CommsLost);
         controller_.submit(trip);
@@ -150,6 +156,6 @@ void ControlPlugin::loop() {
             fan.a = settings_.cooldownFan;
             controller_.submit(fan);
         }
-        touch(); // one trip per timeout, not one per loop
+        watchdogArmedMs_ = now; // one trip per timeout, not one per loop
     }
 }

@@ -34,6 +34,16 @@ inline const char* tripName(SafetyTrip t) {
     }
 }
 
+// Comms watchdog: while heating outside a profile run, no client message for
+// timeoutS seconds trips CommsLost. Defaults come from config.h; the
+// {"command":{"watchdog":...}} command changes them and they are saved in NVS.
+struct WatchdogSettings {
+    static constexpr uint16_t kMinTimeoutS = 2;
+    static constexpr uint16_t kMaxTimeoutS = 600;
+    bool enabled = true;
+    uint16_t timeoutS = 10;
+};
+
 // Croaster reports temperatures in a user-selected unit ("C", "F" or "K"); the
 // controller works in Celsius. These convert absolute temperatures.
 inline float toCelsius(float v, char unit) {

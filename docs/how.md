@@ -95,16 +95,18 @@ go through the same path. `onOtherJson` and `onCommand` hand them to
 `parseLegacy`, so yaeger's web UI or settings would also work.
 
 ### Data going out
-Every second Artisan sends `{"command":"getData","id":N}`. The plugin marks
-"client alive" for the watchdog and answers with Croaster's data
-(`BT`, `ET`, RoR) plus our fields from the snapshot: `BurnerVal`, `FanVal`,
+Every second Artisan sends `{"command":"getArtisanData","id":N}`. Croaster
+answers with its data (`BT`, `ET`, RoR) plus our fields from the snapshot: `BurnerVal`, `FanVal`,
 `SV`, `Mode`, `trip`, `Target`, `pidKp/Ki/Kd`, `Amb`, `wifiStrength`. Croaster
 also broadcasts the same data to the ICRM app.
 
 ### Watchdog
-If the heater is on (Manual, PID or Autotune) and no client has sent anything
-for 10 s, the plugin trips `comms`: heater off, fan to the cooldown speed.
-Profiles are exempt because they are meant to run on their own.
+Croaster's command handler records when it last accepted a message
+(`lastCommandMillis()`, WebSocket or BLE). If the heater is on (Manual, PID or
+Autotune) and that is older than the timeout (10 s by default), the plugin
+trips `comms`: heater off, fan to the cooldown speed. Profiles are exempt
+because they are meant to run on their own. The timeout and an off switch are
+settings; see the flex README, "Comms watchdog".
 
 ## Where things live
 

@@ -36,7 +36,7 @@ sequenceDiagram
     participant A as Artisan (PC)
     participant F as ESP32 firmware
     loop every Delay (1 s)
-        A->>F: {"command":"getData","id":N,"roasterID":0}
+        A->>F: {"command":"getArtisanData","id":N,"roasterID":0}
         F-->>A: {"id":N,"data":{"BT":..,"ET":..,"BurnerVal":..,"FanVal":..,"SV":..,...}}
     end
     Note over A: Inputs 1-6 filled from one reply
@@ -52,15 +52,15 @@ sequenceDiagram
 | `[WebSocket] host` | `192.168.4.1` | Croaster's own access point address (README, "Option 1"). **On your home WiFi, put in the IP shown on the OLED.** Croaster advertises no mDNS name, so `.local` does not resolve (design D13). | `README.md` "How to Connect Croaster with Artisan" |
 | `[WebSocket] port` | `81` | Croaster's WebSocket server port | `croaster/src/CroasterWebSocketManager.*` |
 | `[WebSocket] path` | `WebSocket` | Artisan connects to `ws://host:port/path`. Croaster's server answers on any path; `WebSocket` is what Croaster's own setup screenshot uses. | `wsport.py` (URL build); `images/Connect-Artisan-Same-Network.png` |
-| `[WebSocket] request_data_command` | `getData` | One request fills **all** inputs. We answer it with the same `id` and also count it as client activity for the comms watchdog. | `comm.py:1944-1955`; `ControlPlugin.cpp` `getData` |
+| `[WebSocket] request_data_command` | `getArtisanData` | Croaster's own data command. One request fills **all** inputs; Croaster answers with the same `id`. Like any message, it also keeps the comms watchdog satisfied (`CroasterCommandHandler::lastCommandMillis()`). | `comm.py:1944-1955`; `croaster/src/CroasterCommandHandler.cpp` |
 | `[WebSocket] channel_requests` | all empty | Only used when `request_data_command` is empty. Leaving them empty avoids 10 extra requests per sample. | `comm.py:1958-1968` |
-| `[WebSocket] channel_nodes` | `BT, ET, FanVal, BurnerVal, , SV, , , ,` | **Fixed (was `ET, BT`).** `WSread` returns `(tx, readings[1], readings[0])` as `(t1=ET, t2=BT)`. Input 1 is BT, Input 2 is ET, Input 3 is the extra curve 2 and Input 4 is extra curve 1. Field names are the keys our `getData` writes. Croaster's own Artisan screenshot also has Input 1 = BT. | `comm.py:1973`; `control_protocol.cpp` `writeDataFields`; `images/Connect-Artisan-Same-Network.png` |
+| `[WebSocket] channel_nodes` | `BT, ET, FanVal, BurnerVal, , SV, , , ,` | **Fixed (was `ET, BT`).** `WSread` returns `(tx, readings[1], readings[0])` as `(t1=ET, t2=BT)`. Input 1 is BT, Input 2 is ET, Input 3 is the extra curve 2 and Input 4 is extra curve 1. Field names are the keys our data hook adds to `getArtisanData`. Croaster's own Artisan screenshot also has Input 1 = BT. | `comm.py:1973`; `control_protocol.cpp` `writeDataFields`; `images/Connect-Artisan-Same-Network.png` |
 | `[WebSocket] channel_modes` | `1, 1, 0, 0, 0, 1, 0, 0, 0, 0` | 1 = a temperature, converted if Artisan runs in °F; 0 = a plain number (heater %, fan %). SV is a temperature. | Artisan WebSocket docs ("mode") |
 | `[WebSocket] id_node` / `machine_node` | `id` / `roasterID` | Artisan adds both to every request. We echo `id`. | `wsport.py:96-97` |
 | `[WebSocket] request_timeout` / `connect_timeout` / `reconnect_interval` | `0.5` / `5` / `3` s | Artisan default request timeout; our reply takes a few ms. Croaster's own screenshot uses 0.5 / 4 / 2; either is fine. | `wsport.py:89`; `images/Connect-Artisan-Same-Network.png` |
 | `[WebSocket] compression` | `true` | Offers deflate. The links2004 server ignores it, so it does no harm. | `wsport.py:73,286` |
 | `[WebSocket] charge_message` / `drop_message` | `startRoasting` / `endRoasting` | Inert. They are messages the *roaster* could push to Artisan, and ours never pushes them. | Artisan WebSocket docs |
-| `[ExtraDev] extradevices` | `112, 113` | "+WebSocket 34" (Inputs 3/4) and "+WebSocket 56" (Inputs 5/6). They reuse the readings from the one `getData`. | `device_registry.py:153-154`; `comm.py:1944` (only mode 0 polls) |
+| `[ExtraDev] extradevices` | `112, 113` | "+WebSocket 34" (Inputs 3/4) and "+WebSocket 56" (Inputs 5/6). They reuse the readings from the one `getArtisanData`. | `device_registry.py:153-154`; `comm.py:1944` (only mode 0 polls) |
 | `[ExtraDev] extraname1/extraname2` | `Heater, SV` / `Fan, Unused` | curve1 = the even input (4, 6) and curve2 = the odd input (3, 5), so WS34 gives Heater (BurnerVal) and Fan (FanVal), and WS56 gives SV. | `comm.py:1973` (`mode*2+1` = t1) |
 | `[ExtraDev] extraCurveVisibility2 / extraLCDvisibility*` | WS56 curve 2 hidden; LCDs shown for Heater, Fan, SV | Input 5 is unused | — |
 | `[ExtraComm] extra*` | 2 entries each | Each list must be as long as `extradevices`. Artisan pads short lists, but explicit lists match its own Probat example. The serial values are ignored for WebSocket devices. | `main.py:15085`; `includes/Machines/Probat/Sample_Roaster.aset` |
@@ -91,7 +91,8 @@ There are two different PIDs, and only one is in use.
   next to the SSR, with the safety trips. Artisan only sends *what to aim for*:
   the setpoint slider, plus PID, Manual, Autotune and Stop. The ESP32 does the
   control itself and keeps doing it if Artisan closes. If client traffic stops
-  for 10 s while heating, the comms watchdog turns the heater off.
+  for the watchdog timeout (10 s by default) while heating, the comms watchdog
+  turns the heater off.
 
 ## Using it
 1. Help → Load Settings… → `croaster-flex.aset`.

@@ -114,9 +114,9 @@ Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
 | `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved) |
 | `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved) |
 | `{"command":{"cooldownFan":0..100}}` | fan after `stop` (saved) |
+| `{"command":{"watchdog":{"enabled":bool,"timeout":s}}}` | comms watchdog on/off and timeout, 2..600 s (saved; either field alone works) |
 | `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile |
 | `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getControl"` | actions / query |
-| `{"command":"getData","id":N}` | same as `getArtisanData`, and counts as client activity for the comms watchdog |
 
 yaeger's formats also work (same parser, see `docs/control-parity.md`):
 
@@ -134,15 +134,31 @@ The PID runs on the ESP32. Clients (Artisan, ICRM, a browser) only send targets
 and commands.
 
 Safety: over-temperature, probe fault, no mains (dimmer sees no zero-cross),
-OTA in progress, and **comms lost** (heating, not running a profile, and no
-client traffic for `FLEX_COMMS_TIMEOUT_S`, default 10 s; also sets the
-cooldown fan) all turn the heater off and latch a trip until `clearTrip`.
+OTA in progress, and comms lost (below) all turn the heater off and latch a
+trip until `clearTrip`.
+
+### Comms watchdog
+
+While the heater is on (Manual, PID or Autotune; profile runs are exempt), the
+firmware expects a client message at least every timeout. Any message counts,
+over WebSocket or BLE, including Artisan's once-a-second `getArtisanData`. If
+none arrives, it trips `comms`: heater off, fan to the cooldown speed.
+
+| Setting | Default | Change at build time | Change at runtime (saved in NVS) |
+|:---|:---|:---|:---|
+| On/off | on | `FLEX_WATCHDOG_ENABLED` (1/0) | `{"command":{"watchdog":{"enabled":false}}}` |
+| Timeout | 10 s | `FLEX_WATCHDOG_TIMEOUT_S` (2..600) | `{"command":{"watchdog":{"timeout":20}}}` |
+
+`config.h` values apply until a runtime command saves new ones; after that NVS
+wins. `{"command":"getControl"}` shows the current values under `watchdog`.
+Turn it off only when something else watches the roast: with it off, a crashed
+laptop leaves the heater running until the over-temperature trip.
 
 ## ☕ Artisan
 
 Load `artisan/croaster-flex.aset` (Help → Load Settings). Host
 `192.168.4.1` on Croaster's access point (or the IP on the OLED), port 81, path `WebSocket`,
-one `getData` per second. Curves: BT, ET, Heater, Fan, SV. Sliders: Fan,
+one `getArtisanData` per second. Curves: BT, ET, Heater, Fan, SV. Sliders: Fan,
 Setpoint, Heater. Buttons: heater 50–70 %/Off, PID, Manual, Autotune, Stop,
 Clear trip. Artisan's own PID ("Control") is off, because ours runs on the
 ESP32. Every setting and its source: [`docs/artisan-settings.md`](../../docs/artisan-settings.md).

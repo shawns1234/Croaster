@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — flex control board (branch rework/roaster)
 
 ### Added
+- **`CroasterCommandHandler::lastCommandMillis()`**: when the handler last
+  accepted a message (WebSocket or BLE), for add-ons such as a comms watchdog.
 - **`boards/esp32s3-flex`** ("flex") — heater + fan control board for the Lonely Binary
   ESP32-S3 N16R8: PID heater via SSR (time-proportional window), RobotDyn AC
   dimmer or PWM fan, roast profiles, relay autotune, safety trips (over-temp,
@@ -39,6 +41,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Comms watchdog counts every client message** through
+  `CroasterCommandHandler` (WebSocket and BLE, `getArtisanData` included), so
+  the `getData` alias is gone and the `.aset` polls `getArtisanData`. It can be
+  turned off and its timeout changed: `FLEX_WATCHDOG_ENABLED`,
+  `FLEX_WATCHDOG_TIMEOUT_S`, and `{"command":{"watchdog":...}}` (saved in NVS).
 - **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
   `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
   Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).

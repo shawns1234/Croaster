@@ -5,7 +5,8 @@
 
 namespace controlproto {
 
-const char* const kNestedKeys[] = {"burner", "fan", "setpoint", "mode", "pidInput", "pid", "cooldownFan", "profile"};
+const char* const kNestedKeys[] = {"burner", "fan",         "setpoint", "mode",    "pidInput",
+                                   "pid",    "cooldownFan", "profile",  "watchdog"};
 const size_t kNestedKeyCount = sizeof(kNestedKeys) / sizeof(kNestedKeys[0]);
 const char* const kBasicNames[] = {"startProfile", "stop", "autotune", "clearTrip", "getControl"};
 const size_t kBasicNameCount = sizeof(kBasicNames) / sizeof(kBasicNames[0]);
@@ -89,6 +90,20 @@ Parsed parseNested(JsonObjectConst c, char unit, const char* only) {
         p.hasCooldownFan = true;
         p.cooldownFan = c["cooldownFan"].as<float>();
     }
+    if (want("watchdog") && c["watchdog"].is<JsonObjectConst>()) {
+        JsonObjectConst w = c["watchdog"];
+        if (w["enabled"].is<bool>()) {
+            p.hasWatchdogEnabled = true;
+            p.watchdogEnabled = w["enabled"].as<bool>();
+        }
+        if (w["timeout"].is<float>()) {
+            const float t = w["timeout"].as<float>();
+            if (t >= WatchdogSettings::kMinTimeoutS && t <= WatchdogSettings::kMaxTimeoutS) {
+                p.hasWatchdogTimeout = true;
+                p.watchdogTimeoutS = static_cast<uint16_t>(std::lround(t));
+            }
+        }
+    }
     if (want("profile") && !c["profile"].isNull()) {
         p.hasProfile = p.profile.loadJson(c["profile"].as<JsonArrayConst>(), unit);
         p.profileError = !p.hasProfile;
@@ -171,13 +186,16 @@ void writePreferences(const PidGains& g, float cooldownFan, JsonObject d) {
     d["cooldownFanSpeed"] = cooldownFan;
 }
 
-void writeControlInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject o) {
+void writeControlInfo(const Snapshot& s, float cooldownFan, const WatchdogSettings& wd, char unit, JsonObject o) {
     o["mode"] = modeName(s.mode);
     o["pidInput"] = pidInputName(s.pidInput);
     putNum(o["setpoint"], fromCelsius(s.setpoint, unit));
     putNum(o["burner"], s.heaterPct);
     putNum(o["fan"], s.fanPct);
     o["cooldownFan"] = cooldownFan;
+    JsonObject w = o["watchdog"].to<JsonObject>();
+    w["enabled"] = wd.enabled;
+    w["timeout"] = wd.timeoutS;
     JsonObject g = o["pid"].to<JsonObject>();
     g["kp"] = s.gains.kp;
     g["ki"] = s.gains.ki;

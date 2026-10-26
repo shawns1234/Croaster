@@ -86,7 +86,7 @@ NeoPixel (Arduino 3.x drives the WS2812 via `digitalWrite(LED_BUILTIN)`).
 
 ## 5. Artisan protocol
 - Transport: WebSocket `ws://<host>:81/` (Croaster). yaeger used `:80/ws`.
-- Poll: `{"command":"getData","id":N}` (or Croaster's `getArtisanData`) →
+- Poll: Croaster's `{"command":"getArtisanData","id":N}` →
   `{"id":N,"name":..,"data":{"BT","ET","DBT","DET","timer","temp",...,"BurnerVal","FanVal","SV","Mode","trip"}}`.
 - Control: yaeger's flat `{"BurnerVal":v}` is not routable by Croaster
   (no `command` key), so the `.aset` sends `{"command":{"burner":v}}` /

@@ -25,6 +25,10 @@ void CroasterCommandHandler::onJsonCommand(const String& key, CommandFn fn) {
     customJsonCommands[key] = fn;
 }
 
+unsigned long CroasterCommandHandler::lastCommandMillis() const {
+    return lastCommandMs;
+}
+
 void CroasterCommandHandler::onOtherJson(CommandFn fn) {
     otherJson = fn;
 }
@@ -69,6 +73,7 @@ bool CroasterCommandHandler::handle(const String& json, String& responseOut) {
     responseOut = "";
 
     if (doc["command"].is<String>()) {
+        lastCommandMs = millis();
         JsonObject json = doc.as<JsonObject>();
 
         handleBasicCommand(json, responseOut);
@@ -77,6 +82,7 @@ bool CroasterCommandHandler::handle(const String& json, String& responseOut) {
     }
 
     if (doc["command"].is<JsonObject>()) {
+        lastCommandMs = millis();
         JsonObject obj = doc["command"];
 
         handleJsonCommand(obj, responseOut);
@@ -85,6 +91,7 @@ bool CroasterCommandHandler::handle(const String& json, String& responseOut) {
     }
 
     if (otherJson && doc["command"].isNull() && doc.is<JsonObject>()) {
+        lastCommandMs = millis();
         responseOut = otherJson(doc.as<JsonObject>());
 
         return true;

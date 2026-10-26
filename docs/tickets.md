@@ -6,17 +6,17 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | # | Ticket | Status | Blocked by |
 |:---|:---|:---|:---|
 | T1 | Skeleton: board project, config.h + ConfigCheck, control-core/-control libs, builds on espressif32 8.0.0 + pioarduino, 15 host tests | done | — |
-| T2 | Bench bring-up, no mains: flash, WiFiManager portal, OLED shows IP + BT/ET from both MAX31855; `getData` in a browser WS client | todo | T1 |
+| T2 | Bench bring-up, no mains: flash, WiFiManager portal, OLED shows IP + BT/ET from both MAX31855; `getArtisanData` in a browser WS client | todo | T1 |
 | T3 | Probe check: both probes read room temp; boiling water ≈ 100 °C; grounded-probe fault shows as `trip:"sensor"` | todo | T2 |
 | T4 | Fan on mains: dimmer Z-C detected (`mainsDetected`), fan 30/60/100 % audibly different; unplug mains → `trip:"nomains"` | todo | T2 |
 | T5 | Heater on bench lamp/load via SSR: `burner` 0/50/100 % gives correct window duty; fan interlock (heat forces fan ≥ 30 %) | todo | T4 |
-| T6 | Safety drills: over-temp (set `FLEX_OVER_TEMP_C` low), close Artisan while heating → `trip:"comms"` after 10 s and fan to cooldown, Croaster OTA (ICRM app) start → heater off | todo | T5 |
+| T6 | Safety drills: over-temp (set `FLEX_OVER_TEMP_C` low), close Artisan while heating → `trip:"comms"` after 10 s and fan to cooldown; `{"command":{"watchdog":{"enabled":false}}}` → no trip, survives reboot, Croaster OTA (ICRM app) start → heater off | todo | T5 |
 | T7 | Artisan: load `artisan/croaster-flex.aset`; BT on Input 1, ET on Input 2; Heater/Fan/SV curves; Fan/Setpoint/Heater sliders; PID/Manual/Autotune/Stop/Clear trip buttons act on the firmware (`docs/artisan-settings.md`) | todo | T5 |
 | T8 | PID: setpoint hold on the roaster empty; autotune run; gains saved to NVS survive reboot | todo | T6 |
 | T9 | Profile: load the README example profile, `startProfile`, setpoint follows ramps, `stop` → cooldown fan | todo | T8 |
 | T10 | ICRM app over BLE + WebSocket with board id `esp32s3-flex` (design D5) | todo | T2 |
 | T11 | Decide D1/D3/D6/D8/D9/D10 with Shawn (list in `docs/architecture.md`); update AGENTS.md layout if D1 accepted | blocked | Shawn |
-| T12 | Optional core hook `onAnyCommand` for the comms watchdog (D6 option 2) | todo | T11 |
+| T12 | Watchdog sees all client traffic via core `CroasterCommandHandler::lastCommandMillis()` (D6 option 1); `getData` alias removed | done | — |
 | T13 | Existing boards: fix `boards/esp32s3` platformio.ini (`boards_dir = ..`, `-Wno-deprecated-declarations`), pin c3/s3 platform versions | todo | — |
 | T14 | Web UI (phase 2): control page served from LittleFS or embedded | todo | T9 |
 | T15 | yaeger parity on hardware: flat keys (`BurnerVal`, `Mode`, `Setpoint`, `Target`), `setPreferences`/`getPreferences`, `Amb`/`wifiStrength` in data, setpoint 0→>0 PID reset (`docs/control-parity.md`) | todo | T8 |
@@ -27,3 +27,4 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T20 | Flex screen: Croaster's shared SSD1306 display + `setHeaderText()`; drop `RoasterOledDisplay`/U8g2 | done | — |
 | T21 | Rename roaster-named code to flex/control (map in `docs/design.md`) | done | — |
 | T22 | Croaster's OTA only (ArduinoOTA and `-ota` env removed), `default_16MB.csv`, flex `lib_deps` trimmed | done | — |
+| T23 | Watchdog settings: `FLEX_WATCHDOG_ENABLED`/`FLEX_WATCHDOG_TIMEOUT_S` defaults, `{"command":{"watchdog":...}}` saved in NVS, shown in `getControl` | done | — |

@@ -218,6 +218,31 @@ void test_protocol_values() {
     TEST_ASSERT_EQUAL_FLOAT(80.0f, p.cooldownFan);
 }
 
+void test_protocol_watchdog() {
+    auto p = parse(R"({"command":{"watchdog":{"enabled":false}}})");
+    TEST_ASSERT_TRUE(p.hasWatchdogEnabled);
+    TEST_ASSERT_FALSE(p.watchdogEnabled);
+    TEST_ASSERT_FALSE(p.hasWatchdogTimeout);
+    TEST_ASSERT_EQUAL(0, (int)p.count); // a setting, not a control command
+
+    p = parse(R"({"command":{"watchdog":{"enabled":true,"timeout":20}}})", 'C', "watchdog");
+    TEST_ASSERT_TRUE(p.hasWatchdogEnabled && p.watchdogEnabled);
+    TEST_ASSERT_TRUE(p.hasWatchdogTimeout);
+    TEST_ASSERT_EQUAL_UINT16(20, p.watchdogTimeoutS);
+
+    p = parse(R"({"command":{"watchdog":{"timeout":0}}})"); // out of range: ignored
+    TEST_ASSERT_FALSE(p.hasWatchdogTimeout);
+    p = parse(R"({"command":{"watchdog":{"timeout":601}}})");
+    TEST_ASSERT_FALSE(p.hasWatchdogTimeout);
+
+    Snapshot s;
+    WatchdogSettings wd{false, 30};
+    JsonDocument d;
+    controlproto::writeControlInfo(s, 100, wd, 'C', d.to<JsonObject>());
+    TEST_ASSERT_FALSE(d["watchdog"]["enabled"].as<bool>());
+    TEST_ASSERT_EQUAL(30, d["watchdog"]["timeout"].as<int>());
+}
+
 void test_protocol_only_key() {
     // Croaster calls each onJsonCommand(key) callback with the whole object:
     // each callback must handle only its own key, or values apply twice.
@@ -331,6 +356,7 @@ int main() {
     RUN_TEST(test_profile_matches_readme_example);
     RUN_TEST(test_profile_in_fahrenheit);
     RUN_TEST(test_protocol_values);
+    RUN_TEST(test_protocol_watchdog);
     RUN_TEST(test_protocol_only_key);
     RUN_TEST(test_protocol_profile);
     RUN_TEST(test_protocol_basic_and_data);

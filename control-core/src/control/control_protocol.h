@@ -13,6 +13,8 @@
 //   {"command":{"pidInput":"ET"|"BT"|"MAX"}}
 //   {"command":{"pid":{"kp":..,"ki":..,"kd":..}}}       saved to NVS
 //   {"command":{"cooldownFan":0..100}}                  saved to NVS
+//   {"command":{"watchdog":{"enabled":bool,"timeout":s}}} saved to NVS; either
+//                                            field alone works; timeout 2..600 s
 //   {"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%},...]}}
 // Basic:
 //   {"command":"startProfile"} {"command":"stop"} {"command":"autotune"}
@@ -59,6 +61,10 @@ struct Parsed {
     PidInput pidInput = PidInput::ET;
     bool hasCooldownFan = false;
     float cooldownFan = 0;
+    bool hasWatchdogEnabled = false; // persist these
+    bool watchdogEnabled = true;
+    bool hasWatchdogTimeout = false;
+    uint16_t watchdogTimeoutS = 0;
 };
 
 // `cmd` is the object under "command"; `unit` is Croaster's unit ('C','F','K').
@@ -82,6 +88,6 @@ void writeDataFields(const Snapshot& s, char unit, JsonObject data);
 void writePreferences(const PidGains& g, float cooldownFan, JsonObject data);
 
 // Response body for {"command":"getControl"}.
-void writeControlInfo(const Snapshot& s, float cooldownFan, char unit, JsonObject out);
+void writeControlInfo(const Snapshot& s, float cooldownFan, const WatchdogSettings& wd, char unit, JsonObject out);
 
 } // namespace controlproto

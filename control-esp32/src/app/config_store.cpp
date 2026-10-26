@@ -16,6 +16,8 @@ ControlSettings ConfigStore::load(const ControlSettings& d) {
     s.gains.kd = p.getFloat("kd", d.gains.kd);
     s.pidInput = static_cast<PidInput>(p.getUChar("in", static_cast<uint8_t>(d.pidInput)));
     s.cooldownFan = p.getFloat("cool", d.cooldownFan);
+    s.watchdog.enabled = p.getBool("wdOn", d.watchdog.enabled);
+    s.watchdog.timeoutS = p.getUShort("wdS", d.watchdog.timeoutS);
     p.end();
     return s;
 }
@@ -40,5 +42,13 @@ void ConfigStore::saveCooldownFan(float pct) {
     Preferences p;
     p.begin(kNs, false);
     p.putFloat("cool", pct);
+    p.end();
+}
+
+void ConfigStore::saveWatchdog(const WatchdogSettings& w) {
+    Preferences p;
+    p.begin(kNs, false);
+    p.putBool("wdOn", w.enabled);
+    p.putUShort("wdS", w.timeoutS);
     p.end();
 }

@@ -84,4 +84,7 @@ static_assert(FLEX_MAX_SETPOINT_C < FLEX_OVER_TEMP_C, "config.h: FLEX_MAX_SETPOI
 static_assert(FLEX_MIN_FAN_WITH_HEAT >= 0 && FLEX_MIN_FAN_WITH_HEAT <= 100, "FLEX_MIN_FAN_WITH_HEAT: 0..100");
 static_assert(FLEX_COOLDOWN_FAN >= 0 && FLEX_COOLDOWN_FAN <= 100, "FLEX_COOLDOWN_FAN: 0..100");
 static_assert(FLEX_CONTROL_CORE == 0 || FLEX_CONTROL_CORE == 1, "FLEX_CONTROL_CORE: 0 or 1");
+static_assert(FLEX_WATCHDOG_ENABLED == 0 || FLEX_WATCHDOG_ENABLED == 1, "FLEX_WATCHDOG_ENABLED: 0 or 1");
+static_assert(FLEX_WATCHDOG_TIMEOUT_S >= 2 && FLEX_WATCHDOG_TIMEOUT_S <= 600,
+              "FLEX_WATCHDOG_TIMEOUT_S: 2..600 (WatchdogSettings limits)");
 } // namespace configcheck

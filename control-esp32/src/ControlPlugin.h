@@ -6,9 +6,10 @@
 // (port 81), BLE, OTA, display and RoR. Commands: see control/control_protocol.h.
 //
 // Also owns two network-side safety/housekeeping jobs (loop task):
-//  - comms watchdog: heater on and no client command/poll for commsTimeoutMs ->
-//    trip CommsLost (heater off, fan to the cooldown speed). Profile runs are
-//    exempt (they are autonomous).
+//  - comms watchdog: heating and no message through Croaster's command handler
+//    (WebSocket or BLE, getArtisanData polls included) for the watchdog timeout
+//    -> trip CommsLost (heater off, fan to the cooldown speed). Profile runs are
+//    exempt (they are autonomous). Enable and timeout: ControlSettings::watchdog.
 //  - persists PID gains after a successful autotune.
 // Firmware updates use Croaster's own OTA (WebSocket/BLE); the control task
 // turns the heater off while one runs (Update.isRunning()).
@@ -20,15 +21,10 @@
 
 class CroasterApp;
 
-struct ControlPluginConfig {
-    uint32_t commsTimeoutMs = 10000; // 0 disables the watchdog
-};
-
 class ControlPlugin {
 public:
-    ControlPlugin(Controller& controller, ControlPluginConfig cfg)
-        : controller_(controller)
-        , cfg_(cfg) {}
+    explicit ControlPlugin(Controller& controller)
+        : controller_(controller) {}
 
     // Registers commands and the data hook. Call before app.begin(). `settings` are
     // the values loaded from NVS (ConfigStore::load) that the controller runs with.
@@ -45,14 +41,10 @@ private:
     void apply(const controlproto::Parsed& p);
     String handleBasic(const char* name);
     char unit() const;
-    void touch() {
-        lastActivityMs_ = millis();
-    }
 
     Controller& controller_;
     ControlSettings settings_;
-    ControlPluginConfig cfg_;
     CroasterApp* app_ = nullptr;
-    uint32_t lastActivityMs_ = 0;
+    unsigned long watchdogArmedMs_ = 0;
     uint32_t autotuneSeq_ = 0;
 };

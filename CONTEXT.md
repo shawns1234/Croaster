@@ -27,7 +27,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-flex` | 26.2% (1 718 351 B), RAM 56 780 B |
+| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-flex` | 26.2% (1 719 671 B), RAM 56 788 B |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -54,10 +54,13 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   via the new `CroasterCommandHandler::onOtherJson` hook for messages without
   `"command"`). Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `Amb`,
   `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
-- Comms watchdog: 10 s without client traffic while heating (not in Profile)
-  → heater off, fan to cooldown, `trip:"comms"` (`FLEX_COMMS_TIMEOUT_S`).
+- Comms watchdog: no message through Croaster's command handler
+  (`lastCommandMillis()`, WebSocket or BLE) for the timeout while heating
+  (not in Profile) → heater off, fan to cooldown, `trip:"comms"`. Defaults
+  `FLEX_WATCHDOG_ENABLED`/`FLEX_WATCHDOG_TIMEOUT_S`; runtime command
+  `{"command":{"watchdog":...}}` saves to NVS.
 - Artisan: `.aset` verified against Artisan source (`docs/artisan-settings.md`).
-  Input 1 = BT, Input 2 = ET, one `getData` per second, extra devices
+  Input 1 = BT, Input 2 = ET, one `getArtisanData` per second, extra devices
   112/113 for Heater/Fan/SV, Artisan's own PID buttons off.
 - Library features added in 0.52: roast timer (`CroasterCore::roastTimerStart/
   Pause/Reset`), `getDeviceInfo` now reports `board`/`darkMode`/`brightness`
@@ -73,7 +76,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
 - Decisions pending (Shawn): design.md D1 (top-level control libs), D3
-  (force-included config), D6 (watchdog via `getData` alias), D10 (flex ini
+  (force-included config), D6 (watchdog via core `lastCommandMillis()`), D10 (flex ini
   vs Croaster's `boards/esp32s3` ini), D8 (`onOtherJson` for yaeger flat keys), D9 (10 s
   traffic watchdog vs instant cut on disconnect).
 

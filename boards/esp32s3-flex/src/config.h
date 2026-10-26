@@ -83,8 +83,13 @@
 #define FLEX_MAX_SETPOINT_C 250
 #define FLEX_MIN_FAN_WITH_HEAT 30 // fan forced to at least this while heating
 #define FLEX_COOLDOWN_FAN 100     // fan % after "stop" (changeable, stored in NVS)
-#define FLEX_COMMS_TIMEOUT_S 10   // heater off + cooldown fan if no client traffic while heating; 0 = off
-#define FLEX_CONTROL_CORE 1       // control task core; WiFi/BLE stacks run on core 0
+// Comms watchdog: heater off + cooldown fan when no client message arrives for
+// the timeout while heating (profile runs exempt). These are first-boot defaults;
+// {"command":{"watchdog":{"enabled":false}}} or {...{"timeout":20}} changes them
+// at runtime and saves them in NVS.
+#define FLEX_WATCHDOG_ENABLED 1    // 0 = no comms cutoff at all
+#define FLEX_WATCHDOG_TIMEOUT_S 10 // 2..600 s
+#define FLEX_CONTROL_CORE 1        // control task core; WiFi/BLE stacks run on core 0
 
 // ---- Derived settings (do not edit) -----------------------------------------
 #define CROASTER_HAS_BLE FLEX_ENABLE_BLE // read by croaster/src/CroasterConstants.h

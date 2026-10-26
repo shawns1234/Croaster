@@ -929,7 +929,7 @@ path=WebSocket
 port=81
 pushMessage_node=pushMessage
 reconnect_interval=3
-request_data_command=getData
+request_data_command=getArtisanData
 request_timeout=0.5
 
 [XT]

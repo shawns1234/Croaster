@@ -8,6 +8,7 @@ struct ControlSettings {
     PidGains gains; // defaults from config.h (FLEX_PID_KP/KI/KD)
     PidInput pidInput = PidInput::ET;
     float cooldownFan = 100;
+    WatchdogSettings watchdog; // defaults from config.h (FLEX_WATCHDOG_*)
 };
 
 namespace ConfigStore {
@@ -15,4 +16,5 @@ ControlSettings load(const ControlSettings& defaults);
 void saveGains(const PidGains& g);
 void savePidInput(PidInput t);
 void saveCooldownFan(float pct);
+void saveWatchdog(const WatchdogSettings& w);
 } // namespace ConfigStore

@@ -125,6 +125,7 @@ config stays in the board; control logic is reusable by any future board
 | `CroasterThermocoupleType` + `CroasterMAX31855` | requested | MAX31855 alongside MAX6675 for monitor builds; default stays MAX6675. |
 | `CroasterDisplaySSD1306::setHeaderText(fn)` (boards/common) | small | Lets a board show its own state in the header line instead of a second display class. Additive; default header unchanged. |
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
+| `CroasterCommandHandler::lastCommandMillis()` | needed for the comms watchdog | Lets an add-on see client traffic on Croaster's own WebSocket/BLE path, built-in commands included. Additive getter; `handle()` stores `millis()` when it accepts a message. See D6. |
 | `CroasterCommandHandler::onOtherJson(fn)` | needed for yaeger wire compatibility | Messages without `"command"` (yaeger's `{"BurnerVal":60}`) were dropped. Additive fallback, called only when no other branch matched; WebSocket and BLE. See D8. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
@@ -194,21 +195,22 @@ were considered:
 3. `"unknown"`. Safe, but the app learns nothing.
 4. Add `esp32s3Flex` to ICRM's enum (needs the app author). Still worth doing later.
 
-### D6. Comms watchdog vs built-in `getArtisanData` — **DECISION**
-The heater must stop if Artisan disappears, but `getArtisanData` is handled
-inside Croaster and boards cannot see it.
-1. **`getData` alias (implemented):** plugin registers `getData`, marks
-   activity, returns `core().getJsonData(id)`. Artisan polls `getData`
-   (the provided `.aset` does). No core change; ICRM/BLE traffic that does not
-   use it counts only via control commands.
-2. Add `CroasterCommandHandler::onAnyCommand(fn)` hook. Clean, small core change;
-   counts every client.
-3. Use WebSocket client count (`connected()` in `CroasterWebSocketManager`):
-   catches drops, not a hung Artisan.
-4. No watchdog (yaeger had none). Simplest, least safe.
-Recommendation: 1 for now; 2 if the author accepts a core hook.
-Update 2026-10-26: timeout cut from 30 s to 10 s (Artisan polls every 1 s),
-and the trip now also sets the cooldown fan; see D9.
+### D6. How the watchdog sees client traffic — **DECISION** (changed 2026-10-26)
+The heater must stop when the client disappears, so the watchdog needs to see
+every message a client sends. Croaster answers `getArtisanData` inside its
+command handler, where a board can't see it. Previously option 3 was
+implemented; Shawn asked for Croaster's own WebSocket/BLE path instead.
+1. **`CroasterCommandHandler::lastCommandMillis()` (implemented).** `handle()`
+   records when it last accepted a message. That covers WebSocket and BLE and
+   every command, `getArtisanData` included. The plugin reads it each loop.
+   Additive, about 10 lines, and any add-on can use it. The `.aset` polls
+   Croaster's own `getArtisanData` again.
+2. An `onAnyCommand(fn)` callback hook. Same coverage, but a callback per
+   message where a timestamp is enough.
+3. A `getData` alias in the plugin (the previous version). No core change, but
+   only clients that poll `getData` count; the ICRM app's traffic doesn't.
+4. WebSocket client count (`connected()`). Catches drops, not a hung Artisan.
+Recommendation: 1.
 
 ### D7. Control in a FreeRTOS task, not `loop()`
 Croaster is loop-driven. A blocking WiFiManager portal, WebSocket burst or BLE
@@ -236,7 +238,7 @@ no core change. Flat keys don't.
 Recommendation: 2. It is reversible: delete the hook and the registration.
 The `.aset` uses nested commands, so Artisan doesn't depend on it.
 
-### D9. What happens when the client goes away — **DECISION**
+### D9. What happens when the client goes away — **DECISION** (changed 2026-10-26)
 yaeger: on a clean WebSocket disconnect, in Manual with heater > 0, heater 0
 and fan 100. No protection in PID, and none for silent WiFi loss.
 1. **Traffic watchdog (implemented):** no client traffic for 10 s while
@@ -252,7 +254,14 @@ and fan 100. No protection in PID, and none for silent WiFi loss.
    protects. That is how a standalone PID controller behaves, but it is unsafe
    for Manual.
 Recommendation: 1; add 2 later if a faster cut on clean disconnects is
-wanted. Set `FLEX_COMMS_TIMEOUT_S 0` to disable it.
+wanted.
+
+Settings (changed 2026-10-26, Shawn's point 4): `FLEX_WATCHDOG_ENABLED` and
+`FLEX_WATCHDOG_TIMEOUT_S` in `config.h` set the first-boot defaults.
+`{"command":{"watchdog":{"enabled":false}}}` turns the cutoff off entirely and
+`{"command":{"watchdog":{"timeout":20}}}` changes the timeout (2 to 600 s).
+Both are saved in NVS and reported by `getControl`. Usage: flex README,
+"Comms watchdog".
 
 ### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made)**
 
