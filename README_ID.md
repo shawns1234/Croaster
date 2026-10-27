@@ -127,7 +127,7 @@ Sensor MAX6675 → CroasterCore (baca + halus + RoR)
 | [arduinoWebSockets](https://github.com/Links2004/arduinoWebSockets) | Server WebSocket |
 | [ArduinoJson](https://arduinojson.org/) `^7.4.3` | Parsing dan serialisasi perintah JSON |
 | [Adafruit SSD1306](https://github.com/adafruit/Adafruit_SSD1306) `^2.5.16` | Driver layar OLED |
-| [MAX6675_Thermocouple](https://github.com/YuriiSalimov/MAX6675_Thermocouple) `^2.0.2` | Pembacaan sensor termokopel |
+| [MAX6675_Thermocouple](https://github.com/shawns1234/MAX6675_Thermocouple) `v2.0.3` (fork terawat dari [YuriiSalimov/MAX6675_Thermocouple](https://github.com/YuriiSalimov/MAX6675_Thermocouple)) | Pembacaan sensor termokopel |
 | [WiFiManager](https://github.com/tzapu/WiFiManager) `^2.0.17` | Setup WiFi via captive portal |
 | ESP32 BLE Arduino *(bawaan inti ESP32)* | Server BLE & karakteristik |
 

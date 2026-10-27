@@ -45,6 +45,6 @@
     "bblanchon/ArduinoJson": "^7.4.3",
     "links2004/WebSockets": "^2.7.3",
     "tzapu/WiFiManager": "^2.0.17",
-    "yuriisalimov/MAX6675_Thermocouple": "^2.0.2"
+    "MAX6675_Thermocouple": "https://github.com/shawns1234/MAX6675_Thermocouple.git#v2.0.3"
   }
 }

@@ -35,6 +35,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **MAX6675 boards: a probe stayed `N/A` until reboot after one open-probe
+  reading (D21).** `MAX6675_Thermocouple` now comes from Shawn's fork at
+  `v2.0.3`, whose `SmoothThermocouple` reseeds after a NAN, keeps the
+  average when the smoothed value is 0, and links in -O0 builds. Its MAX6675
+  read takes about 33 us instead of about 33 ms per probe; the bits read are
+  unchanged. `SmoothThermocoupleFix.cpp` is removed (no longer needed).
+- **CHANGELOG**: the "Croaster's OTA only" and `default_16MB.csv` entries
+  had been copied into every older release section; they are now only under
+  this one.
 - **Flex Artisan settings: Heater and Fan LCDs swapped, SV LCD empty.**
   `channel_nodes` is now `BT, ET, BurnerVal, FanVal, SV`.
 - **Flex `Amb` read 0 °C (32 °F) with no BT chip fitted.** It now uses
@@ -53,7 +62,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
-- **Autotune status is visible (D17).** Data samples gain `autotune`
+- **`MAX6675_Thermocouple` from the fork (D21).** `croaster/library.json`
+  depends on `https://github.com/shawns1234/MAX6675_Thermocouple.git#v2.0.3`;
+  `boards/esp32s3`, `esp32c3` and `esp8266` no longer list
+  `yuriisalimov/MAX6675_Thermocouple` (both together fail to link).
+- **Autotune status is visible (D17). Data samples gain `autotune`
   (`running`, `done`, `failed: timeout`, `aborted: comms`,
   `need setpoint >= 212 F`, in the display unit); `getControl` uses the same
   text. The OLED header shows a short form for 10 s after each change. A
@@ -129,24 +142,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   WebSocket / BLE, driving `CroasterDisplayS3::setDarkMode()/setBrightness()`
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - **Reformatted all sources** to the new `.clang-format` (library + boards,
   including the LVGL UI)
 
 ## [0.62] — 2026-08-29 (Current)
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - **`build_all.sh` output naming** — firmware is now collected as
   `builds/Croaster_<board>_<version>.bin` (e.g. `Croaster_esp32s3_0.62.bin`);
   the version is read from `src/CroasterConstants.h` so the filename stays in
@@ -195,12 +196,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `SmoothThermocoupleFix.cpp` added to the library (fixes the MAX6675_Thermocouple v2.0.2 link error for all build types)
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - All classes renamed with the `Croaster` prefix: `BleManager` → `CroasterBleManager`, `CommandHandler` → `CroasterCommandHandler`, `WebSocketManager` → `CroasterWebSocketManager`, `OtaHandler` → `CroasterOtaHandler`, `WiFiManagerUtil` → `CroasterWiFiManager` (class with static methods), `DeviceIdentity` → `CroasterDeviceIdentity`, `DisplayManager` → `CroasterDisplay` (interface) / `CroasterDisplaySSD1306` (reference impl), `DisplayAnimation` → `CroasterDisplayAnimation`
 - `Constants.h` → `CroasterConstants.h`, `PinConfig.h` → `CroasterPinConfig.h`
 - `LED_ON`/`LED_OFF` macros removed from `CroasterConstants.h`; `CroasterCommandHandler` now takes `ledPin`/`ledOnLevel` per-instance (supplied by the implementation); removed the redundant `-D LED_ON` build flag
@@ -217,12 +212,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.51] — 2026-06-01
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Refactored OTA handling to return a JSON progress string directly while simplifying internal state management
 - Updated `BleManager` and `WebSocketManager` to use the streamlined OTA progress flow
 - Simplified command and core OTA integration paths for the new handler contract
@@ -236,12 +225,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Timeout checks during BLE OTA to handle stalled transfers
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Improved OTA status reporting: `OtaHandler` now returns an `OtaResult` struct containing a JSON progress payload and an error flag
 - Simplified `OtaHandler` internals — reduced code size while improving clarity
 - `BleManager` updated to relay OTA binary data to `OtaHandler` and forward progress JSON back to the BLE client
@@ -255,12 +238,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `getExtra` command with corresponding data generation methods (`genRandomString`, random number/boolean)
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Refactored command handling and improved JSON response generation
 - Simplified command handling by removing `restart` and `erase` parameters from `handleJsonCommand`
 
@@ -279,12 +256,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Issue and pull request templates for contribution guidelines
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Updated firmware progress display during OTA updates
 - Updated library dependencies (`platformio.ini`)
 - Set `dummyMode` to `false` (production default)
@@ -314,12 +285,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `resetState` method in `OtaHandler`; updated `begin` method to call it
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Refactored `OtaHandler`: replaced `debugf` with `debugln`, updated `finalize` method
 - Refactored `DisplayManager` to handle OLED presence checks and simplify `begin` method
 - Streamlined WiFi setup by removing redundant mode setting
@@ -338,12 +303,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - OTA update handling; firmware version bumped to `0.41`
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Removed OTA handling from `BleManager` (moved to dedicated `OtaHandler`)
 
 ---
@@ -351,12 +310,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.40] — 2025-05-01
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Refactored firmware to version `0.40`
 - Added partitions configuration and reference link
 
@@ -365,12 +318,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.31] — 2025-04-25 to 2025-04-28
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Updated GPIO pin assignments in README
 - Enhanced device identity functions for IP and SSID retrieval
 - Improved JSON command handling in `CommandHandler`
@@ -395,12 +342,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Detailed class and method documentation (Doxygen-style headers)
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Integrated `DisplayManager` into command handling and BLE setup
 - Refactored BLE setup to use device name and `CommandHandler`
 - Simplified BLE and WebSocket handling by integrating `CommandHandler`
@@ -421,12 +362,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.48] — 2025-02-24
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Updated pin definitions
 - Refactored display output and WiFi handling
 - Renamed target directory and file for clarity
@@ -437,12 +372,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.47] — 2025-02-24
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Updated pin definitions and refactored code
 
 ---
@@ -450,12 +379,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.46] — 2025-02-21
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Minor bump; version consistency update
 
 ---
@@ -463,12 +386,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [2.45] — 2025-02-21
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Added Croaster Arduino sketch (`.ino`) and updated conversion script
 - Updated `copy_to_ino.sh` to generate the Arduino sketch; implemented BLE server functionality
 - Added conversion script for `main.cpp` and `Croaster.h`; refactored BLE characteristic handling
@@ -483,12 +400,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - BLE server functionality (`BleManager`)
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Updated serial communication speeds and flash size in `platformio.ini`
 - Refactored BLE data handling to use `String` type
 - Updated Croaster class to use new MAX6675 library
@@ -504,12 +415,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Dedicated `src/` directory structure for modular C++ source files
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Replaced `TempsManager` with `CroasterCore` across the codebase
 - Modularized codebase: `BleManager`, `WiFiManagerUtil`, `WebSocketManager`, `DisplayManager`, `CroasterCore`
 - Updated `DisplayManager` methods for improved data handling and display updates
@@ -528,12 +433,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Artisan Roaster Scope connection instructions
 
 ### Changed
-- **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
-  Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
-  `lib_deps` (Croaster's `library.json` already pulls it).
 - Updated project from Arduino-only to PlatformIO build system
 - Updated to production dummy data settings
 - Progressively enhanced display output, WiFi handling, and BLE connectivity

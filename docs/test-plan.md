@@ -7,6 +7,9 @@ features and bench sessions happen.
 Status tags:
 - **host**: covered by a host test (`pio test -e native` in
   `boards/esp32s3-flex`); the test name follows.
+- **host (fork)**: covered by a host test in the `MAX6675_Thermocouple` fork
+  (`test/host`, run steps in its README); the test name follows.
+- **build 2026-10-26**: checked by a clean build on that date.
 - **bench 2026-10-26**: seen on the bench on that date (ET probe, OLED and SSR
   DC side connected; no BT probe, no AC, `FLEX_REQUIRE_MAINS 0` except where
   noted).
@@ -23,6 +26,19 @@ Status tags:
 - No BT chip fitted → `Amb` is the ET chip's board temperature, not 32 °F. **host** `test_board_temperature_skips_missing_chip`; bench todo
 - BT chip fitted without a probe → `Amb` from the BT chip, BT absent from telemetry. **host** `test_board_temperature_skips_missing_chip`; bench untested
 - Unplug the PID input probe in PID mode → `trip:"sensor"` after 2 s, heater 0. **untested**
+
+## MAX6675 library fork (D21)
+Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) and the flex monitor
+build read probes through `SmoothThermocouple`; the flex control build does not.
+- First reading seeds the average; 0 °C keeps the average. **host (fork)** `testFirstSampleSeedsAverage`, `testZeroKeepsAverage`, `testZeroSeed`
+- 100, 100, NAN, 100 → 100, 100, NAN, 100 (recovers). **host (fork)** `testRecoversAfterNan`
+- MAX6675 frames decode as before, with a wait before every pin change; 33 us of waits per read. **host (fork)** `testMax6675Decode`, `testMax6675ReadTime`
+- MAX6675 board, logic analyser on SCK and CS → CS low for well under 1 ms per probe (was about 33 ms), SCK period 2 us or more, reads 250 ms apart. **untested**
+- MAX6675 board at room temperature and in boiling water → same readings as on the old library (about 100 °C / 212 °F in water). **untested**
+- MAX6675 board, unplug one probe → that probe `N/A` on the screen and absent from `getArtisanData`, the other unaffected. **untested**
+- Plug it back in at a different temperature → the new temperature on the next sample, no slow ramp from the old value (before: `N/A` until reboot). **untested**
+- `esp32s3-debug` (stock) links without `SmoothThermocoupleFix.cpp`. **build 2026-10-26** (in a copy with T13's ini fixes)
+- Flex after the library change: ET at room temperature as before; unplug ET → `N/A`, replug → reading returns. **untested**
 
 ## OLED
 - Temperatures shown in °F. **bench 2026-10-26**

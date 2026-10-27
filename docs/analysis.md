@@ -65,7 +65,7 @@ PlatformIO only; release envs for `build_all.sh`, `-debug` envs for
 | links2004/WebSockets 2.7.3 | Croaster | |
 | bblanchon/ArduinoJson 7.4.3 | all | |
 | tzapu/WiFiManager 2.0.17 | Croaster | `-Wformat` warnings only |
-| yuriisalimov/MAX6675_Thermocouple 2.0.2 | Croaster | provides the `Thermocouple` interface we implement |
+| MAX6675_Thermocouple 2.0.3 (shawns1234 fork, git tag `v2.0.3`) | Croaster | provides the `Thermocouple` interface we implement; fork fixes in design D21 |
 | adafruit/Adafruit SSD1306 2.5.17 | boards/common | the flex screen |
 | Arduino BLE (NimBLE in Arduino 3.3) | Croaster | |
 Dropped from yaeger: ESPAsyncWebServer/AsyncTCP, ElegantOTA, WebSerial,

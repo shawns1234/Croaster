@@ -90,9 +90,14 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
-  `CroasterCommandHandler::lastCommandMillis()`, and two
+  `CroasterCommandHandler::lastCommandMillis()`, two
   warning fixes (`CroasterBleManager` initializer order,
-  `CroasterDeviceIdentity` `PRIX32` format).
+  `CroasterDeviceIdentity` `PRIX32` format), and `MAX6675_Thermocouple` from
+  Shawn's fork at `v2.0.3` with `SmoothThermocoupleFix.cpp` removed (D21).
+- `MAX6675_Thermocouple` fork: <https://github.com/shawns1234/MAX6675_Thermocouple>,
+  default branch `master`, no review branch (Shawn's call); release tags
+  `vX.Y.Z`, pinned in `croaster/library.json`. A fix there needs a new tag
+  and a new pin. Host tests: see its README.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
 - Decisions pending (Shawn), all in design.md: D1 (top-level control libs),
@@ -128,6 +133,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Confirm `boardName()` strings against the ICRM app's `CroasterBoardTypes`.
 
 ## Gotchas
+- `MAX6675_Thermocouple` comes only from the fork pin in
+  `croaster/library.json`. Adding `yuriisalimov/MAX6675_Thermocouple` to a
+  board's `lib_deps` installs a second copy and the link fails with multiple
+  definitions.
 - `onJsonCommand(key, fn)`: every registered callback gets the **whole**
   `command` object when its key is present; parse only your own key.
 - Croaster's handler ignores messages without a `"command"` member, so

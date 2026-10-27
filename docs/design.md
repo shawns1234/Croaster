@@ -202,6 +202,7 @@ Changes from Shawn's nine review points (2026-10-26):
 | D18 | new, open | PID input (ET or BT) and default gains. |
 | D19 | new, open | Cooldown fan default (100 % or yaeger's 65 %). |
 | D20 | new, open | Roast rules and profiles. |
+| D21 | new, resolved | `MAX6675_Thermocouple` comes from Shawn's fork at `v2.0.3`. |
 
 Resolved by Shawn on 2026-10-26:
 
@@ -211,6 +212,7 @@ Resolved by Shawn on 2026-10-26:
 | D17 | Autotune status in `getArtisanData` and on the OLED header (option 3). |
 | D18 | PID input defaults to BT (option 2); `pidInput` command and NVS kept; yaeger's gains kept until autotuned on BT. |
 | D19 | Cooldown fan 65 % after `stop`, 100 % after any trip (option 3). |
+| D21 | Fork `MAX6675_Thermocouple` and fix it there (option 3). |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -521,6 +523,8 @@ Shawn asked to remove the MAX6675 library. Core needs it to compile:
    dependency, but upstream fixes stop flowing in.
 Recommendation: 1. The library costs nothing in a control build beyond
 compile time (the linker drops unused code).
+Update 2026-10-26: still option 1, but the dependency is now Shawn's fork at
+`v2.0.3` (D21).
 
 ### D16. Temperature unit — **DECISION (new 2026-10-26)**
 Shawn wants °F on the screen and in Artisan. Croaster already has a unit:
@@ -652,6 +656,45 @@ which can't set our firmware's setpoint over WebSocket; they don't fit the
 requirement.
 Recommendation: 1 now (no code), 2 once a good roast exists, 4 only if roasts
 must run without a laptop.
+
+### D21. `MAX6675_Thermocouple` fixes — resolved 2026-10-26: maintained fork (option 3)
+The upstream library (yuriisalimov 2.0.2, last release 2019) had three faults
+that reach Croaster's MAX6675 boards and the flex monitor build:
+- `SmoothThermocouple` latched NAN. One open-probe reading was blended into
+  the average, and because the "no average yet" check was `data == 0`, the
+  average never reseeded. The probe read `N/A` until reboot.
+- `SmoothThermocouple::MIN_SMOOTHING_FACTOR` had no out-of-line definition,
+  so -O0 builds failed to link. Croaster carried
+  `croaster/src/SmoothThermocoupleFix.cpp` for this.
+- `MAX6675_Thermocouple::readCelsius()` waited 1 ms per SCK half period, so
+  each read blocked for about 33 ms (two probes: about 66 ms every 250 ms).
+
+Options:
+1. Keep upstream and work around it in core. The link fix already lived in
+   core; the NAN latch and the read time would need core code around a
+   library we don't control.
+2. A smoothing class in core that replaces `SmoothThermocouple`. Fixes the
+   latch, but not the read time, and duplicates library code in core.
+3. **Fork the library and fix it there (chosen by Shawn).**
+   <https://github.com/shawns1234/MAX6675_Thermocouple>, tag `v2.0.3`:
+   - the average reseeds after a NAN;
+   - a smoothed value of 0 no longer restarts the average;
+   - the factor clamp no longer odr-uses the constant;
+   - the waits are 1 us, citing the MAX6675 datasheet's 100 ns timing
+     figures. The bits read are unchanged.
+   The fork has host tests (`test/host`).
+
+Core changes: `croaster/library.json` depends on
+`https://github.com/shawns1234/MAX6675_Thermocouple.git#v2.0.3`; the stock
+boards (`esp32s3`, `esp32c3`, `esp8266`) no longer list the registry
+package; `SmoothThermocoupleFix.cpp` is removed. Never list
+`yuriisalimov/MAX6675_Thermocouple` next to the fork: PlatformIO installs both
+and the link fails with multiple definitions.
+
+Behaviour change on MAX6675 boards: unplugging a probe shows `N/A` and
+plugging it back in shows the new temperature on the next read (250 ms),
+without a ramp from the old value. The flex control build is unaffected (its
+probes go through `RoasterProbe` and `ProbeChannel`, not `SmoothThermocouple`).
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
