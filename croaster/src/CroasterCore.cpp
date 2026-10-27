@@ -248,6 +248,14 @@ void CroasterCore::changeCorrectionEt(double value) {
     resetHistory("correctionEt");
 }
 
+double CroasterCore::correctionBtCelsius() const {
+    return tempUnit == "F" ? correctionBt * 5.0 / 9.0 : correctionBt; // a Kelvin difference equals a Celsius one
+}
+
+double CroasterCore::correctionEtCelsius() const {
+    return tempUnit == "F" ? correctionEt * 5.0 / 9.0 : correctionEt;
+}
+
 void CroasterCore::resetHistory(String item) {
     for (int i = 0; i < 60; i++) {
         etHistory[i] = isnan(tempEt) ? 0 : tempEt; // Use 0 if NAN

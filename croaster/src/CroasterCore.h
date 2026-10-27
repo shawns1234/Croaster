@@ -190,6 +190,23 @@ public:
     void changeCorrectionEt(double value);
 
     /**
+     * @brief Retrieves the BT correction as a temperature difference in Celsius.
+     *
+     * The correction is stored in the current temperature unit. An add-on that
+     * reads the probes itself (e.g. a heater controller) adds this to its Celsius
+     * reading to work on the same corrected scale as the display.
+     * @return The BT correction in degrees Celsius.
+     */
+    double correctionBtCelsius() const;
+
+    /**
+     * @brief Retrieves the ET correction as a temperature difference in Celsius.
+     * @see correctionBtCelsius()
+     * @return The ET correction in degrees Celsius.
+     */
+    double correctionEtCelsius() const;
+
+    /**
      * @brief Retrieves JSON data based on the provided parameters.
      * @param id Identifier used to fetch specific JSON data. Defaults to 0.
      * @return A String containing the JSON data.

@@ -168,6 +168,7 @@ tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
 | `CroasterCommandHandler::lastCommandMillis()` | needed for the comms watchdog | Lets an add-on see client traffic on Croaster's own WebSocket/BLE path, built-in commands included. Additive getter; `handle()` stores `millis()` when it accepts a message. See D6. |
 | `CroasterBleManager` initializer order, `CroasterDeviceIdentity` `PRIX32` + `snprintf` | warning fixes | `-Wreorder` and `-Wformat` on ESP32 builds. No behaviour change; the chip id string is identical. |
+| `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` | needed for correct PID | The control task reads the probes itself, so it needs the user's correction offsets to work on the displayed scale. Two const getters; stock boards never call them. See D22. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
 Existing boards still build with every change above (2026-10-26, temporary

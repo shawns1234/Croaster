@@ -90,7 +90,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
-  `CroasterCommandHandler::lastCommandMillis()`, two
+  `CroasterCommandHandler::lastCommandMillis()`,
+  `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` (D22), two
   warning fixes (`CroasterBleManager` initializer order,
   `CroasterDeviceIdentity` `PRIX32` format), and `MAX6675_Thermocouple` from
   Shawn's fork at `v2.0.3` with `SmoothThermocoupleFix.cpp` removed (D21).
