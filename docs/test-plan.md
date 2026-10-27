@@ -37,7 +37,7 @@ build read probes through `SmoothThermocouple`; the flex control build does not.
 - MAX6675 board at room temperature and in boiling water → same readings as on the old library (about 100 °C / 212 °F in water). **untested**
 - MAX6675 board, unplug one probe → that probe `N/A` on the screen and absent from `getArtisanData`, the other unaffected. **untested**
 - Plug it back in at a different temperature → the new temperature on the next sample, no slow ramp from the old value (before: `N/A` until reboot). **untested**
-- `esp32s3-debug` (stock) links without `SmoothThermocoupleFix.cpp`. **build 2026-10-26** (in a copy with T13's ini fixes)
+- `esp32s3-debug` (stock) links without `SmoothThermocoupleFix.cpp`. **build 2026-10-26** (upstream board files, in a copy pinned to `espressif32 @ 6.13.0`; see T13)
 - Flex after the library change: ET at room temperature as before; unplug ET → `N/A`, replug → reading returns. **untested**
 
 ## OLED

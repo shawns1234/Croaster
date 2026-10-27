@@ -86,6 +86,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   BLE-guarded `CroasterApp::ble()` accessor.
 
 ## Git state (2026-10-26)
+- Upstream: remote `upstream` = `IiemB/Croaster`; fork base is `master`
+  `5445a4d`. Shawn's pre-project test commits `da20956`, `77ad627`, `0845ba8`
+  sit between it and this work. Stock board files were restored to `5445a4d`
+  (design.md "Stock boards and upstream"); diff against `5445a4d`, not the
+  fork's `master`, to see what upstream has.
 - Shawn's fork: branch `rework/roaster` off `master` (`0845ba8`), pushed to
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
@@ -158,6 +163,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `setup()`.
 - Unpinned `platform = espressif32` resolves to whatever espressif32 is
   installed (a pioarduino install made `esp32c3` fail); pin the version.
+- Upstream `boards/esp32s3` needs Arduino-ESP32 2.x (`ledcSetup` in
+  `LvglUi.cpp`): it builds on `espressif32 @ 6.13.0` and fails on 8.0.0 or
+  pioarduino (T13).
 - `custom_sdkconfig` (pioarduino) writes `managed_components/`, `sdkconfig.*`,
   `CMakeLists.txt`, `src/idf_component.yml` into the board folder (gitignored in
   `esp32s3-flex`). `MBEDTLS_SSL_IN/OUT_CONTENT_LEN` need

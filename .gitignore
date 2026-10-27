@@ -4,7 +4,7 @@ builds/
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-.vscode/
+
 croaster-arduino/*
 .DS_Store
 *.FCBak

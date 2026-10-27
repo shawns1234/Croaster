@@ -71,6 +71,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Stock boards match upstream again.** `boards/esp32s3` (`platformio.ini`,
+  `src/config.h`, `src/ui/LvglUi.cpp`, `src/ui/lv_conf.h`), `.gitignore` and
+  the root and board `.vscode/` files are back to `IiemB/Croaster` `5445a4d`.
+  The fork had carried Shawn's test edits from before this project
+  (`dummyMode = true`, `ledPin = -48`, a custom board json, stripped ini
+  comments). The stock inis still leave out the registry
+  `MAX6675_Thermocouple` (D21). `boards/esp32s3/build.log` and
+  `croaster/src/Croaster.code-workspace` are removed; flex's `.gitignore`
+  ignores PlatformIO's generated `.vscode/` files.
 - **`MAX6675_Thermocouple` from the fork (D21).** `croaster/library.json`
   depends on `https://github.com/shawns1234/MAX6675_Thermocouple.git#v2.0.3`;
   `boards/esp32s3`, `esp32c3` and `esp8266` no longer list

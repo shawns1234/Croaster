@@ -11,7 +11,5 @@
     "files.exclude": {
         "**/.pio": true
     },
-    "C_Cpp.default.compilerPath": "clang-cl",
-	"platformio-ide.useBuiltinPIOCore": false,
-    "platformio-ide.customPATH": "C:\\pio\\penv\\Scripts"
+    "C_Cpp.default.compilerPath": "/Users/iiemb/.platformio/packages/toolchain-riscv32-esp/bin/riscv32-esp-elf-gcc"
 }

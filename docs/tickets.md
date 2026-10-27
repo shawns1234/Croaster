@@ -17,7 +17,7 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T10 | ICRM app over BLE + WebSocket with board id `esp32s3-flex` (design D5) | todo | T2 |
 | T11 | Decide D1/D3/D6/D8/D9/D10/D11/D13/D14 with Shawn (list in `docs/architecture.md`); update AGENTS.md layout if D1 accepted | blocked | Shawn |
 | T12 | Watchdog sees all client traffic via core `CroasterCommandHandler::lastCommandMillis()` (D6 option 1); `getData` alias removed | done | — |
-| T13 | Existing boards: fix `boards/esp32s3` platformio.ini (`boards_dir = ..`, `-Wno-deprecated-declarations`), pin c3/s3 platform versions | todo | — |
+| T13 | Stock boards build on a pinned platform. The `boards_dir` and `-W no-deprecated-declarations` problems came from pre-project test edits and are gone since `boards/esp32s3` was restored to upstream (design "Stock boards and upstream"). Left: upstream `boards/esp32s3` needs Arduino-ESP32 2.x (`ledcSetup`/`ledcAttachPin` in `LvglUi.cpp`) and fails on unpinned `espressif32` today, upstream `5445a4d` included; it builds pinned to `espressif32 @ 6.13.0`. Pin the c3/s3/8266 platforms, or port the backlight to the 3.x LEDC API, as upstream changes | todo | IiemB |
 | T14 | Web UI (phase 2): control page served from LittleFS or embedded | todo | T9 |
 | T15 | yaeger parity on hardware: `setBurner`/`setFan`, `setPreferences`/`getPreferences`, `Amb`/`wifiStrength` in data, setpoint 0→>0 PID reset (`docs/control-parity.md`) | todo | T8 |
 | T16 | Test that parses the `.aset` slider/button commands and runs each through `controlproto`, so the file and the firmware can't drift | todo | — |

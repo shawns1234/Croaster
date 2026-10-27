@@ -173,10 +173,35 @@ tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
 
 Existing boards still build with every change above (2026-10-26, temporary
 copies pinned to `espressif32 @ 8.0.0`; esp8266 on its own platform). Release
-sizes: `esp32c3` RAM 44 728 B, flash 1 742 297 B (91.7 %); `esp32s3` RAM
-105 184 B, flash 2 519 034 B; `esp8266` RAM 36 484 B, flash 415 739 B. The
-`esp32s3` copy also needed the T13 flag fix (`-Wno-deprecated-declarations`),
-since its ini's `-W no-deprecated-declarations` fails at link time.
+sizes: `esp32c3` RAM 44 728 B, flash 1 742 297 B (91.7 %); `esp8266` RAM
+36 484 B, flash 415 739 B. The `esp32s3` result from that round is void: it
+was built from the board as edited during Shawn's testing before this project
+(see "Stock boards and upstream" below).
+
+### Stock boards and upstream
+
+Upstream is `IiemB/Croaster` `master` at `5445a4d`, the commit this fork
+branched from. Shawn's fork added three commits on top before this project
+started (`da20956`, `77ad627`, `0845ba8`, author "Your Name"). They changed
+`.gitignore`, the root and board `.vscode/` files, `boards/esp32s3`
+(`platformio.ini` comments stripped, custom board json, `-W
+no-deprecated-declarations`, `ARDUINO_USB_MODE=1`, `dummyMode = true`,
+`ledPin = -48`, the backlight on the Arduino-ESP32 3.x LEDC API, `lv_conf.h`),
+and added `build.log`, `croaster/src/Croaster.code-workspace`,
+`To-Implement.md` and `boards/esp32-s3-devkitm1-n16r8.json`.
+
+On 2026-10-26 the stock board files went back to upstream byte for byte. Two
+exceptions: the stock inis keep D21's removal of the registry
+`MAX6675_Thermocouple` (listing it next to the core's fork fails to link), and
+`boards/esp32-s3-devkitm1-n16r8.json` stays because flex uses it.
+`build.log` and `Croaster.code-workspace` are deleted. `To-Implement.md` is
+Shawn's design note and stays.
+
+Upstream's `boards/esp32s3` needs Arduino-ESP32 2.x: `LvglUi.cpp` calls
+`ledcSetup`/`ledcAttachPin`, which 3.x removed. Its unpinned `platform =
+espressif32` resolves to 8.0.0 (Arduino 3.3.12) today, and the build stops
+there, on upstream `5445a4d` and on this branch alike. Pinned to
+`espressif32 @ 6.13.0` (Arduino 2.0.17), upstream builds. T13 tracks the fix.
 
 ## Decisions where Croaster's rules and Shawn's goals rub
 
@@ -388,18 +413,27 @@ PlatformIO can do. The flex board already gets every line of core code through t
 symlink. The only things two boards could share at the ini level are build *settings*:
 board json, platform, framework, flash size, upload and monitor options, and common flags.
 
-**What flex and his esp32s3 actually have in common:** the chip and module (ESP32-S3 N16R8,
-`esp32-s3-devkitm1-n16r8.json`), 16 MB flash, USB-CDC flags, `BOARD_HAS_PSRAM`, and the
-upload and monitor speeds, the partition table (`default_16MB.csv`) and `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`. **What differs:** lib_deps (his has ILI9341 + LVGL; ours has
-Adafruit SSD1306 + ControlCore/ControlEsp32), build_flags (his `LV_CONF_PATH` points into his
-`src/ui`; ours does `-include src/config.h`), PSRAM mode (`dio_opi` vs `qio_opi`),
-and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
+**What flex and his esp32s3 actually have in common:** the ESP32-S3 chip, 16 MB flash,
+`ARDUINO_USB_CDC_ON_BOOT=1`, `BOARD_HAS_PSRAM`, the upload and monitor speeds, the partition
+table (`default_16MB.csv`) and `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`.
+**What differs:** the board json (his is PlatformIO's stock `esp32-s3-devkitc-1` for the
+ES3C28P; ours is `esp32-s3-devkitm1-n16r8.json` for the Lonely Binary N16R8), lib_deps (his
+has ILI9341 + LVGL; ours has Adafruit SSD1306 + ControlCore/ControlEsp32), build_flags (his
+`LV_CONF_PATH` points into his `src/ui`; ours does `-include src/config.h` and adds
+`ARDUINO_USB_MODE=1`), PSRAM mode (`dio_opi` vs `qio_opi`), and the platform (his is unpinned
+`espressif32` and needs Arduino-ESP32 2.x; ours is `@ 8.0.0`, Arduino 3.3.12).
+
+Correction 2026-10-26: an earlier version of this section listed the custom board json and
+`boards_dir = ..` as shared facts. Those came from Shawn's pre-project test edits, not from
+upstream (see "Stock boards and upstream"). His board needs no `boards_dir`. The
+throwaway B and C builds below used that edited ini. The A/B/C trade-offs still hold, but a
+C base can no longer carry `board` or `platform`, because the two boards differ on both.
 
 | | How | Pros | Cons |
 |---|---|---|---|
 | **A** (today) | Standalone `boards/esp32s3-flex/platformio.ini` | The AGENTS.md model: each board owns its config, and an edit to one board can't break another. No change to his files. | About 10 chip-level lines are duplicated. A fix to his esp32s3 ini (e.g. upload flags) has to be copied by hand. |
-| **B** | Flex ini has `[platformio] extra_configs = ../esp32s3/platformio.ini` plus `[env:esp32s3-flex] extends = env:esp32s3`, and overrides lib_deps, build_flags, memory_type, sdkconfig_path, partitions and platform | No edit to his files. Reuses his env literally. | Most of his env has to be overridden, so very little is actually reused. His `[env]` section merges into our project too: if we leave out our own lib_deps we silently inherit his (ILI9341, LVGL, ...). His `env:esp32s3` and `env:esp32s3-debug` show up in our project's env list. Any later edit he makes to `env:esp32s3` silently changes our build. It also couples us to his file layout and needs `boards_dir = ..`, which his ini lacks (T13). |
-| **C** | Shared chip-level base `boards/common/esp32s3-base.ini` with an `[esp32s3_base]` section (board, framework, flash size, upload/monitor, PSRAM/USB flags). Both boards do `extra_configs = ../common/esp32s3-base.ini` and `extends = esp32s3_base`, and each keeps its own lib_deps, flags, PSRAM mode and sdkconfig. | Shares only what is truly the same chip. Nothing leaks between boards: no `[env]` merge and no foreign envs. Each board's diffs stay visible in its own ini. Fits Croaster's "board owns its config" rule, with the chip facts in one place. `boards/common` is a library dir without a `platformio.ini`, so `build_all.sh` doesn't pick up the base ini as a board. | Needs a small edit to his `boards/esp32s3/platformio.ini` (extra_configs, extends, `boards_dir = ..`, and `${esp32s3_base.build_flags}`), which upstream has to accept. An edit to the base affects both boards, though that's intended. The platform pin has to be decided: either the base pins it for everyone, or each board pins its own. |
+| **B** | Flex ini has `[platformio] extra_configs = ../esp32s3/platformio.ini` plus `[env:esp32s3-flex] extends = env:esp32s3`, and overrides lib_deps, build_flags, memory_type, sdkconfig_path, partitions and platform | No edit to his files. Reuses his env literally. | Most of his env has to be overridden, so very little is actually reused. His `[env]` section merges into our project too: if we leave out our own lib_deps we silently inherit his (ILI9341, LVGL, ...). His `env:esp32s3` and `env:esp32s3-debug` show up in our project's env list. Any later edit he makes to `env:esp32s3` silently changes our build. It also couples us to his file layout, and his unpinned platform needs Arduino-ESP32 2.x while flex needs 3.x, so the platform has to be overridden too. |
+| **C** | Shared chip-level base `boards/common/esp32s3-base.ini` with an `[esp32s3_base]` section (board, framework, flash size, upload/monitor, PSRAM/USB flags). Both boards do `extra_configs = ../common/esp32s3-base.ini` and `extends = esp32s3_base`, and each keeps its own lib_deps, flags, PSRAM mode and sdkconfig. | Shares only what is truly the same chip. Nothing leaks between boards: no `[env]` merge and no foreign envs. Each board's diffs stay visible in its own ini. Fits Croaster's "board owns its config" rule, with the chip facts in one place. `boards/common` is a library dir without a `platformio.ini`, so `build_all.sh` doesn't pick up the base ini as a board. | Needs a small edit to his `boards/esp32s3/platformio.ini` (extra_configs, extends, and `${esp32s3_base.build_flags}`), which upstream has to accept. An edit to the base affects both boards, though that's intended. The platform pin has to be decided: either the base pins it for everyone, or each board pins its own. |
 | **D** | Flex as a second env inside `boards/esp32s3`, separated with `build_src_filter` | One ini and one folder for the "esp32s3 chip". | Awkward: `src_dir`, `include`, `test` and `config.h` are per *project*, so two firmwares end up sharing one `src/` tree, filtered file by file. `-include src/config.h` and his `src/ui` collide. It breaks the AGENTS.md "one board = one folder + config" model and Croaster's env naming (`<board>`, `<board>-debug`). |
 
 **Throwaway test builds (2026-10-26, espressif32 @ 8.0.0; test folders deleted afterwards):**
@@ -413,8 +447,8 @@ and the platform pin (his is unpinned `espressif32`; ours is `@ 8.0.0`).
   MAX6675, WiFiManager, lvgl). That confirms the silent-leak risk.
 - **C builds, both sides.** The test used a base ini with `[esp32s3_base]`. The flex copy with
   `extends = esp32s3_base` gave SUCCESS: RAM 62,332 B, flash 1,773,207 B (same as A).
-  The copy of *his* esp32s3 board with `extends = esp32s3_base` (plus `boards_dir = ..`) also
-  built `-e esp32s3`: SUCCESS, RAM 105,184 B, flash 2,518,962 B. Comparing his resolved
+  The copy of *his* esp32s3 board (as edited before this project) with
+  `extends = esp32s3_base` (plus `boards_dir = ..`) also built `-e esp32s3`: SUCCESS, RAM 105,184 B, flash 2,518,962 B. Comparing his resolved
   env against the original, the only differences were build_flags order (same flags;
   `-W no-deprecated-declarations` normalized to `-Wno-...`) and the platform pin, because
   the test base pinned `@ 8.0.0`. If he wants to stay unpinned, leave `platform` out of the
