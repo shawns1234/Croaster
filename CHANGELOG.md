@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — flex control board (branch rework/roaster)
 
 ### Added
+- **Flex autotune docs.** README section (what it is, start and stop, OLED
+  and status text, limits, duration, how results are saved, credit) and
+  `docs/research/autotune.md` (method, tuning rules, how br3ttb, Marlin,
+  sTune, Artisan and yaeger do it, roaster pitfalls, with sources).
 - **Flex °F by default**: `FLEX_TEMP_UNIT` in `config.h` sets Croaster's
   unit at boot (screen, telemetry, setpoints); control limits stay in °C. The
   Artisan `.aset` is now in °F mode.
@@ -38,6 +42,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Flex: a `pidInput` change didn't stop autotune or reset the PID (D23).**
+  The PV steps by the difference between the probes, so autotune measured
+  the step and PID took a derivative kick. Autotune now aborts
+  ("aborted: input changed", OLED "AT abort: input"); PID and Profile restart
+  bumpless, as for a correction change.
+- **Flex: heating in Manual with both probes unreadable didn't trip (D23).**
+  The over-temperature trip can't see anything then. Manual now trips
+  `sensor` after 2 s when the heater is on and neither probe reads.
+- **Flex: rare false `nomains` trip (D23).** A zero crossing between the two
+  reads in `FanDimmer::mainsDetected()` made its age wrap around, reporting no
+  mains and latching the trip while heating with `FLEX_REQUIRE_MAINS 1`.
 - **Flex PID ignored Croaster's correction offsets (D22).** PID and autotune
   ran on the uncorrected probe while setpoints arrived on the displayed,
   corrected scale, so the probe was held off by `correctionBt`/`correctionEt`.

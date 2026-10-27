@@ -17,6 +17,7 @@
 #include "control/relay_autotune.h"
 #include "control/roast_profile.h"
 #include "control/time_proportional.h"
+#include "control/zero_cross.h"
 
 void setUp() {}
 void tearDown() {}
@@ -488,6 +489,10 @@ void test_autotune_status_text() {
     autotunetext::brief(s, 'F', brief, sizeof brief);
     TEST_ASSERT_EQUAL_STRING("AT abort: offset", brief);
 
+    s.autotuneReason = "input changed";
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT abort: input", brief);
+
     s.autotuneReason = "an unexpectedly long reason text"; // header stays within 20 characters
     autotunetext::brief(s, 'F', brief, sizeof brief);
     TEST_ASSERT_EQUAL(20, (int)strlen(brief));
@@ -572,6 +577,55 @@ void test_snapshot_stays_uncorrected() {
     TEST_ASSERT_EQUAL(2, s.btFault);
 }
 
+// Controller::handlePvStep(): a pidInput or correction change steps the PV.
+// BT 195 C -> ET 205 C at SV 200 in PID with 50 % heater out.
+void test_pv_step_stops_autotune_and_resets_pid() {
+    TEST_ASSERT_TRUE(onPvStep(Mode::Autotune) == PvStepAction::AbortAutotune);
+    TEST_ASSERT_TRUE(onPvStep(Mode::Pid) == PvStepAction::ResetPid);
+    TEST_ASSERT_TRUE(onPvStep(Mode::Profile) == PvStepAction::ResetPid);
+    TEST_ASSERT_TRUE(onPvStep(Mode::Manual) == PvStepAction::None);
+
+    const PidGains gains{3.0f, 0.05f, 20.0f};
+    Pid kicked(Pid::Config{});
+    kicked.setGains(gains);
+    kicked.reset(200, 195, 50);
+    kicked.update(200, 195);
+    // Without a reset the derivative sees a 10 C jump in one 0.25 s sample.
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, kicked.update(200, 205));
+
+    Pid reset(Pid::Config{});
+    reset.setGains(gains);
+    reset.reset(200, 195, 50);
+    reset.update(200, 195);
+    reset.reset(200, 205, 50); // what handlePvStep does in PID and Profile
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 50.0f, reset.update(200, 205));
+}
+
+// Controller::controlStep() trips SensorFault after 2 s of sensorFault().
+void test_sensor_fault_rules() {
+    const ThermoSample none{NAN, NAN, NAN, NAN, NAN, 1, 1};
+    const ThermoSample etOnly{200, NAN, 200, NAN, 30, 0, 1};
+    // PID, Profile and Autotune need their input; the other probe doesn't matter.
+    TEST_ASSERT_TRUE(sensorFault(Mode::Pid, NAN, etOnly, 50));
+    TEST_ASSERT_TRUE(sensorFault(Mode::Autotune, NAN, etOnly, 100));
+    TEST_ASSERT_TRUE(sensorFault(Mode::Profile, NAN, etOnly, 0));
+    TEST_ASSERT_FALSE(sensorFault(Mode::Pid, 200, etOnly, 50));
+    // Manual: heating with no readable probe trips; one probe or no heat doesn't.
+    TEST_ASSERT_TRUE(sensorFault(Mode::Manual, NAN, none, 40));
+    TEST_ASSERT_FALSE(sensorFault(Mode::Manual, NAN, none, 0));
+    TEST_ASSERT_FALSE(sensorFault(Mode::Manual, NAN, etOnly, 40));
+}
+
+// FanDimmer::mainsDetected(): a crossing stored after the control task read the
+// timer used to wrap to a huge age and report "no mains", which latches the
+// nomains trip while heating with FLEX_REQUIRE_MAINS 1.
+void test_zero_cross_age() {
+    TEST_ASSERT_TRUE(crossedWithin(1000000, 1050000, 100000));
+    TEST_ASSERT_FALSE(crossedWithin(1000000, 1100000, 100000));
+    TEST_ASSERT_TRUE(crossedWithin(1000005, 1000000, 100000)); // ISR fired between the reads
+    TEST_ASSERT_TRUE(crossedWithin(1000000, 1000000, 100000));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_moving_average_seeds_with_first_sample);
@@ -602,5 +656,8 @@ int main() {
     RUN_TEST(test_correction_keeps_nan);
     RUN_TEST(test_overtemp_uses_raw_and_corrected);
     RUN_TEST(test_snapshot_stays_uncorrected);
+    RUN_TEST(test_pv_step_stops_autotune_and_resets_pid);
+    RUN_TEST(test_sensor_fault_rules);
+    RUN_TEST(test_zero_cross_age);
     return UNITY_END();
 }

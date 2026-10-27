@@ -155,7 +155,12 @@ tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
 - Only two shared objects: a FreeRTOS queue (commands in) and a
   spinlock-protected `Snapshot` (state out). The SPI bus belongs to the control
   task alone; that is why `CroasterCore` got a constructor taking sensors.
-- Dimmer: zero-cross ISR + one-shot GPTimer fires the triac gate; both IRAM.
+- Dimmer: zero-cross ISR + one-shot GPTimer fires the triac gate. The
+  handlers are `IRAM_ATTR`, but neither interrupt is registered as IRAM
+  (`CONFIG_ARDUINO_ISR_IRAM` and `CONFIG_GPTIMER_ISR_CACHE_SAFE` are off), so
+  both wait out flash writes. That is safe, because they call flash-resident
+  gptimer functions. The fan may stutter for a few half-cycles during an NVS
+  or OTA write.
 
 ## Changes to Croaster's core (and why)
 
@@ -229,6 +234,7 @@ Changes from Shawn's nine review points (2026-10-26):
 | D19 | new, open | Cooldown fan default (100 % or yaeger's 65 %). |
 | D20 | new, open | Roast rules and profiles. |
 | D21 | new, resolved | `MAX6675_Thermocouple` comes from Shawn's fork at `v2.0.3`. |
+| D23 | new, open | Autotune and control review: three fixes made, twelve proposals. |
 
 Resolved by Shawn on 2026-10-26:
 
@@ -780,6 +786,87 @@ Rules, in `control/probe_correction.h` (host-tested) and the controller:
 
 Stock boards: `esp32c3` and `esp8266` release builds have the same RAM and
 flash use and the same warnings with the getters added (2026-10-26).
+
+### D23. Autotune and control review — fixes made, proposals **DECISION (new 2026-10-26, open)**
+Review of autotune end to end and of the control code. Research and sources:
+`docs/research/autotune.md`; usage: flex README, "Autotune".
+
+Verdict: the autotune is a real Åström–Hägglund relay test with consistent
+units (heater request % per °C, seconds). yaeger's vendored AutoTunePID
+toggles every 2 s whatever the PV does, so its gains are the same on every
+roaster. Ours is new code, not yaeger's. On a simulated roaster it found Ku 17–28 % under the
+analytic value and Pu within 1–16 %, finishing in 4–14 min. Low Ku means
+softer gains. Results don't change with ±1 °C of noise. Every abort path was
+traced. After success the gains are live and saved to NVS, and the board goes
+to Manual, heater 0, fan 30 %.
+
+Fixed (clear bugs, host-tested):
+- **`pidInput` change didn't stop autotune or reset the PID.** The PV steps
+  (BT → ET can be 50 °C), so autotune measured the step as part of a cycle,
+  and PID took a derivative kick. Now it follows D22's correction rule:
+  autotune aborts ("aborted: input changed", OLED "AT abort: input"), and PID
+  and Profile restart bumpless. Same input again is a no-op. `onPvStep()` in
+  `control_types.h`; `test_pv_step_stops_autotune_and_resets_pid`.
+- **Manual heat with both probes dead didn't trip.** The `SensorFault`
+  comment and `how.md` said it did, but the "both probes" clause sat behind
+  `mode != Manual` and could never fire. With no readable probe the
+  over-temperature trip is blind. Now Manual trips `sensor` after 2 s when
+  the heater is on and neither probe reads; heater 0 never trips.
+  `sensorFault()`; `test_sensor_fault_rules`.
+- **False `nomains` trip.** `FanDimmer::mainsDetected()` read the timer, then
+  the ISR's last-crossing time. A crossing in between made the age wrap to
+  about 2^64 µs: "no mains", a latched trip while heating with
+  `FLEX_REQUIRE_MAINS 1`. It now reads the crossing first (until two reads
+  agree, against a torn 64-bit read) and treats a crossing after "now" as
+  recent. `control/zero_cross.h`; `test_zero_cross_age`.
+
+Proposals, highest priority first (no code changed):
+1. **Profile end holds the last setpoint forever, unattended.** The
+   controller ignores `ProfileTarget::finished`, and Profile mode is exempt
+   from the comms watchdog. Options: (a) at the end, stop (heater 0, stop
+   cooldown fan); (b) hold, but re-arm the watchdog once finished; (c) keep.
+   Recommendation: a.
+2. **Relay swing.** The relay is 0/100 %, so PV swings ±10 to ±45 °C around
+   SV on the simulated plants. Options: (a) keep, and pick SV with room
+   below 275 °C; (b) relay ± a step around a bias (br3ttb `oStep`); (c)
+   Marlin's moving bias, which also evens out unequal heat and cool halves.
+   Recommendation: a until a hardware run shows the swing; c if it is too
+   big.
+3. **No convergence check.** It averages 4 cycles after skipping one. If
+   the roaster is still heat-soaking, they drift. Option: finish only when
+   the last 3 amplitudes and periods agree within 10–20 % (as br3ttb does), or
+   else keep going until the timeout. Recommendation: add; it is small.
+4. **Fan change during autotune** changes the plant but doesn't abort.
+   Options: abort ("fan changed"), as for SV; or document it (done in the
+   README). Recommendation: abort.
+5. **Diagnostics.** Ku and Pu are computed but not reported. Option: add
+   `autotuneKu`/`autotuneTu` to `getControl`. Recommendation: yes; it lets
+   us compare runs and rules without re-tuning.
+6. **Rule choice.** Fixed Tyreus–Luyben PID. Option:
+   `{"command":{"autotune":{"rule":"TL"|"ZN"|"PI"}}}`. TL PI suits BT's lag;
+   ZN overshoots. Recommendation: wait for one hardware run (needs 5).
+7. **Repeated `autotune` restarts** a running test silently. Option: ignore it
+   while running. Recommendation: ignore.
+8. **After success** the board goes to Manual, heater 0, as yaeger does.
+   Option: continue in PID at the tuned SV. Recommendation: keep; the
+   operator chooses.
+9. **Ku formula.** Ours is 4d/(π√(a² − h²)). The textbook form 4d/(πa)
+   (br3ttb, Marlin) differs by under 2 % once a ≥ 5h, and the simulated
+   swings were 10h to 45h. Recommendation: keep.
+10. **Safety commands can be dropped.** `submit()` doesn't block, and a full
+    queue (16) drops the command; the plugin ignores that for `stop`. The
+    queue drains every 10 ms, so it is unlikely. Option: send Stop,
+    EmergencyOff and Trip to the front and retry on failure. Low priority.
+11. **Controller is not host-testable** (FreeRTOS, hardware outputs inline),
+    so each fix needs a pure helper (`startOutputOnModeChange`, `onPvStep`,
+    `sensorFault`). Option: put the heater, fan, probes and clock behind
+    small interfaces and keep FreeRTOS in `run()`/`snapshot()` only, so
+    `apply()`/`controlStep()` compile on the host and trips and aborts get
+    end-to-end tests. Cost: one refactor of `controller.*`. Recommendation:
+    do it before more control features.
+12. **Debug env warning** (existing): `-D CORE_DEBUG_LEVEL=3` redefines the
+    platform's value, one warning per file. Option: `build_unflags =
+    -DCORE_DEBUG_LEVEL=0`. Low priority.
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

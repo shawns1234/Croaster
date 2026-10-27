@@ -4,6 +4,8 @@
 #include <driver/gptimer.h>
 #include <soc/gpio_reg.h>
 
+#include "control/zero_cross.h"
+
 namespace {
 gptimer_handle_t s_timer = nullptr;
 volatile uint32_t s_gateMask = 0;
@@ -110,9 +112,13 @@ void FanDimmer::set(float pct) {
 bool FanDimmer::mainsDetected() const {
     if (!ok_)
         return false;
+    // The ISR writes s_lastZcUs as two 32-bit halves; read until two copies agree.
+    uint64_t last = s_lastZcUs;
+    for (uint64_t again = s_lastZcUs; again != last; again = s_lastZcUs)
+        last = again;
     uint64_t now = 0;
     gptimer_get_raw_count(s_timer, &now);
-    return s_zcCount > 0 && (now - s_lastZcUs) < 100000; // a crossing within 100 ms
+    return s_zcCount > 0 && crossedWithin(last, now, 100000); // a crossing within 100 ms
 }
 
 uint32_t FanDimmer::zeroCrossCount() const {

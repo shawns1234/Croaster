@@ -10,7 +10,7 @@ enum class PidInput : uint8_t { ET, BT, MAX }; // legacy "Target"
 
 enum class SafetyTrip : uint8_t {
     None,
-    SensorFault, // selected PID input (or both probes) unreadable
+    SensorFault, // PID input unreadable outside Manual, or both probes while Manual heats
     OverTemp,    // any probe above limit
     NoMainsSync, // heater requested but dimmer sees no zero-cross (fan can't run)
     Firmware,    // an OTA update is writing flash
@@ -60,7 +60,8 @@ inline float fromCelsius(float c, char unit) {
     return unit == 'F' ? c * 9.0f / 5.0f + 32.0f : (unit == 'K' ? c + 273.15f : c);
 }
 
-// Autotune refuses to start below this setpoint (legacy CommandLoop rule).
+// Autotune refuses to start below this setpoint (100 C / 212 F). This rule is
+// ours: yaeger's autotune has no setpoint gate.
 constexpr float kAutotuneMinSetpointC = 100;
 
 // Last autotune outcome, kept until the next one. Text: autotune_status.h.
@@ -130,6 +131,33 @@ struct Snapshot {
 // entered from Autotune starts from 0 instead.
 inline float startOutputOnModeChange(Mode from, Mode to, float currentOutput) {
     return from == Mode::Autotune && to != Mode::Autotune ? 0.0f : currentOutput;
+}
+
+// What a step in the process value does to the running mode. Changing the PID
+// input or a correction offset moves the PV at once. Autotune would measure the
+// step as part of a cycle, so it stops (heater off); PID and Profile restart the
+// PID bumpless so the derivative term does not kick; Manual ignores it.
+enum class PvStepAction : uint8_t { None, AbortAutotune, ResetPid };
+inline PvStepAction onPvStep(Mode m) {
+    switch (m) {
+    case Mode::Autotune:
+        return PvStepAction::AbortAutotune;
+    case Mode::Pid:
+    case Mode::Profile:
+        return PvStepAction::ResetPid;
+    default:
+        return PvStepAction::None;
+    }
+}
+
+// The readings can't support the current heat; the controller trips
+// SafetyTrip::SensorFault once this has held for 2 s. PID, Profile and Autotune
+// need their input (pv). Manual needs at least one readable probe while the
+// heater is on; with neither, the over-temperature trip is blind.
+inline bool sensorFault(Mode m, float pv, const ThermoSample& s, float heaterPct) {
+    if (m != Mode::Manual)
+        return !std::isfinite(pv);
+    return heaterPct > 0 && !std::isfinite(s.et) && !std::isfinite(s.bt);
 }
 
 inline const char* modeName(Mode m) {

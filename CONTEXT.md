@@ -18,7 +18,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `control-core/` | Pure control logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
 | `control-esp32/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `ControlPlugin` (hooks into `CroasterApp`) |
-| `docs/` | `design.md` (architecture + decisions D1–D22), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D23), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -114,6 +114,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   plus header hook), D13 (Croaster OTA only, no mDNS), D14 (config wizard,
   design only), D15 (MAX6675 library stays a core dependency). design.md
   lists which of these changed on 2026-10-26.
+- D23 (autotune and control review, 2026-10-26): 12 proposals for Shawn,
+  top ones: profile end holds SV unattended, 0/100 % relay swing, no
+  convergence check, fan change during autotune.
 
 ## Git state (2026-08-30, upstream)
 - Branch `dev` (HEAD `3f52109`, tracks `origin/dev`); the `boards/` + `croaster/`
@@ -159,6 +162,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   (`SetCorrection`); PID/autotune use corrected values, over-temperature uses
   max(raw, corrected). Keep the snapshot uncorrected: core adds the offset when
   it reads `RoasterProbe`, so correcting it too counts the offset twice.
+- `Controller` (FreeRTOS) has no host build: put the logic a fix needs in a
+  pure `control-core` helper (`onPvStep`, `sensorFault`, `crossedWithin`)
+  and test that (design.md D23 item 11).
 - NVS (`Preferences`) is not usable from global constructors: load settings in
   `setup()`.
 - Unpinned `platform = espressif32` resolves to whatever espressif32 is

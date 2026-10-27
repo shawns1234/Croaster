@@ -168,6 +168,94 @@ wins. `{"command":"getControl"}` shows the current values under `watchdog`.
 Turn it off only when something else watches the roast: with it off, a crashed
 laptop leaves the heater running until the over-temperature trip.
 
+### Autotune
+
+Autotune measures the roaster and picks PID gains for it. It replaces the
+default gains (`FLEX_PID_KP/KI/KD`, yaeger's 1 / 0.1 / 0.01, never tuned for
+this hardware). Run it once the heater, fan and the PID input probe (BT by
+default) are installed, and again after changing any of them. Run it empty, or
+with the load you roast with, at the fan speed you roast with.
+
+How it works: the firmware switches the heater between 100 % and 0 % around
+the setpoint (a relay test). Below SV − 1 °C the heater is on; above
+SV + 1 °C it is off. The temperature then swings around SV at the roaster's
+natural period. From the swing and the period it computes the ultimate gain
+Ku and period Pu, then gains by the Tyreus–Luyben rule. Tyreus–Luyben is
+gentler than Ziegler–Nichols and suits slow, lagging processes like BT.
+Background and sources: [`docs/research/autotune.md`](../../docs/research/autotune.md).
+
+**Start**
+1. Set the fan to your roasting speed. Below 30 % the firmware raises it to
+   60 %.
+2. Set SV to the temperature to tune at, at least 212 °F (100 °C). Pick one
+   in your roasting range, and leave room for the swing (below).
+3. Send `{"command":"autotune"}`, or press Artisan's **Autotune** button.
+   Keep Artisan sampling (ON): the comms watchdog stays active during
+   autotune.
+
+It refuses to start, and says why, below 212 °F (`need setpoint >= 212 F`,
+OLED `AT: SV<212F`) or without a reading on the PID input probe
+(`need a valid probe`, OLED `AT: no probe`).
+
+**While it runs**
+- `Mode` reads `Tuning` and `autotune` reads `running`. The OLED header shows
+  `AT running` for 10 s, then `H100 Fan60 Tuning` (H follows the relay
+  between 100 and 0).
+- Heater commands and the Artisan heater slider have no effect.
+- Duration: heat-up to SV, one discarded cycle, then 4 measured cycles. On a
+  simulated roaster that took 4 to 14 minutes, depending on its lag (not yet
+  measured on this hardware). The limit is 30 minutes.
+- The temperature overshoots SV on every cycle, by about ±10 °C (18 °F) on
+  a fast roaster and ±45 °C (80 °F) or more on a slow one (same simulation).
+  Don't tune with beans you care about.
+
+**Stop**: `{"command":"stop"}` (Artisan **Stop**) ends it with the heater off
+and the stop cooldown fan. Switching mode (`mode`, `startProfile`) or changing
+SV, `pidInput` or a correction offset also ends it with the heater off, since
+each would spoil the measurement. Changing the fan does not stop it, but it
+changes the roaster under test, so don't.
+
+**Safety**
+- Fails with the heater off on: the PID input temperature above 527 °F
+  (275 °C, `FLEX_OVER_TEMP_C`, on the corrected reading), the probe fault
+  (three bad reads in a row), no result after 30 minutes, and a swing too
+  small to measure.
+- Every trip ends it as well (over-temperature on any probe, raw or corrected;
+  sensor; comms; no mains; OTA). The status names the trip.
+- Nothing is saved unless it completes. Sending `autotune` again while it
+  runs starts over.
+
+**Result**
+- Done: `autotune` reads `done`, the OLED shows `AT done`. The new gains
+  are live and saved in NVS (`kp`/`ki`/`kd`, same as the `pid` command), and
+  `getControl` and `pidKp`/`pidKi`/`pidKd` show them. The firmware returns to
+  Manual with the heater at 0 % and the fan at 30 %. Select PID to use them;
+  it does not resume on its own.
+- Failed or aborted: `failed: <reason>` or `aborted: <reason>` (OLED
+  `AT fail: ...`, `AT abort: ...`), Manual, heater 0 %. The old gains stay.
+- The gains are in heater % per °C (`kp`), per °C·s (`ki`) and %·s per °C
+  (`kd`). To go back, send the old values with
+  `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}`.
+
+**Credit**
+- Method: K. J. Åström and T. Hägglund, relay feedback autotuning (Automatica,
+  1984). Tuning rule: B. D. Tyreus and W. L. Luyben (Ind. Eng. Chem. Res., 1992).
+- The command, the fan rule (below 30 % → 60 %) and the fan at 30 % with the
+  heater off when done follow [yaeger](https://github.com/tadelv/yaeger) by
+  Vid Tadel, whose
+  PID and autotune were added by RobTS in
+  [PR #21](https://github.com/tadelv/yaeger/pull/21) on top of
+  [lily-osp/AutoTunePID](https://github.com/lily-osp/AutoTunePID). That
+  autotune toggles the heater every 2 s regardless of temperature, so its
+  gains don't depend on the roaster.
+- The relay test here (`control-core/src/control/relay_autotune.cpp`) is new
+  code written for this project, not taken from yaeger or AutoTunePID. So
+  are the 212 °F gate, the aborts and the status text. It follows the
+  published method; [br3ttb's Arduino PID AutoTune
+  library](https://github.com/br3ttb/Arduino-PID-AutoTune-Library) and
+  Marlin's [`M303`](https://marlinfw.org/docs/gcode/M303.html) are the
+  reference implementations it was checked against.
+
 ## ☕ Artisan
 
 Load `artisan/croaster-flex.aset` (Help → Load Settings). Host

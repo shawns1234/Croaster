@@ -50,6 +50,7 @@ inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
         {"oscillation too small vs hysteresis", "small swing"},
         {"setpoint changed", "SV change"},
         {"correction changed", "offset"},
+        {"input changed", "input"},
     };
     const char* r = s.autotuneReason;
     for (const auto& m : kShort)

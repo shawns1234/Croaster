@@ -63,6 +63,8 @@ private:
     // abortReason: why a running autotune stops, if this ends one ("" = a command).
     void setMode(Mode m, float pv, const char* abortReason = "");
     void setAutotuneStatus(AutotuneStatus status, const char* reason = "");
+    // The PV just stepped (PID input or correction change); see onPvStep().
+    void handlePvStep(float newPv, const char* abortReason);
 
     Thermocouples& tc_;
     HeaterOutput& heater_;

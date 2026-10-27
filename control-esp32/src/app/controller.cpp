@@ -60,6 +60,20 @@ float Controller::pidInput(const ThermoSample& s) const {
     return selectPidInput(st_.pidInput, corrected(s, correction_));
 }
 
+void Controller::handlePvStep(float newPv, const char* abortReason) {
+    switch (onPvStep(st_.mode)) {
+    case PvStepAction::AbortAutotune:
+        setMode(Mode::Manual, newPv, abortReason);
+        break;
+    case PvStepAction::ResetPid:
+        if (std::isfinite(newPv))
+            pid_.reset(st_.setpoint, newPv, heater_.requested());
+        break;
+    default:
+        break;
+    }
+}
+
 void Controller::setMode(Mode m, float pv, const char* abortReason) {
     const bool leavingAutotune = st_.mode == Mode::Autotune && m != Mode::Autotune;
     const float carry = startOutputOnModeChange(st_.mode, m, heater_.requested());
@@ -116,9 +130,14 @@ void Controller::apply(const Command& c) {
             setMode(m, pv);
         break;
     }
-    case Command::Kind::SetPidInput:
-        st_.pidInput = static_cast<PidInput>(static_cast<int>(c.a));
+    case Command::Kind::SetPidInput: {
+        const auto in = static_cast<PidInput>(static_cast<int>(c.a));
+        if (in == st_.pidInput)
+            break;
+        st_.pidInput = in;
+        handlePvStep(pidInput(last_), "input changed");
         break;
+    }
     case Command::Kind::SetGains:
         st_.gains = {c.a, c.b, c.c};
         pid_.setGains(st_.gains);
@@ -174,14 +193,7 @@ void Controller::apply(const Command& c) {
         break;
     case Command::Kind::SetCorrection: {
         correction_ = {c.a, c.b};
-        const float corrPv = pidInput(last_);
-        // The process value steps by the change. Autotune would measure the step
-        // as part of a cycle, so stop it (heater off), as for a setpoint change.
-        // PID restarts bumpless so the derivative term does not kick.
-        if (st_.mode == Mode::Autotune)
-            setMode(Mode::Manual, corrPv, "correction changed");
-        else if ((st_.mode == Mode::Pid || st_.mode == Mode::Profile) && std::isfinite(corrPv))
-            pid_.reset(st_.setpoint, corrPv, heater_.requested());
+        handlePvStep(pidInput(last_), "correction changed");
         break;
     }
     case Command::Kind::Trip:
@@ -239,8 +251,7 @@ void Controller::controlStep(uint32_t now) {
         fan_.set(100);
     }
 
-    const bool inputBad = !std::isfinite(pv) || (!std::isfinite(last_.et) && !std::isfinite(last_.bt));
-    if (inputBad && st_.mode != Mode::Manual) {
+    if (sensorFault(st_.mode, pv, last_, out)) {
         if (!sensorBadSinceMs_)
             sensorBadSinceMs_ = now;
         if (now - sensorBadSinceMs_ > 2000)

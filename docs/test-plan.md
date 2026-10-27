@@ -26,6 +26,7 @@ Status tags:
 - No BT chip fitted → `Amb` is the ET chip's board temperature, not 32 °F. **host** `test_board_temperature_skips_missing_chip`; bench todo
 - BT chip fitted without a probe → `Amb` from the BT chip, BT absent from telemetry. **host** `test_board_temperature_skips_missing_chip`; bench untested
 - Unplug the PID input probe in PID mode → `trip:"sensor"` after 2 s, heater 0. **untested**
+- Manual, heater on, both probes unplugged → `trip:"sensor"` after 2 s, heater 0; heater 0 → no trip; one probe left → no trip (D23). **host** `test_sensor_fault_rules`; bench untested
 
 ## MAX6675 library fork (D21)
 Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) and the flex monitor
@@ -82,6 +83,9 @@ build read probes through `SmoothThermocouple`; the flex control build does not.
 - Autotune fails → "failed: <reason>"; OLED "AT fail: ..." within 20 characters. **host** (text); bench untested
 - Autotune with no heat (no AC) → fails "timeout" after 30 min, heater 0. **untested**
 - Autotune completes on the real heater → new gains saved to NVS, Manual, heater 0, fan 30 %. **untested** (needs AC)
+- `{"command":{"pidInput":"ET"}}` during autotune on BT → `autotune` "aborted: input changed", OLED "AT abort: input", heater 0 (D23). **host** (`test_pv_step_stops_autotune_and_resets_pid`, text in `test_autotune_status_text`); bench untested
+- `pidInput` change in PID → heater output continues without a jump; the same input again → nothing happens (D23). **host** `test_pv_step_stops_autotune_and_resets_pid`; bench untested
+- Autotune on the real heater → note the swing around SV and the time taken; compare with the README (simulated ±10 to ±45 °C, 4 to 14 min). **untested** (needs AC)
 
 ## Watchdog and trips
 - Artisan Off, then On → `trip:"comms"`, heater 0, fan at the trip speed; stays tripped after reconnect. **bench 2026-10-26** (when it tripped is unconfirmed; it should only trip while heating)
@@ -104,6 +108,7 @@ build read probes through `SmoothThermocouple`; the flex control build does not.
 ## Mains detection
 - `FLEX_REQUIRE_MAINS 1`, no AC → heat refused, `trip:"nomains"`. **bench 2026-10-26**
 - AC connected → `getControl` `mainsOk` true, heat allowed. **untested**
+- `FLEX_REQUIRE_MAINS 1`, AC connected, heater on for an hour → no `nomains` trip; a crossing stored after the control task read the timer counts as recent (D23). **host** `test_zero_cross_age`; bench untested
 
 ## °F conversion
 - °F/°C/K conversions both ways. **host** `test_unit_conversion`
