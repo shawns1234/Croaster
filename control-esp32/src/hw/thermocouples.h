@@ -5,17 +5,11 @@
 // per conversion). Only the control task calls read(), so it owns the bus.
 #include <cstdint>
 
+#include "control/control_types.h" // ThermoSample
 #include "control/max31855.h"
 #include "control/probe_channel.h"
 
 enum class TcChip : uint8_t { MAX31855, MAX6675 };
-
-struct ThermoSample {
-    float et, bt;       // filtered (moving average), NaN when faulted
-    float etRaw, btRaw; // this sample, NaN when faulted
-    float ambient;      // MAX31855 cold-junction temp, BT chip first (NaN on MAX6675)
-    uint8_t etFault, btFault;
-};
 
 class Thermocouples {
 public:

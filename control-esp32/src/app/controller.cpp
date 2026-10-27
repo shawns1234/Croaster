@@ -57,14 +57,7 @@ void Controller::run() {
 }
 
 float Controller::pidInput(const ThermoSample& s) const {
-    switch (st_.pidInput) {
-    case PidInput::BT:
-        return s.bt;
-    case PidInput::MAX:
-        return std::isfinite(s.et) && std::isfinite(s.bt) ? fmaxf(s.et, s.bt) : NAN;
-    default:
-        return s.et;
-    }
+    return selectPidInput(st_.pidInput, corrected(s, correction_));
 }
 
 void Controller::setMode(Mode m, float pv, const char* abortReason) {
@@ -179,6 +172,18 @@ void Controller::apply(const Command& c) {
     case Command::Kind::ClearTrip:
         st_.trip = SafetyTrip::None;
         break;
+    case Command::Kind::SetCorrection: {
+        correction_ = {c.a, c.b};
+        const float corrPv = pidInput(last_);
+        // The process value steps by the change. Autotune would measure the step
+        // as part of a cycle, so stop it (heater off), as for a setpoint change.
+        // PID restarts bumpless so the derivative term does not kick.
+        if (st_.mode == Mode::Autotune)
+            setMode(Mode::Manual, corrPv, "correction changed");
+        else if ((st_.mode == Mode::Pid || st_.mode == Mode::Profile) && std::isfinite(corrPv))
+            pid_.reset(st_.setpoint, corrPv, heater_.requested());
+        break;
+    }
     case Command::Kind::Trip:
         st_.trip = static_cast<SafetyTrip>(static_cast<int>(c.a));
         manualHeater_ = 0;
@@ -229,9 +234,7 @@ void Controller::controlStep(uint32_t now) {
     }
 
     // ---- safety interlocks (order matters: last one wins) ----
-    const bool anyProbeHot = (std::isfinite(last_.etRaw) && last_.etRaw > lim_.overTempC) ||
-                             (std::isfinite(last_.btRaw) && last_.btRaw > lim_.overTempC);
-    if (anyProbeHot) {
+    if (overTemperature(last_, correction_, lim_.overTempC)) {
         st_.trip = SafetyTrip::OverTemp;
         fan_.set(100);
     }
@@ -271,13 +274,7 @@ void Controller::controlStep(uint32_t now) {
     heater_.set(out);
 
     // ---- publish ----
-    st_.et = last_.et;
-    st_.bt = last_.bt;
-    st_.etRaw = last_.etRaw;
-    st_.btRaw = last_.btRaw;
-    st_.ambient = last_.ambient;
-    st_.etFault = last_.etFault;
-    st_.btFault = last_.btFault;
+    publishProbes(last_, st_); // uncorrected: CroasterCore adds the correction itself
     st_.heaterPct = heater_.requested();
     st_.fanPct = fan_.get();
     st_.uptimeMs = now;

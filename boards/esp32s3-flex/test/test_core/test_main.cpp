@@ -13,6 +13,7 @@
 #include "control/moving_average.h"
 #include "control/pid.h"
 #include "control/probe_channel.h"
+#include "control/probe_correction.h"
 #include "control/relay_autotune.h"
 #include "control/roast_profile.h"
 #include "control/time_proportional.h"
@@ -483,6 +484,9 @@ void test_autotune_status_text() {
     TEST_ASSERT_EQUAL_STRING("aborted: setpoint changed", full);
     autotunetext::brief(s, 'F', brief, sizeof brief);
     TEST_ASSERT_EQUAL_STRING("AT abort: SV change", brief);
+    s.autotuneReason = "correction changed";
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT abort: offset", brief);
 
     s.autotuneReason = "an unexpectedly long reason text"; // header stays within 20 characters
     autotunetext::brief(s, 'F', brief, sizeof brief);
@@ -500,6 +504,72 @@ void test_unit_conversion() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, toCelsius(273.15f, 'K'));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 212.0f, fromCelsius(100.0f, 'F'));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 50.0f, fromCelsius(toCelsius(50.0f, 'C'), 'C'));
+}
+
+// ---------- Correction offsets (CroasterCore correctionBt/correctionEt) ----------
+// ThermoSample fields: et, bt, etRaw, btRaw, ambient, etFault, btFault.
+
+void test_correction_shifts_pid_input() {
+    const ThermoSample raw{230, 190, 231, 191, 30, 0, 0};
+    const ProbeCorrection k{5, -3}; // BT +5 C, ET -3 C
+    const ThermoSample c = corrected(raw, k);
+    TEST_ASSERT_EQUAL_FLOAT(195, selectPidInput(PidInput::BT, c));
+    TEST_ASSERT_EQUAL_FLOAT(227, selectPidInput(PidInput::ET, c));
+    TEST_ASSERT_EQUAL_FLOAT(227, selectPidInput(PidInput::MAX, c));
+    TEST_ASSERT_EQUAL_FLOAT(30, c.ambient); // cold junction is not a probe reading
+
+    // The display shows 195 and the client sends SV 195: no error, no heat.
+    Pid pid(Pid::Config{});
+    pid.setGains({1, 0, 0});
+    TEST_ASSERT_EQUAL_FLOAT(0, pid.update(195, selectPidInput(PidInput::BT, c)));
+}
+
+void test_correction_in_fahrenheit() {
+    // correctionBt +18 in F mode; CroasterCore::correctionBtCelsius() returns 18 * 5 / 9.
+    const ProbeCorrection k{18.0f * 5.0f / 9.0f, 0};
+    const ThermoSample raw{150, 200, 150, 200, NAN, 0, 0};
+    const float displayedF = fromCelsius(raw.bt, 'F') + 18; // what Croaster shows: 410 F
+    const float setpointC = toCelsius(displayedF, 'F');     // the client's SV at the shown value
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 210, setpointC);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, setpointC, selectPidInput(PidInput::BT, corrected(raw, k)));
+}
+
+void test_correction_keeps_nan() {
+    const ThermoSample raw{200, NAN, 200, NAN, NAN, 0, 1};
+    const ThermoSample c = corrected(raw, {5, 5});
+    TEST_ASSERT_TRUE(std::isnan(c.bt));
+    TEST_ASSERT_TRUE(std::isnan(c.btRaw));
+    TEST_ASSERT_TRUE(std::isnan(selectPidInput(PidInput::BT, c)));
+    TEST_ASSERT_TRUE(std::isnan(selectPidInput(PidInput::MAX, c)));
+    TEST_ASSERT_EQUAL_FLOAT(205, selectPidInput(PidInput::ET, c));
+    TEST_ASSERT_FALSE(overTemperature(raw, {5, 5}, 275)); // a dead probe is a sensor fault, not over-temperature
+}
+
+void test_overtemp_uses_raw_and_corrected() {
+    const float limit = 275;
+    // A negative offset shows 270, but the probe reads 280: trip.
+    TEST_ASSERT_TRUE(overTemperature(ThermoSample{100, 100, 100, 280, NAN, 0, 0}, {-10, 0}, limit));
+    TEST_ASSERT_TRUE(overTemperature(ThermoSample{100, 100, 280, 100, NAN, 0, 0}, {0, -10}, limit));
+    // A positive offset shows 280 while the probe reads 270: trip.
+    TEST_ASSERT_TRUE(overTemperature(ThermoSample{100, 100, 100, 270, NAN, 0, 0}, {10, 0}, limit));
+    // Both below the limit.
+    TEST_ASSERT_FALSE(overTemperature(ThermoSample{100, 100, 100, 270, NAN, 0, 0}, {-10, 0}, limit));
+}
+
+void test_snapshot_stays_uncorrected() {
+    // CroasterCore adds the correction to what RoasterProbe returns, so the
+    // snapshot must carry raw values or the offset would count twice.
+    const ThermoSample raw{230, 190, 231, 191, 30, 0, 2};
+    const ThermoSample c = corrected(raw, {10, 10});
+    TEST_ASSERT_EQUAL_FLOAT(200, c.bt);
+    Snapshot s;
+    publishProbes(raw, s);
+    TEST_ASSERT_EQUAL_FLOAT(230, s.et);
+    TEST_ASSERT_EQUAL_FLOAT(190, s.bt);
+    TEST_ASSERT_EQUAL_FLOAT(231, s.etRaw);
+    TEST_ASSERT_EQUAL_FLOAT(191, s.btRaw);
+    TEST_ASSERT_EQUAL_FLOAT(30, s.ambient);
+    TEST_ASSERT_EQUAL(2, s.btFault);
 }
 
 int main() {
@@ -527,5 +597,10 @@ int main() {
     RUN_TEST(test_protocol_yaeger_compat);
     RUN_TEST(test_autotune_status_text);
     RUN_TEST(test_unit_conversion);
+    RUN_TEST(test_correction_shifts_pid_input);
+    RUN_TEST(test_correction_in_fahrenheit);
+    RUN_TEST(test_correction_keeps_nan);
+    RUN_TEST(test_overtemp_uses_raw_and_corrected);
+    RUN_TEST(test_snapshot_stays_uncorrected);
     return UNITY_END();
 }

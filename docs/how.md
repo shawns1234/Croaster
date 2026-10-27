@@ -113,12 +113,15 @@ MISO (GPIO 13), one chip-select each (`FLEX_PIN_TC_CS_ET` 10,
 | Decode | `control/max31855.h` | One frame gives the temperature, the cold junction and the fault bits (open, short to GND, short to VCC; all-0 or all-1 means no chip). |
 | Filter | `control/probe_channel.h` | One `ProbeChannel` per probe: 4-sample average; one or two bad reads hold the last value; the third in a row gives NaN; a reconnected probe starts fresh. The two channels never affect each other. |
 | Control | `app/controller.cpp` | The snapshot carries `et`, `bt`, `etFault`, `btFault` and `ambient` (cold junction of the BT chip, or the ET chip when no BT chip answers). NaN on the PID input, or on both probes, trips `sensor`. |
+| Correct | `control/probe_correction.h` | PID, autotune and the over-temperature check add Croaster's `correctionBt`/`correctionEt` (as °C, from `ControlPlugin`), so they work on the displayed scale. The snapshot stays uncorrected (D22). |
 | Croaster | `RoasterProbe.h` | Two adapters (`Channel::BT`, `Channel::ET`) hand the snapshot values to `CroasterCore`, which computes RoR. |
 | Telemetry | `CroasterCore::getJsonData` | `BT`/`ET` and `DBT`/`DET` (RoR); a faulted probe's keys are left out, which Artisan shows as a gap. |
 | Screen | `CroasterDisplaySSD1306` | BT and ET with RoR; a faulted probe shows `N/A`. |
 
 Host tests cover the decode and filter steps (`test_max31855_*`,
-`test_probe_channels_independent_faults`). Wiring and the real chips are
+`test_probe_channels_independent_faults`) and the correction step
+(`test_correction_*`, `test_overtemp_uses_raw_and_corrected`,
+`test_snapshot_stays_uncorrected`). Wiring and the real chips are
 checked on the bench (tickets T2, T3).
 
 ### Watchdog

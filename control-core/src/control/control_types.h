@@ -89,11 +89,22 @@ struct Command {
         SetTripFan,   // a = fan % applied when a safety trip starts
         Trip,         // a = (float)SafetyTrip; raised by the network side (comms, OTA)
         ClearTrip,
+        SetCorrection, // a, b = BT, ET correction offsets, C differences (CroasterCore::correctionBtCelsius)
     };
     Kind kind;
     float a = 0, b = 0, c = 0;
 };
 
+// One control-task sample of both probes (C), before any user correction.
+struct ThermoSample {
+    float et, bt;       // filtered (moving average), NaN when faulted
+    float etRaw, btRaw; // this sample, NaN when faulted
+    float ambient;      // MAX31855 cold-junction temp, BT chip first (NaN on MAX6675)
+    uint8_t etFault, btFault;
+};
+
+// Probe temperatures here are uncorrected: CroasterCore adds the user's
+// correction when it reads them through RoasterProbe.
 struct Snapshot {
     float et = NAN, bt = NAN, ambient = NAN; // filtered; NaN on fault / before the first sample
     float etRaw = NAN, btRaw = NAN;          // this sample, NaN on fault

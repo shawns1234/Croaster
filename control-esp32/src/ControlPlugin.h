@@ -11,6 +11,8 @@
 //    -> trip CommsLost (heater off, fan to the trip cooldown speed). Profile runs are
 //    exempt (they are autonomous). Enable and timeout: ControlSettings::watchdog.
 //  - persists PID gains after a successful autotune.
+//  - passes Croaster's correction offsets (correctionBt/correctionEt) to the
+//    controller, so PID works on the same corrected scale as the display.
 // Firmware updates use Croaster's own OTA (WebSocket/BLE); the control task
 // turns the heater off while one runs (Update.isRunning()).
 #include <Arduino.h>
@@ -47,4 +49,6 @@ private:
     CroasterApp* app_ = nullptr;
     unsigned long watchdogArmedMs_ = 0;
     uint32_t autotuneSeq_ = 0;
+    bool correctionSent_ = false;
+    float correctionBtC_ = 0, correctionEtC_ = 0;
 };

@@ -18,7 +18,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `control-core/` | Pure control logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
 | `control-esp32/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `ControlPlugin` (hooks into `CroasterApp`) |
-| `docs/` | `design.md` (architecture + decisions D1–D20), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D22), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -149,6 +149,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `FLEX_TEMP_UNIT`, default "F") sets the screen, telemetry and command
   temperatures; convert at the edges (`toCelsius`/`fromCelsius`). Artisan's
   mode and `channel_modes` must match the firmware unit.
+- Corrections (D22): `correctionBt`/`correctionEt` live in core, in the display
+  unit. `ControlPlugin::loop()` passes them to the controller as °C
+  (`SetCorrection`); PID/autotune use corrected values, over-temperature uses
+  max(raw, corrected). Keep the snapshot uncorrected: core adds the offset when
+  it reads `RoasterProbe`, so correcting it too counts the offset twice.
 - NVS (`Preferences`) is not usable from global constructors: load settings in
   `setup()`.
 - Unpinned `platform = espressif32` resolves to whatever espressif32 is

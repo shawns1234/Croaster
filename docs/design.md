@@ -214,6 +214,7 @@ Resolved by Shawn on 2026-10-26:
 | D18 | PID input defaults to BT (option 2); `pidInput` command and NVS kept; yaeger's gains kept until autotuned on BT. |
 | D19 | Cooldown fan 65 % after `stop`, 100 % after any trip (option 3). |
 | D21 | Fork `MAX6675_Thermocouple` and fix it there (option 3). |
+| D22 | Pass Croaster's correction offsets to the controller through core getters (option 1). |
 
 ### D1. Where the control libraries live — **DECISION**
 AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
@@ -696,6 +697,55 @@ Behaviour change on MAX6675 boards: unplugging a probe shows `N/A` and
 plugging it back in shows the new temperature on the next read (250 ms),
 without a ramp from the old value. The flex control build is unaffected (its
 probes go through `RoasterProbe` and `ProbeChannel`, not `SmoothThermocouple`).
+
+### D22. Correction offsets reach control — resolved 2026-10-26: core getters (option 1)
+Croaster adds `correctionBt`/`correctionEt` to every temperature it shows. The
+offsets are stored as numbers in the current display unit, and clients send
+setpoints on that corrected scale. The control task reads the probes itself,
+so before this change PID and autotune ran on uncorrected °C. With
+`correctionBt` +10 in °F mode, PID held the uncorrected BT at SV, and the
+display read SV + 10 °F.
+
+Options (Shawn: the PID must never control on the wrong scale):
+1. **Core getters (chosen).** `CroasterCore::correctionBtCelsius()` and
+   `correctionEtCelsius()` return the offsets as °C differences (÷ 1.8 in
+   °F). `ControlPlugin::loop()` polls them and sends `SetCorrection` when
+   either changes, so a `tempUnit` change, which changes what the stored
+   number means, is picked up too. Two additive const getters; stock boards
+   never call them.
+2. Parse `correctionBt`/`correctionEt` again in the plugin (`onJsonCommand`).
+   No core change, but it duplicates core's parsing and unit rules, needs
+   `tempUnit` parsed as well, and breaks silently if core changes how it
+   stores corrections.
+3. Core hands corrected values to the controller. Core would have to know
+   about a controller, and the SPI bus would no longer belong to the control
+   task alone (D7).
+
+Rules, in `control/probe_correction.h` (host-tested) and the controller:
+- PID, autotune and the setpoint compare use corrected values.
+- The snapshot, and so `RoasterProbe`, stays uncorrected: CroasterCore adds
+  the offset itself, and correcting both would count it twice.
+- Safety limits use the higher of the raw and the corrected reading.
+  Over-temperature trips when either is above `FLEX_OVER_TEMP_C`, so a
+  negative offset cannot hide a hot probe, and a positive one trips early.
+- Autotune's abort above `FLEX_OVER_TEMP_C` compares the corrected input; the
+  raw over-temperature trip ends autotune as well, so the higher reading wins
+  here too.
+- `FLEX_MAX_SETPOINT_C` caps the setpoint, which is on the corrected scale.
+  With a negative offset the probe can run above the cap; the raw
+  over-temperature trip still applies.
+- The autotune gate (setpoint >= 100 °C / 212 °F) is on the setpoint, so it
+  matches what the client sent. The cooldown fan has no temperature
+  thresholds. `Amb` is the cold junction, which Croaster doesn't correct.
+- A correction change during autotune aborts it ("aborted: correction
+  changed", OLED "AT abort: offset"), since the step would distort the
+  measured cycle. In PID or Profile mode the PID restarts bumpless, so the
+  derivative term doesn't kick.
+- The plugin treats a non-finite offset as 0. Corrections are still not saved
+  by core and reset at reboot.
+
+Stock boards: `esp32c3` and `esp8266` release builds have the same RAM and
+flash use and the same warnings with the getters added (2026-10-26).
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

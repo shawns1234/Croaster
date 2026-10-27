@@ -38,6 +38,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Flex PID ignored Croaster's correction offsets (D22).** PID and autotune
+  ran on the uncorrected probe while setpoints arrived on the displayed,
+  corrected scale, so the probe was held off by `correctionBt`/`correctionEt`.
+  The controller now adds the offsets to its PID and autotune input;
+  over-temperature trips on the raw or the corrected reading, whichever is
+  higher. A correction change aborts a running autotune.
 - **MAX6675 boards: a probe stayed `N/A` until reboot after one open-probe
   reading (D21).** `MAX6675_Thermocouple` now comes from Shawn's fork at
   `v2.0.3`, whose `SmoothThermocouple` reseeds after a NAN, keeps the

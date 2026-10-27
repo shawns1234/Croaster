@@ -119,3 +119,16 @@ build read probes through `SmoothThermocouple`; the flex control build does not.
 ## Profiles
 - README example profile → setpoints follow the ramps. **host** `test_profile_matches_readme_example`
 - Profile load and `startProfile` over WebSocket → mode Profile, SV follows, watchdog exempt. **untested**
+
+## Correction offsets (D22)
+- Correction offset → PID input shifts by it; ET, BT and MAX inputs; `Amb` unchanged. **host** `test_correction_shifts_pid_input`
+- `correctionBt` +18 in °F → PID input +10 °C and matches the displayed BT. **host** `test_correction_in_fahrenheit` (the core getter's ÷ 1.8 is checked on the bench only)
+- Faulted probe plus an offset → still NaN; no over-temperature trip from it. **host** `test_correction_keeps_nan`
+- Negative offset hiding a hot probe → over-temperature trips on the raw reading. **host** `test_overtemp_uses_raw_and_corrected`
+- Snapshot BT/ET → uncorrected, so the offset is added once. **host** `test_snapshot_stays_uncorrected`
+- °F mode, `{"command":{"correctionBt":10}}`, PID on BT, SV 300 °F → displayed BT settles at 300 °F, not 310 °F. **untested** (needs AC)
+- `{"command":{"correctionBt":-50}}` with `FLEX_OVER_TEMP_C` set low → `trip:"overtemp"` when the raw BT passes the limit, while the display still reads 50 °F lower. **untested**
+- Correction set in °F, then `{"command":{"tempUnit":"C"}}` → the same number now applies in °C on the display and in PID; PID holds the displayed SV. **untested**
+- Correction change during autotune → `autotune` "aborted: correction changed", OLED "AT abort: offset", heater 0. **host** (text, `test_autotune_status_text`); bench untested
+- Correction change in PID → heater output continues without a jump. **untested**
+- Stock boards (`esp32c3`, `esp8266`) → same RAM and flash use and the same warnings with the getters added. **build 2026-10-26**

@@ -13,12 +13,15 @@
 
 #include "control/control_types.h"
 #include "control/pid.h"
+#include "control/probe_correction.h"
 #include "control/relay_autotune.h"
 #include "control/roast_profile.h"
 #include "hw/fan_output.h"
 #include "hw/heater_output.h"
 #include "hw/thermocouples.h"
 
+// Over-temperature trips on the raw or the corrected reading, whichever is
+// higher. Setpoints are on the corrected scale, so the clamp is too.
 struct SafetyLimits {
     float overTempC = 275;     // any probe -> heater off, fan 100
     float maxSetpointC = 250;  // legacy clamp in Control::setSetpoint
@@ -55,6 +58,7 @@ private:
     void run();
     void apply(const Command& c);
     void controlStep(uint32_t nowMs);
+    // Selected PID input with the correction offsets applied.
     float pidInput(const ThermoSample& s) const;
     // abortReason: why a running autotune stops, if this ends one ("" = a command).
     void setMode(Mode m, float pv, const char* abortReason = "");
@@ -73,7 +77,8 @@ private:
 
     // control-task-owned state
     Snapshot st_;
-    ThermoSample last_{};
+    ThermoSample last_{}; // uncorrected
+    ProbeCorrection correction_;
     float manualHeater_ = 0;
     float tripFan_ = 100;
     bool tripFanApplied_ = false; // trip fan set for the current trip

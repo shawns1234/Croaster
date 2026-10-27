@@ -4,6 +4,7 @@
 #include <CroasterApp.h>
 #include <WiFi.h>
 
+#include <cmath>
 #include <cstring>
 
 namespace {
@@ -137,6 +138,23 @@ void ControlPlugin::loop() {
         autotuneSeq_ = s.autotuneSeq;
         settings_.gains = s.gains;
         ConfigStore::saveGains(s.gains);
+    }
+
+    // The offsets change with correctionBt/correctionEt and with the unit; poll both.
+    // A non-finite offset would make every PID input NaN; treat it as no offset.
+    const float btCore = app_->core().correctionBtCelsius();
+    const float etCore = app_->core().correctionEtCelsius();
+    const float btC = std::isfinite(btCore) ? btCore : 0;
+    const float etC = std::isfinite(etCore) ? etCore : 0;
+    if (!correctionSent_ || btC != correctionBtC_ || etC != correctionEtC_) {
+        Command c{Command::Kind::SetCorrection};
+        c.a = btC;
+        c.b = etC;
+        if (controller_.submit(c)) { // queue full: retry on the next loop
+            correctionSent_ = true;
+            correctionBtC_ = btC;
+            correctionEtC_ = etC;
+        }
     }
 
     // Quiet time = since the last message Croaster's command handler accepted
