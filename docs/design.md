@@ -113,7 +113,6 @@ Board folder `boards/esp32s3-flex/`:
 | `src/config.h` | new | The one master file for pins, chips, drivers and limits (D2). Croaster boards set pins in `main.cpp`. |
 | `src/ConfigCheck.h` | new | Compile-time checks on `config.h` (reserved pins, duplicates, ranges). |
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
-| `esp32s3-sdkconfig.defaults` | duplicates | Same content as `boards/esp32s3/`'s (line endings differ). Set as `board_build.sdkconfig_path`, as in Croaster's esp32s3 board. Sharing it is part of D10. |
 | `artisan/croaster-flex.aset` | new | Artisan settings for heater, fan, PID and the data request. |
 | `test/test_core/test_main.cpp` | new | Host tests for `croaster-control/src/core`. |
 | `README.md`, `.gitignore` | new | Wiring, settings and generated-file ignores. |
@@ -259,6 +258,7 @@ Resolved by Shawn on 2026-10-27:
 | Decision | Choice |
 |:---|:---|
 | D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
+| D10 (sdkconfig part) | "Kill ours, keep his": flex's `esp32s3-sdkconfig.defaults` is deleted; flex sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini question stays open. |
 | D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The flex monitor build reads the chips through `app/MonitorProbes`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
@@ -446,7 +446,12 @@ received them (no `[CMD-SOCKET]` line in its log). yaeger has no
 latch: on a clean disconnect in Manual it sets heater 0 and fan 100, and the
 next heater command simply applies.
 
-### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open, no change made; facts updated 2026-10-26)**
+### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open; sdkconfig part resolved 2026-10-27)**
+
+Resolved part (Shawn, 2026-10-27: "kill ours, keep his"): flex's
+`esp32s3-sdkconfig.defaults` is deleted, and every flex env sets
+`board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini
+question below is still open.
 
 Shawn asked (2026-10-26) whether a "flex" board's `platformio.ini` could `extends = core`,
 or otherwise reuse what `boards/esp32s3/platformio.ini` already says. This is a discussion
@@ -462,7 +467,8 @@ board json, platform, framework, flash size, upload and monitor options, and com
 
 **What flex and his esp32s3 actually have in common:** the ESP32-S3 chip, 16 MB flash,
 `ARDUINO_USB_CDC_ON_BOOT=1`, `BOARD_HAS_PSRAM`, the upload and monitor speeds, the partition
-table (`default_16MB.csv`) and `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`.
+table (`default_16MB.csv`) and the sdkconfig file (since 2026-10-27 flex points at
+`../esp32s3/esp32s3-sdkconfig.defaults`, his copy; flex's own copy is deleted).
 **What differs:** the board json (his is PlatformIO's stock `esp32-s3-devkitc-1` for the
 ES3C28P; ours is `esp32-s3-devkitm1-n16r8.json` for the Lonely Binary N16R8), lib_deps (his
 has ILI9341 + LVGL; ours has Adafruit SSD1306 + CroasterControl), build_flags (his
@@ -934,9 +940,18 @@ Proposals, highest priority first (no code changed):
 - pioarduino 55.03.312 (same Arduino core) builds too; only it can apply
   `custom_sdkconfig` (recompiles IDF libs).
 - Flex sets `board_build.sdkconfig_path` like Croaster's esp32s3 board
-  (Shawn, 2026-10-26) and has no `custom_sdkconfig` env. To apply the file,
-  add `custom_sdkconfig = file://esp32s3-sdkconfig.defaults` to a pioarduino
-  env; the first build takes about 2 minutes.
+  (Shawn, 2026-10-26) and, since 2026-10-27, points it at his file:
+  `../esp32s3/esp32s3-sdkconfig.defaults` (D10). It has no `custom_sdkconfig`
+  env. To apply the file, add
+  `custom_sdkconfig = file://../esp32s3/esp32s3-sdkconfig.defaults` to a
+  pioarduino env (pioarduino reads a relative `file://` path from the project
+  folder); the first build takes about 2 minutes.
+- Checked 2026-10-27: no installed platform reads `board_build.sdkconfig_path`.
+  espressif32 8.0.0, 6.13.0 and pioarduino 55.03.312 look for
+  `board_build.esp-idf.sdkconfig_path`, and only when ESP-IDF itself is
+  compiled (`framework = espidf`, or pioarduino's `custom_sdkconfig`). The line
+  records which file applies, here and in Croaster's esp32s3 ini; it changes
+  nothing in an Arduino build.
 - `esp32s3-sdkconfig.defaults` findings (checked in the generated sdkconfig):
   - `MBEDTLS_EXTERNAL_MEM_ALLOC=y`, WiFi/LwIP in PSRAM, NimBLE 1 connection:
     applied.

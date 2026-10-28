@@ -95,8 +95,8 @@ pio test -e native                            # host unit tests (croaster-contro
 | `esp32s3-flex-debug` | same | `CORE_DEBUG_LEVEL=3` |
 | `esp32s3-flex-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
 
-Every env sets `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`, as
-Croaster's `boards/esp32s3` does. Arduino builds on these platforms compile
+Every env sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`,
+Croaster's own file in `boards/esp32s3` (flex keeps no copy). Arduino builds on these platforms compile
 against prebuilt IDF libraries, so the file documents the intended Kconfig
 rather than changing the build (see `docs/design.md`, "Build platform and
 sdkconfig").

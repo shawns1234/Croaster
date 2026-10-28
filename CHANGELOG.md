@@ -83,6 +83,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Flex uses Croaster's `boards/esp32s3/esp32s3-sdkconfig.defaults` (D10).**
+  Flex's identical copy is deleted; `board_build.sdkconfig_path` points at
+  `../esp32s3/esp32s3-sdkconfig.defaults`.
 - **One MAX31855 decoder (D11).** The MAX31855 reader written for this
   project moves out of `croaster/`: `CroasterMAX31855`,
   `CroasterThermocoupleType` and the third `CroasterCore` constructor argument

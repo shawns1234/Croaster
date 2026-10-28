@@ -23,7 +23,7 @@ on hardware. Status: `done`, `todo`, `blocked`. "Blocked by" lists edges.
 | T16 | Test that parses the `.aset` slider/button commands and runs each through `controlproto`, so the file and the firmware can't drift | todo | — |
 | T17 | Artisan setting check against source + docs (`docs/artisan-settings.md`) | done | — |
 | T18 | Board renamed `esp32s3-roaster` → `esp32s3-flex` (folder, envs, board id, `.aset`) | done | — |
-| T19 | Decide D10 (flex vs Croaster's esp32s3 ini: standalone / extends / shared base ini) | blocked | Shawn |
+| T19 | Decide D10 (flex vs Croaster's esp32s3 ini: standalone / extends / shared base ini). sdkconfig part done 2026-10-27: flex points at `../esp32s3/esp32s3-sdkconfig.defaults`, its copy deleted | blocked | Shawn |
 | T20 | Flex screen: Croaster's shared SSD1306 display + `setHeaderText()`; drop `RoasterOledDisplay`/U8g2 | done | — |
 | T21 | Rename roaster-named code to flex/control (map in `docs/design.md`) | done | — |
 | T22 | Croaster's OTA only (ArduinoOTA and `-ota` env removed), `default_16MB.csv`, flex `lib_deps` trimmed | done | — |
