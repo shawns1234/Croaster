@@ -168,7 +168,7 @@ void test_leaving_autotune_starts_from_zero() {
     const float relay = at.update(180);
     TEST_ASSERT_EQUAL_FLOAT(100.0f, relay);
 
-    const PidGains gains{1.0f, 0.1f, 0.01f}; // FLEX_PID_* defaults
+    const PidGains gains{1.0f, 0.1f, 0.01f}; // CPID_PID_* defaults
     const float toPid = startOutputOnModeChange(Mode::Autotune, Mode::Pid, relay);
     TEST_ASSERT_EQUAL_FLOAT(0.0f, toPid);
     Pid pid(Pid::Config{});
@@ -592,7 +592,7 @@ void test_snapshot_stays_uncorrected() {
 // Controller::handlePvStep(): a pidInput or correction change steps the PV.
 // BT 195 C -> ET 205 C at SV 200 in PID with 50 % heater out.
 void test_autotune_required_gate() {
-    // FLEX_REQUIRE_AUTOTUNE 1, default gains: PID and Profile refused.
+    // CPID_REQUIRE_AUTOTUNE 1, default gains: PID and Profile refused.
     TEST_ASSERT_TRUE(modeNeedsTuning(Mode::Pid, true, false));
     TEST_ASSERT_TRUE(modeNeedsTuning(Mode::Profile, true, false));
     TEST_ASSERT_FALSE(modeNeedsTuning(Mode::Manual, true, false));
@@ -600,7 +600,7 @@ void test_autotune_required_gate() {
     // Tuned (autotune done or pid command): everything allowed.
     for (Mode m : {Mode::Manual, Mode::Pid, Mode::Profile, Mode::Autotune})
         TEST_ASSERT_FALSE(modeNeedsTuning(m, true, true));
-    // FLEX_REQUIRE_AUTOTUNE 0: default gains usable.
+    // CPID_REQUIRE_AUTOTUNE 0: default gains usable.
     for (Mode m : {Mode::Manual, Mode::Pid, Mode::Profile, Mode::Autotune})
         TEST_ASSERT_FALSE(modeNeedsTuning(m, false, false));
 
@@ -680,7 +680,7 @@ void test_sensor_fault_rules() {
 
 // FanDimmer::mainsDetected(): a crossing stored after the control task read the
 // timer used to wrap to a huge age and report "no mains", which latches the
-// nomains trip while heating with FLEX_REQUIRE_MAINS 1.
+// nomains trip while heating with CPID_REQUIRE_MAINS 1.
 void test_zero_cross_age() {
     TEST_ASSERT_TRUE(crossedWithin(1000000, 1050000, 100000));
     TEST_ASSERT_FALSE(crossedWithin(1000000, 1100000, 100000));
@@ -688,7 +688,7 @@ void test_zero_cross_age() {
     TEST_ASSERT_TRUE(crossedWithin(1000000, 1000000, 100000));
 }
 
-// FLEX_REQUIRE_MAINS grace period (2 s default).
+// CPID_REQUIRE_MAINS grace period (2 s default).
 void test_mains_dropout_under_grace_does_not_trip() {
     MainsWatch w;
     TEST_ASSERT_FALSE(w.update(true, true, 1000, 2000));

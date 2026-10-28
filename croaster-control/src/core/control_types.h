@@ -170,7 +170,7 @@ inline const char* outputCommandStopsAutotune(Mode m, Command::Kind k, float req
     return nullptr;
 }
 
-// FLEX_REQUIRE_AUTOTUNE: PID and Profile run on the gains, so with untuned
+// CPID_REQUIRE_AUTOTUNE: PID and Profile run on the gains, so with untuned
 // (default) gains they are refused. Manual and Autotune never need tuning.
 inline bool modeNeedsTuning(Mode m, bool requireTuned, bool tuned) {
     return requireTuned && !tuned && (m == Mode::Pid || m == Mode::Profile);

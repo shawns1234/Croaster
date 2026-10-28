@@ -16,33 +16,33 @@ class Controller; // croaster-control; only defined in the control build
 // knows about heaters or fans.
 // ---------------------------------------------------------------------------
 
-#if FLEX_HEATER != FLEX_HEATER_NONE // ===== control build =====
+#if CPID_HEATER != CPID_HEATER_NONE // ===== control build =====
 #    include <app/ControlPlugin.h>
 #    include <app/RoasterProbe.h>
 #    include <app/controller.h>
 #    include <core/autotune_status.h>
 #    include <hw/heater_output.h>
 #    include <hw/thermocouples.h>
-#    if FLEX_FAN == FLEX_FAN_AC_DIMMER
+#    if CPID_FAN == CPID_FAN_AC_DIMMER
 #        include <hw/fan_dimmer.h>
-FanDimmer fan(FLEX_PIN_ZERO_CROSS, FLEX_PIN_FAN, FLEX_MAINS_HZ);
+FanDimmer fan(CPID_PIN_ZERO_CROSS, CPID_PIN_FAN, CPID_MAINS_HZ);
 #    else
 #        include <hw/fan_pwm.h>
-FanPwm fan(FLEX_PIN_FAN, FLEX_FAN_PWM_HZ);
+FanPwm fan(CPID_PIN_FAN, CPID_FAN_PWM_HZ);
 #    endif
 
-Thermocouples probes(FLEX_THERMOCOUPLE == FLEX_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, FLEX_PIN_TC_SCK,
-                     FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_ET, FLEX_PIN_TC_CS_BT);
-HeaterOutput heater(FLEX_PIN_HEATER, FLEX_HEATER_WINDOW_MS, FLEX_HEATER_MAX_PERCENT, FLEX_HEATER_ACTIVE_HIGH);
+Thermocouples probes(CPID_THERMOCOUPLE == CPID_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CPID_PIN_TC_SCK,
+                     CPID_PIN_TC_MISO, CPID_PIN_TC_CS_ET, CPID_PIN_TC_CS_BT);
+HeaterOutput heater(CPID_PIN_HEATER, CPID_HEATER_WINDOW_MS, CPID_HEATER_MAX_PERCENT, CPID_HEATER_ACTIVE_HIGH);
 
 SafetyLimits limits() {
     SafetyLimits l;
-    l.overTempC = FLEX_OVER_TEMP_C;
-    l.maxSetpointC = FLEX_MAX_SETPOINT_C;
-    l.minFanWithHeat = FLEX_MIN_FAN_WITH_HEAT;
-    l.requireMains = FLEX_REQUIRE_MAINS;
-    l.mainsGraceMs = FLEX_MAINS_GRACE_MS;
-    l.requireTunedGains = FLEX_REQUIRE_AUTOTUNE;
+    l.overTempC = CPID_OVER_TEMP_C;
+    l.maxSetpointC = CPID_MAX_SETPOINT_C;
+    l.minFanWithHeat = CPID_MIN_FAN_WITH_HEAT;
+    l.requireMains = CPID_REQUIRE_MAINS;
+    l.mainsGraceMs = CPID_MAINS_GRACE_MS;
+    l.requireTunedGains = CPID_REQUIRE_AUTOTUNE;
     return l;
 }
 Controller controller(probes, heater, fan, limits());
@@ -50,21 +50,21 @@ Controller controller(probes, heater, fan, limits());
 // The control task owns the SPI bus; Croaster reads its filtered values.
 RoasterProbe btProbe(controller, RoasterProbe::Channel::BT);
 RoasterProbe etProbe(controller, RoasterProbe::Channel::ET);
-CroasterCore core(FLEX_DUMMY_DATA, &btProbe, &etProbe);
+CroasterCore core(CPID_DUMMY_DATA, &btProbe, &etProbe);
 Controller* const controllerPtr = &controller;
 
 #else // ===== monitor build: Croaster with the selected converter, no control task =====
 #    include <app/MonitorProbes.h>
 #    include <hw/thermocouples.h>
 
-Thermocouples probes(FLEX_THERMOCOUPLE == FLEX_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, FLEX_PIN_TC_SCK,
-                     FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_ET, FLEX_PIN_TC_CS_BT);
+Thermocouples probes(CPID_THERMOCOUPLE == CPID_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CPID_PIN_TC_SCK,
+                     CPID_PIN_TC_MISO, CPID_PIN_TC_CS_ET, CPID_PIN_TC_CS_BT);
 MonitorProbes monitor(probes); // same reader and decoders as the control build
-CroasterCore core(FLEX_DUMMY_DATA, monitor.bt(), monitor.et());
+CroasterCore core(CPID_DUMMY_DATA, monitor.bt(), monitor.et());
 Controller* const controllerPtr = nullptr;
 #endif
 
-#if FLEX_DISPLAY == FLEX_DISPLAY_SSD1306
+#if CPID_DISPLAY == CPID_DISPLAY_SSD1306
 #    include <CroasterDisplaySSD1306.h>
 CroasterDisplaySSD1306 display(core); // Croaster's shared screen (boards/common)
 CroasterDisplay* const displayPtr = &display;
@@ -72,19 +72,19 @@ CroasterDisplay* const displayPtr = &display;
 CroasterDisplay* const displayPtr = nullptr;
 #endif
 
-CroasterApp app(core, displayPtr, FLEX_PIN_LED, FLEX_LED_ON_LEVEL);
+CroasterApp app(core, displayPtr, CPID_PIN_LED, CPID_LED_ON_LEVEL);
 
-#if FLEX_HEATER != FLEX_HEATER_NONE
-static_assert(FLEX_PID_INPUT_ET == static_cast<int>(PidInput::ET) &&
-                  FLEX_PID_INPUT_BT == static_cast<int>(PidInput::BT) &&
-                  FLEX_PID_INPUT_MAX == static_cast<int>(PidInput::MAX),
-              "config.h: FLEX_PID_INPUT_* values must match PidInput");
+#if CPID_HEATER != CPID_HEATER_NONE
+static_assert(CPID_PID_INPUT_ET == static_cast<int>(PidInput::ET) &&
+                  CPID_PID_INPUT_BT == static_cast<int>(PidInput::BT) &&
+                  CPID_PID_INPUT_MAX == static_cast<int>(PidInput::MAX),
+              "config.h: CPID_PID_INPUT_* values must match PidInput");
 ControlSettings defaults() {
     ControlSettings d;
-    d.gains = {FLEX_PID_KP, FLEX_PID_KI, FLEX_PID_KD};
-    d.pidInput = static_cast<PidInput>(FLEX_PID_INPUT);
-    d.cooldownFan = {FLEX_COOLDOWN_FAN_STOP, FLEX_COOLDOWN_FAN_TRIP};
-    d.watchdog = {FLEX_WATCHDOG_ENABLED != 0, FLEX_WATCHDOG_TIMEOUT_S};
+    d.gains = {CPID_PID_KP, CPID_PID_KI, CPID_PID_KD};
+    d.pidInput = static_cast<PidInput>(CPID_PID_INPUT);
+    d.cooldownFan = {CPID_COOLDOWN_FAN_STOP, CPID_COOLDOWN_FAN_TRIP};
+    d.watchdog = {CPID_WATCHDOG_ENABLED != 0, CPID_WATCHDOG_TIMEOUT_S};
     return d;
 }
 ControlPlugin plugin(controller);
@@ -115,20 +115,20 @@ String statusLine(const Snapshot& s) {
 #endif
 
 void setup() {
-    CroasterDeviceIdentity::setBoardName(FLEX_BOARD_NAME);
-    core.changeTemperatureUnit(FLEX_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
-    Wire.setPins(FLEX_PIN_I2C_SDA, FLEX_PIN_I2C_SCL); // later Wire.begin() calls use these
+    CroasterDeviceIdentity::setBoardName(CPID_BOARD_NAME);
+    core.changeTemperatureUnit(CPID_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
+    Wire.setPins(CPID_PIN_I2C_SDA, CPID_PIN_I2C_SCL); // later Wire.begin() calls use these
 
-#if FLEX_HEATER != FLEX_HEATER_NONE
+#if CPID_HEATER != CPID_HEATER_NONE
     // Outputs safe before anything else: heater off, fan off.
     heater.begin();
     fan.begin();
     probes.begin();
     const ControlSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
     controller.begin(settings.gains, settings.gainsTuned, settings.pidInput, settings.cooldownFan.trip,
-                     FLEX_CONTROL_CORE, configMAX_PRIORITIES - 3);
+                     CPID_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
-#    if FLEX_DISPLAY == FLEX_DISPLAY_SSD1306
+#    if CPID_DISPLAY == CPID_DISPLAY_SSD1306
     display.setHeaderText([]() {
         return statusLine(controller.snapshot());
     }); // heater/fan/mode or trip
@@ -139,14 +139,14 @@ void setup() {
 
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display
 
-#if FLEX_HEATER != FLEX_HEATER_NONE
+#if CPID_HEATER != CPID_HEATER_NONE
     plugin.begin();
 #endif
 }
 
 void loop() {
     app.loop();
-#if FLEX_HEATER != FLEX_HEATER_NONE
+#if CPID_HEATER != CPID_HEATER_NONE
     plugin.loop();
 #endif
 }

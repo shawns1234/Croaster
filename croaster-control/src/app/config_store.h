@@ -5,11 +5,11 @@
 #include "core/control_types.h"
 
 struct ControlSettings {
-    PidGains gains;                   // defaults from config.h (FLEX_PID_KP/KI/KD)
+    PidGains gains;                   // defaults from config.h (CPID_PID_KP/KI/KD)
     bool gainsTuned = false;          // gains saved by autotune or the pid command (NVS "tuned")
-    PidInput pidInput = PidInput::BT; // default from config.h (FLEX_PID_INPUT)
-    CooldownFan cooldownFan;          // defaults from config.h (FLEX_COOLDOWN_FAN_STOP/TRIP)
-    WatchdogSettings watchdog;        // defaults from config.h (FLEX_WATCHDOG_*)
+    PidInput pidInput = PidInput::BT; // default from config.h (CPID_PID_INPUT)
+    CooldownFan cooldownFan;          // defaults from config.h (CPID_COOLDOWN_FAN_STOP/TRIP)
+    WatchdogSettings watchdog;        // defaults from config.h (CPID_WATCHDOG_*)
 };
 
 namespace ConfigStore {

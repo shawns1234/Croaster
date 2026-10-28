@@ -1,7 +1,7 @@
-# Croaster — ESP32-S3 Flex board (heater + fan control)
+# Croaster PID — ESP32-S3 heater + fan control board
 
-Board `esp32s3-flex` ("flex": named by Shawn, since the whole project is a
-roaster). Standalone **PlatformIO** project, like every `boards/<board>/` folder. It is a
+Board `esp32s3-pid` ("Croaster PID"): a Croaster board that runs the
+roaster's heater under PID control. Standalone **PlatformIO** project, like every `boards/<board>/` folder. It is a
 Croaster board that also **controls** the roaster: PID heater through an SSR,
 AC-dimmer (or PWM) fan, roast profiles, relay autotune, safety trips, and
 Artisan control over Croaster's WebSocket. It consumes:
@@ -68,11 +68,11 @@ also switch Croaster library features (`CROASTER_HAS_BLE`).
 Invalid choices fail the build with a message naming the setting:
 
 ```
-src/ConfigCheck.h: error: static assertion failed: config.h: two FLEX_PIN_* settings use the same GPIO
-src/ConfigCheck.h: error: #error "config.h: FLEX_REQUIRE_MAINS needs FLEX_FAN_AC_DIMMER ..."
+src/ConfigCheck.h: error: static assertion failed: config.h: two CPID_PIN_* settings use the same GPIO
+src/ConfigCheck.h: error: #error "config.h: CPID_REQUIRE_MAINS needs CPID_FAN_AC_DIMMER ..."
 ```
 
-`FLEX_HEATER_NONE` + `FLEX_FAN_NONE` builds a temperature monitor with either
+`CPID_HEATER_NONE` + `CPID_FAN_NONE` builds a temperature monitor with either
 converter: Croaster's screen, RoR, WebSocket and BLE, with no heater, fan or
 control task. The probes are read by the same code as the control build
 (`croaster-control` `hw/thermocouples` and `app/MonitorProbes`).
@@ -82,21 +82,21 @@ control task. The probes are read by the same code as the control build
 ## 🔧 Build, upload, test
 
 ```bash
-cd boards/esp32s3-flex
-pio run -e esp32s3-flex                    # release (what ../../build_all.sh builds)
-pio run -e esp32s3-flex -t upload          # flash over USB
-../../upload_monitor.sh esp32s3-flex       # debug build + upload + monitor
+cd boards/esp32s3-pid
+pio run -e esp32s3-pid                    # release (what ../../build_all.sh builds)
+pio run -e esp32s3-pid -t upload          # flash over USB
+../../upload_monitor.sh esp32s3-pid       # debug build + upload + monitor
 pio test -e native                            # host unit tests (croaster-control/src/core)
 ```
 
 | Env | Platform | Use |
 |:---|:---|:---|
-| `esp32s3-flex` | `platformio/espressif32 @ 8.0.0` (Arduino 3.3.12 / IDF 5.5) | release |
-| `esp32s3-flex-debug` | same | `CORE_DEBUG_LEVEL=3` |
-| `esp32s3-flex-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
+| `esp32s3-pid` | `platformio/espressif32 @ 8.0.0` (Arduino 3.3.12 / IDF 5.5) | release |
+| `esp32s3-pid-debug` | same | `CORE_DEBUG_LEVEL=3` |
+| `esp32s3-pid-pioarduino` | pioarduino 55.03.312 (same Arduino core) | alternative platform |
 
 Every env sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`,
-Croaster's own file in `boards/esp32s3` (flex keeps no copy). Arduino builds on these platforms compile
+Croaster's own file in `boards/esp32s3` (this board keeps no copy). Arduino builds on these platforms compile
 against prebuilt IDF libraries, so the file documents the intended Kconfig
 rather than changing the build (see `docs/design.md`, "Build platform and
 sdkconfig").
@@ -110,8 +110,8 @@ Serial logs: native USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`). Using the other
 
 Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
 `tempUnit`, OTA...). Temperatures are in Croaster's current unit: °F at boot
-(`FLEX_TEMP_UNIT` in `config.h`); `{"command":{"tempUnit":"C"}}` switches until
-the next reboot. Limits and the PID still work in °C. The flex board adds:
+(`CPID_TEMP_UNIT` in `config.h`); `{"command":{"tempUnit":"C"}}` switches until
+the next reboot. Limits and the PID still work in °C. The Croaster PID board adds:
 
 | JSON | Effect |
 |:---|:---|
@@ -119,7 +119,7 @@ the next reboot. Limits and the PID still work in °C. The flex board adds:
 | `{"command":{"fan":0..100}}` | fan % |
 | `{"command":{"setpoint":T}}` | PID setpoint |
 | `{"command":{"mode":"manual"\|"pid"}}` | mode (`pid` needs tuned gains, see Autotune) |
-| `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved; default BT, `FLEX_PID_INPUT`; a saved value wins over the default) |
+| `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved; default BT, `CPID_PID_INPUT`; a saved value wins over the default) |
 | `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved; counts as tuned) |
 | `{"command":{"cooldownFan":{"stop":0..100,"trip":0..100}}}` | fan after `stop` (default 65) and when any safety trip starts (default 100); either field alone works; a plain number sets `stop` (saved) |
 | `{"command":{"watchdog":{"enabled":bool,"timeout":s}}}` | comms watchdog on/off and timeout, 2..600 s (saved; either field alone works) |
@@ -145,8 +145,8 @@ form instead ("AT running", "AT: SV<212F").
 The PID runs on the ESP32. Clients (Artisan, ICRM, a browser) only send targets
 and commands.
 
-Safety: over-temperature, probe fault, no mains (with `FLEX_REQUIRE_MAINS 1`,
-the dimmer sees no zero-cross for `FLEX_MAINS_GRACE_MS`, 2 s, while heating),
+Safety: over-temperature, probe fault, no mains (with `CPID_REQUIRE_MAINS 1`,
+the dimmer sees no zero-cross for `CPID_MAINS_GRACE_MS`, 2 s, while heating),
 OTA in progress, and comms lost (below) all turn the heater off and latch a
 trip. `clearTrip`, or any heater, mode, autotune or profile command, clears it;
 the firmware trips again at once if the cause is still there. Fan and setpoint
@@ -162,8 +162,8 @@ default, `cooldownFan.trip`).
 
 | Setting | Default | Change at build time | Change at runtime (saved in NVS) |
 |:---|:---|:---|:---|
-| On/off | on | `FLEX_WATCHDOG_ENABLED` (1/0) | `{"command":{"watchdog":{"enabled":false}}}` |
-| Timeout | 10 s | `FLEX_WATCHDOG_TIMEOUT_S` (2..600) | `{"command":{"watchdog":{"timeout":20}}}` |
+| On/off | on | `CPID_WATCHDOG_ENABLED` (1/0) | `{"command":{"watchdog":{"enabled":false}}}` |
+| Timeout | 10 s | `CPID_WATCHDOG_TIMEOUT_S` (2..600) | `{"command":{"watchdog":{"timeout":20}}}` |
 
 `config.h` values apply until a runtime command saves new ones; after that NVS
 wins. `{"command":"getControl"}` shows the current values under `watchdog`.
@@ -173,12 +173,12 @@ laptop leaves the heater running until the over-temperature trip.
 ### Autotune
 
 Autotune measures the roaster and picks PID gains for it. It replaces the
-default gains (`FLEX_PID_KP/KI/KD`, yaeger's 1 / 0.1 / 0.01, never tuned for
+default gains (`CPID_PID_KP/KI/KD`, yaeger's 1 / 0.1 / 0.01, never tuned for
 this hardware). Run it once the heater, fan and the PID input probe (BT by
 default) are installed, and again after changing any of them. Run it empty, or
 with the load you roast with, at the fan speed you roast with.
 
-**Required before PID and profiles** (`FLEX_REQUIRE_AUTOTUNE 1`, the default)
+**Required before PID and profiles** (`CPID_REQUIRE_AUTOTUNE 1`, the default)
 - Until the board has tuned gains, PID mode and `startProfile` are refused:
   the mode stays as it is, `autotune` reads `autotune required` in the data
   and `getControl`, and the OLED header shows `Autotune first` for 10 s.
@@ -191,7 +191,7 @@ with the load you roast with, at the fan speed you roast with.
 - A fresh board, or one whose flash was erased (`pio run -t erase`), has no
   tuned gains. A board that saved gains before this setting existed counts as
   tuned. Uploading new firmware keeps NVS, so it stays tuned.
-- `FLEX_REQUIRE_AUTOTUNE 0` in `src/config.h` turns the check off: PID and
+- `CPID_REQUIRE_AUTOTUNE 0` in `src/config.h` turns the check off: PID and
   profiles run on the default gains at once.
 - Rerun autotune now and then, and after changing the heater, fan, probe or
   PID input. A new completed run replaces the saved gains.
@@ -210,7 +210,7 @@ Background and sources: [`docs/research/autotune.md`](../../docs/research/autotu
 2. Set SV to the temperature to tune at, at least 212 °F (100 °C). Pick one
    in your roasting range, and leave room for the swing (below).
 3. Send `{"command":"autotune"}` from any client: Artisan's **Autotune**
-   event button (`artisan/croaster-flex.aset`), a WebSocket client on port 81
+   event button (`artisan/croaster-pid.aset`), a WebSocket client on port 81
    (a browser console works) or a BLE client; they all go through the same
    command handler. Keep Artisan sampling (ON): the comms watchdog stays
    active during autotune.
@@ -245,7 +245,7 @@ rule (below 30 % → 60 %) doesn't count as a change.
 
 **Safety**
 - Fails with the heater off on: the PID input temperature above 527 °F
-  (275 °C, `FLEX_OVER_TEMP_C`, on the corrected reading), the probe fault
+  (275 °C, `CPID_OVER_TEMP_C`, on the corrected reading), the probe fault
   (three bad reads in a row), no result after 30 minutes, and a swing too
   small to measure.
 - Every trip ends it as well (over-temperature on any probe, raw or corrected;
@@ -287,7 +287,7 @@ rule (below 30 % → 60 %) doesn't count as a change.
 
 ## ☕ Artisan
 
-Load `artisan/croaster-flex.aset` (Help → Load Settings). Host
+Load `artisan/croaster-pid.aset` (Help → Load Settings). Host
 `192.168.4.1` on Croaster's access point (or the IP on the OLED), port 81, path `WebSocket`,
 one `getArtisanData` per second. Curves: BT, ET, Heater, Fan, SV. Sliders: Fan,
 Setpoint, Heater. Buttons: heater 50–70 %/Off, PID, Manual, Autotune, Stop,
@@ -298,5 +298,5 @@ ESP32. Every setting and its source: [`docs/artisan-settings.md`](../../docs/art
 - IPEX antenna attached (transmitting without it can damage the RF stage).
 - ET probe isolation: MAX31855 reports a short-to-GND/VCC fault on grounded
   probes or a probe touching the chassis. Ungrounded probes only.
-- Dimmer VCC on 3V3, mains 60 Hz (`FLEX_MAINS_HZ`), fan motor suits triac
+- Dimmer VCC on 3V3, mains 60 Hz (`CPID_MAINS_HZ`), fan motor suits triac
   phase control (universal / shaded-pole; not capacitor-run or EC fans).
