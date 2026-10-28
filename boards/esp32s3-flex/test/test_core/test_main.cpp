@@ -494,6 +494,17 @@ void test_autotune_status_text() {
     autotunetext::brief(s, 'F', brief, sizeof brief);
     TEST_ASSERT_EQUAL_STRING("AT abort: input", brief);
 
+    s.autotuneReason = "fan changed";
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("aborted: fan changed", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT abort: fan", brief);
+    s.autotuneReason = "heater changed";
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("aborted: heater changed", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("AT abort: heater", brief);
+
     s.autotuneReason = "an unexpectedly long reason text"; // header stays within 20 characters
     autotunetext::brief(s, 'F', brief, sizeof brief);
     TEST_ASSERT_EQUAL(20, (int)strlen(brief));
@@ -580,6 +591,23 @@ void test_snapshot_stays_uncorrected() {
 
 // Controller::handlePvStep(): a pidInput or correction change steps the PV.
 // BT 195 C -> ET 205 C at SV 200 in PID with 50 % heater out.
+void test_output_command_stops_autotune() {
+    using K = Command::Kind;
+    // Autotune at fan 60 % (the start rule may have raised it from below 30 %).
+    TEST_ASSERT_EQUAL_STRING("fan changed", outputCommandStopsAutotune(Mode::Autotune, K::SetFan, 80, 60));
+    TEST_ASSERT_EQUAL_STRING("fan changed", outputCommandStopsAutotune(Mode::Autotune, K::SetFan, 0, 60));
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Autotune, K::SetFan, 60, 60));   // same speed: no change
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Autotune, K::SetFan, 120, 100)); // clamps to the current 100
+    TEST_ASSERT_EQUAL_STRING("heater changed", outputCommandStopsAutotune(Mode::Autotune, K::SetHeater, 50, 60));
+    TEST_ASSERT_EQUAL_STRING("heater changed", outputCommandStopsAutotune(Mode::Autotune, K::SetHeater, 0, 60));
+    // Other commands go through their own rules; other modes are unaffected.
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Autotune, K::SetTripFan, 80, 60));
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Autotune, K::StartAutotune, 0, 60));
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Manual, K::SetFan, 80, 60));
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Pid, K::SetHeater, 50, 60));
+    TEST_ASSERT_NULL(outputCommandStopsAutotune(Mode::Profile, K::SetFan, 80, 60));
+}
+
 void test_pv_step_stops_autotune_and_resets_pid() {
     TEST_ASSERT_TRUE(onPvStep(Mode::Autotune) == PvStepAction::AbortAutotune);
     TEST_ASSERT_TRUE(onPvStep(Mode::Pid) == PvStepAction::ResetPid);
@@ -696,6 +724,7 @@ int main() {
     RUN_TEST(test_pv_step_stops_autotune_and_resets_pid);
     RUN_TEST(test_sensor_fault_rules);
     RUN_TEST(test_zero_cross_age);
+    RUN_TEST(test_output_command_stops_autotune);
     RUN_TEST(test_mains_dropout_under_grace_does_not_trip);
     RUN_TEST(test_mains_absent_past_grace_trips);
     RUN_TEST(test_mains_heater_off_resets_grace);

@@ -51,6 +51,8 @@ inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
         {"setpoint changed", "SV change"},
         {"correction changed", "offset"},
         {"input changed", "input"},
+        {"fan changed", "fan"},
+        {"heater changed", "heater"},
     };
     const char* r = s.autotuneReason;
     for (const auto& m : kShort)

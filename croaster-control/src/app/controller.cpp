@@ -103,6 +103,11 @@ void Controller::apply(const Command& c) {
     if (c.kind == Command::Kind::SetHeater || c.kind == Command::Kind::SetMode ||
         c.kind == Command::Kind::StartProfile || c.kind == Command::Kind::StartAutotune)
         st_.trip = SafetyTrip::None;
+    if (const char* why = outputCommandStopsAutotune(st_.mode, c.kind, c.a, fan_.get())) {
+        setMode(Mode::Manual, pv, why); // heater 0
+        if (c.kind == Command::Kind::SetHeater)
+            return; // stays off: the command only stops autotune
+    }
     switch (c.kind) {
     case Command::Kind::SetHeater:
         manualHeater_ = c.a;

@@ -262,6 +262,7 @@ Resolved by Shawn on 2026-10-27:
 | D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
 | D10 (sdkconfig part) | "Kill ours, keep his": flex's `esp32s3-sdkconfig.defaults` is deleted; flex sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini question stays open. |
 | D23 (mains) | `nomains` trips after 2 s of missing mains while heating (`FLEX_MAINS_GRACE_MS`). |
+| D23 item 4 | Fan and heater commands during autotune abort it, heater off (`aborted: fan changed` / `aborted: heater changed`). |
 | D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The flex monitor build reads the chips through `app/MonitorProbes`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
@@ -917,9 +918,15 @@ Proposals, highest priority first (no code changed):
    the roaster is still heat-soaking, they drift. Option: finish only when
    the last 3 amplitudes and periods agree within 10–20 % (as br3ttb does), or
    else keep going until the timeout. Recommendation: add; it is small.
-4. **Fan change during autotune** changes the plant but doesn't abort.
-   Options: abort ("fan changed"), as for SV; or document it (done in the
-   README). Recommendation: abort.
+4. **Fan change during autotune** changed the plant but didn't abort.
+   **Done 2026-10-27 (Shawn): abort.** A fan command that changes the speed
+   ("aborted: fan changed", OLED "AT abort: fan") or any heater command
+   ("aborted: heater changed", OLED "AT abort: heater") ends autotune with the
+   heater off, as SV, mode, `pidInput` and correction changes already did.
+   The heater value is dropped; the fan value applies. The start rule (fan
+   below 30 % → 60 %) is the controller's own write, not a command, so it
+   never aborts. `outputCommandStopsAutotune()` in `control_types.h`;
+   `test_output_command_stops_autotune`, `test_autotune_status_text`.
 5. **Diagnostics.** Ku and Pu are computed but not reported. Option: add
    `autotuneKu`/`autotuneTu` to `getControl`. Recommendation: yes; it lets
    us compare runs and rules without re-tuning.

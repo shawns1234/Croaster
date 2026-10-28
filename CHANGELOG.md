@@ -83,6 +83,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Flex: fan and heater commands stop autotune (D23).** A fan command that
+  changes the speed, or any heater command, ends autotune with the heater off:
+  `aborted: fan changed` / `aborted: heater changed` (OLED `AT abort: fan` /
+  `AT abort: heater`). The start rule (fan below 30 % → 60 %) doesn't count.
 - **RoR back to upstream (core).** `updateROR` again reports 0 for a falling
   temperature, as Croaster's `5445a4d` does; the earlier change that kept
   negative RoR is reverted. Artisan computes its own RoR.

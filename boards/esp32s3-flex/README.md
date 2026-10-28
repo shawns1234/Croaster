@@ -203,7 +203,7 @@ OLED `AT: SV<212F`) or without a reading on the PID input probe
 - `Mode` reads `Tuning` and `autotune` reads `running`. The OLED header shows
   `AT running` for 10 s, then `H100 Fan60 Tuning` (H follows the relay
   between 100 and 0).
-- Heater commands and the Artisan heater slider have no effect.
+- Don't touch the controls: any of them ends it (below).
 - Duration: heat-up to SV, one discarded cycle, then 4 measured cycles. On a
   simulated roaster that took 4 to 14 minutes, depending on its lag (not yet
   measured on this hardware). The limit is 30 minutes.
@@ -212,10 +212,14 @@ OLED `AT: SV<212F`) or without a reading on the PID input probe
   Don't tune with beans you care about.
 
 **Stop**: `{"command":"stop"}` (Artisan **Stop**) ends it with the heater off
-and the stop cooldown fan. Switching mode (`mode`, `startProfile`) or changing
-SV, `pidInput` or a correction offset also ends it with the heater off, since
-each would spoil the measurement. Changing the fan does not stop it, but it
-changes the roaster under test, so don't.
+and the stop cooldown fan. Any other control change also ends it with the
+heater off, since each would spoil the measurement: switching mode (`mode`,
+`startProfile`), or changing SV, `pidInput`, a correction offset, the fan
+(`aborted: fan changed`, OLED `AT abort: fan`) or the heater (any heater
+command or Artisan heater button, `aborted: heater changed`, OLED
+`AT abort: heater`). The heater command's value is not applied; a fan command
+is. Sending the fan speed it already runs at changes nothing, and the start
+rule (below 30 % → 60 %) doesn't count as a change.
 
 **Safety**
 - Fails with the heater off on: the PID input temperature above 527 °F

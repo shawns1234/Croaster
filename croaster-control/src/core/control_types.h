@@ -150,6 +150,24 @@ inline PvStepAction onPvStep(Mode m) {
     }
 }
 
+// An operator fan or heater command while autotune runs. The relay owns the
+// heater and measures the cycle at the fan speed it started with, so any heater
+// command, or a fan command that changes the speed, stops autotune (heater off),
+// like a setpoint or offset change. Returns the abort reason, or nullptr. The
+// fan rule at autotune start (below 30 % -> 60 %) is set by the controller, not
+// a command, so it never counts.
+inline const char* outputCommandStopsAutotune(Mode m, Command::Kind k, float requested, float currentFan) {
+    if (m != Mode::Autotune)
+        return nullptr;
+    if (k == Command::Kind::SetHeater)
+        return "heater changed";
+    if (k == Command::Kind::SetFan) {
+        const float fan = requested > 0 ? (requested < 100 ? requested : 100) : 0; // as the fan drivers clamp
+        return fan != currentFan ? "fan changed" : nullptr;
+    }
+    return nullptr;
+}
+
 // The readings can't support the current heat; the controller trips
 // SafetyTrip::SensorFault once this has held for 2 s. PID, Profile and Autotune
 // need their input (pv). Manual needs at least one readable probe while the

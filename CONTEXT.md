@@ -125,7 +125,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   lists which of these changed on 2026-10-26.
 - D23 (autotune and control review, 2026-10-26): 12 proposals for Shawn,
   top ones: profile end holds SV unattended, 0/100 % relay swing, no
-  convergence check, fan change during autotune.
+  convergence check. Item 4 done 2026-10-27: fan and heater commands abort
+  autotune (`outputCommandStopsAutotune`).
 
 ## Git state (2026-08-30, upstream)
 - Branch `dev` (HEAD `3f52109`, tracks `origin/dev`); the `boards/` + `croaster/`

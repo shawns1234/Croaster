@@ -80,7 +80,7 @@ build uses `app/MonitorProbes`, D11).
 ## Autotune entry, exit and gates
 - Autotune with SV below 212 °F → refused, mode stays Manual. **bench 2026-10-26**
 - Autotune with SV at or above 212 °F → mode Tuning, BurnerVal 100. **bench 2026-10-26**
-- Autotune with fan below 30 % → fan set to 60 %. **untested**
+- Autotune with fan below 30 % → fan set to 60 %, autotune keeps running (the start rule is not a fan change). **host** (`test_output_command_stops_autotune`: only commands count); bench untested
 - Relay identifies a simulated roaster and the gains hold its setpoint. **host** `test_relay_autotune_identifies_and_controls`
 - Autotune → PID or Manual → starts from 0 %, not the relay's 100 % (fix in 067e316). **host** `test_leaving_autotune_starts_from_zero`; bench todo
 - Autotune → PID or Manual → `autotune` reads "aborted"; Stop → "aborted: stop". **untested**
@@ -92,6 +92,8 @@ build uses `app/MonitorProbes`, D11).
 - Autotune with no heat (no AC) → fails "timeout" after 30 min, heater 0. **untested**
 - Autotune completes on the real heater → new gains saved to NVS, Manual, heater 0, fan 30 %. **untested** (needs AC)
 - `{"command":{"pidInput":"ET"}}` during autotune on BT → `autotune` "aborted: input changed", OLED "AT abort: input", heater 0 (D23). **host** (`test_pv_step_stops_autotune_and_resets_pid`, text in `test_autotune_status_text`); bench untested
+- `{"command":{"fan":80}}` during autotune at fan 60 % → `autotune` "aborted: fan changed", OLED "AT abort: fan", heater 0, fan 80 %; `{"command":{"fan":60}}` at 60 % → keeps running (D23). **host** `test_output_command_stops_autotune`, text in `test_autotune_status_text`; bench todo (no AC needed: heater 100 on the relay is enough to see it drop to 0)
+- `{"command":{"burner":50}}` or an Artisan heater button during autotune → "aborted: heater changed", OLED "AT abort: heater", heater stays 0, Manual (D23). **host** `test_output_command_stops_autotune`; bench todo
 - `pidInput` change in PID → heater output continues without a jump; the same input again → nothing happens (D23). **host** `test_pv_step_stops_autotune_and_resets_pid`; bench untested
 - Autotune on the real heater → note the swing around SV and the time taken; compare with the README (simulated ±10 to ±45 °C, 4 to 14 min). **untested** (needs AC)
 
