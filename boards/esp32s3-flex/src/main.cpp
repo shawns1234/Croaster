@@ -42,6 +42,7 @@ SafetyLimits limits() {
     l.minFanWithHeat = FLEX_MIN_FAN_WITH_HEAT;
     l.requireMains = FLEX_REQUIRE_MAINS;
     l.mainsGraceMs = FLEX_MAINS_GRACE_MS;
+    l.requireTunedGains = FLEX_REQUIRE_AUTOTUNE;
     return l;
 }
 Controller controller(probes, heater, fan, limits());
@@ -124,8 +125,8 @@ void setup() {
     fan.begin();
     probes.begin();
     const ControlSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
-    controller.begin(settings.gains, settings.pidInput, settings.cooldownFan.trip, FLEX_CONTROL_CORE,
-                     configMAX_PRIORITIES - 3);
+    controller.begin(settings.gains, settings.gainsTuned, settings.pidInput, settings.cooldownFan.trip,
+                     FLEX_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
 #    if FLEX_DISPLAY == FLEX_DISPLAY_SSD1306
     display.setHeaderText([]() {

@@ -6,6 +6,7 @@
 
 struct ControlSettings {
     PidGains gains;                   // defaults from config.h (FLEX_PID_KP/KI/KD)
+    bool gainsTuned = false;          // gains saved by autotune or the pid command (NVS "tuned")
     PidInput pidInput = PidInput::BT; // default from config.h (FLEX_PID_INPUT)
     CooldownFan cooldownFan;          // defaults from config.h (FLEX_COOLDOWN_FAN_STOP/TRIP)
     WatchdogSettings watchdog;        // defaults from config.h (FLEX_WATCHDOG_*)
@@ -13,7 +14,7 @@ struct ControlSettings {
 
 namespace ConfigStore {
 ControlSettings load(const ControlSettings& defaults);
-void saveGains(const PidGains& g);
+void saveGains(const PidGains& g); // also marks them tuned
 void savePidInput(PidInput t);
 void saveCooldownFan(const CooldownFan& c);
 void saveWatchdog(const WatchdogSettings& w);

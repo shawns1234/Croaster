@@ -5,10 +5,12 @@
 
 #include <cmath>
 
-void Controller::begin(const PidGains& gains, PidInput input, float tripFanPct, int core, UBaseType_t prio) {
+void Controller::begin(const PidGains& gains, bool gainsTuned, PidInput input, float tripFanPct, int core,
+                       UBaseType_t prio) {
     tripFan_ = tripFanPct;
     pid_.setGains(gains);
     st_.gains = gains;
+    st_.gainsTuned = gainsTuned;
     st_.pidInput = input;
     queue_ = xQueueCreate(16, sizeof(Command));
     xTaskCreatePinnedToCore(taskEntry, "control", 6144, this, prio, nullptr, core);
@@ -131,7 +133,9 @@ void Controller::apply(const Command& c) {
     }
     case Command::Kind::SetMode: {
         const Mode m = static_cast<Mode>(static_cast<int>(c.a));
-        if (m == Mode::Manual || m == Mode::Pid)
+        if (modeNeedsTuning(m, lim_.requireTunedGains, st_.gainsTuned))
+            setAutotuneStatus(AutotuneStatus::Required);
+        else if (m == Mode::Manual || m == Mode::Pid)
             setMode(m, pv);
         break;
     }
@@ -146,6 +150,7 @@ void Controller::apply(const Command& c) {
     case Command::Kind::SetGains:
         st_.gains = {c.a, c.b, c.c};
         pid_.setGains(st_.gains);
+        st_.gainsTuned = true; // the pid command counts as tuned
         break;
     case Command::Kind::StartAutotune: {
         if (!(st_.setpoint >= kAutotuneMinSetpointC)) {
@@ -168,6 +173,10 @@ void Controller::apply(const Command& c) {
         break;
     }
     case Command::Kind::StartProfile:
+        if (modeNeedsTuning(Mode::Profile, lim_.requireTunedGains, st_.gainsTuned)) {
+            setAutotuneStatus(AutotuneStatus::Required); // a loaded profile stays pending
+            break;
+        }
         portENTER_CRITICAL(&mux_);
         if (profilePending_) {
             profile_ = pendingProfile_;
@@ -235,6 +244,7 @@ void Controller::controlStep(uint32_t now) {
         if (autotune_.state() == RelayAutotune::State::Done) {
             st_.gains = autotune_.result();
             pid_.setGains(st_.gains);
+            st_.gainsTuned = true;
             st_.autotuneSeq++;
             setAutotuneStatus(AutotuneStatus::Done);
             manualHeater_ = 0; // legacy: after tuning heater off (setpoint 0) and fan 30

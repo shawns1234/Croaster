@@ -591,6 +591,39 @@ void test_snapshot_stays_uncorrected() {
 
 // Controller::handlePvStep(): a pidInput or correction change steps the PV.
 // BT 195 C -> ET 205 C at SV 200 in PID with 50 % heater out.
+void test_autotune_required_gate() {
+    // FLEX_REQUIRE_AUTOTUNE 1, default gains: PID and Profile refused.
+    TEST_ASSERT_TRUE(modeNeedsTuning(Mode::Pid, true, false));
+    TEST_ASSERT_TRUE(modeNeedsTuning(Mode::Profile, true, false));
+    TEST_ASSERT_FALSE(modeNeedsTuning(Mode::Manual, true, false));
+    TEST_ASSERT_FALSE(modeNeedsTuning(Mode::Autotune, true, false));
+    // Tuned (autotune done or pid command): everything allowed.
+    for (Mode m : {Mode::Manual, Mode::Pid, Mode::Profile, Mode::Autotune})
+        TEST_ASSERT_FALSE(modeNeedsTuning(m, true, true));
+    // FLEX_REQUIRE_AUTOTUNE 0: default gains usable.
+    for (Mode m : {Mode::Manual, Mode::Pid, Mode::Profile, Mode::Autotune})
+        TEST_ASSERT_FALSE(modeNeedsTuning(m, false, false));
+
+    // Setting gains with the pid command or yaeger's setPreferences is how a
+    // board counts as tuned without autotune (Controller: SetGains -> tuned).
+    auto p = parse(R"({"command":{"pid":{"kp":2,"ki":0.02,"kd":5}}})", 'C', "pid");
+    TEST_ASSERT_EQUAL(1, (int)p.count);
+    TEST_ASSERT_TRUE(p.commands[0].kind == Command::Kind::SetGains);
+
+    Snapshot s;
+    s.autotune = AutotuneStatus::Required;
+    char full[48], brief[24];
+    autotunetext::full(s, 'F', full, sizeof full);
+    TEST_ASSERT_EQUAL_STRING("autotune required", full);
+    autotunetext::brief(s, 'F', brief, sizeof brief);
+    TEST_ASSERT_EQUAL_STRING("Autotune first", brief);
+
+    JsonDocument d;
+    s.gainsTuned = true;
+    controlproto::writeControlInfo(s, CooldownFan{}, WatchdogSettings{}, 'C', d.to<JsonObject>());
+    TEST_ASSERT_TRUE(d["tuned"].as<bool>());
+}
+
 void test_output_command_stops_autotune() {
     using K = Command::Kind;
     // Autotune at fan 60 % (the start rule may have raised it from below 30 %).
@@ -725,6 +758,7 @@ int main() {
     RUN_TEST(test_sensor_fault_rules);
     RUN_TEST(test_zero_cross_age);
     RUN_TEST(test_output_command_stops_autotune);
+    RUN_TEST(test_autotune_required_gate);
     RUN_TEST(test_mains_dropout_under_grace_does_not_trip);
     RUN_TEST(test_mains_absent_past_grace_trips);
     RUN_TEST(test_mains_heater_off_resets_grace);

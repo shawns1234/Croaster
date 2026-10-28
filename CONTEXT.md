@@ -17,7 +17,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
 | `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-flex/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (control build) and `MonitorProbes` (monitor build, `FLEX_HEATER_NONE`). `build_filter.py` limits native builds to `src/core` |
-| `docs/` | `design.md` (architecture + decisions D1–D23), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D24), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -111,6 +111,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   The ini-sharing question stays open.
 - `nomains` trip: only after `FLEX_MAINS_GRACE_MS` (2000) of missing mains
   while heating (`core/mains_watch.h`, Shawn 2026-10-27).
+- D24 (2026-10-27): `FLEX_REQUIRE_AUTOTUNE 1` refuses PID and Profile until
+  NVS `tuned` is set (completed autotune or the `pid` command);
+  `modeNeedsTuning()` in core.
 - D11 resolved 2026-10-27: the only MAX31855 decoder is
   `croaster-control/src/core/max31855.h`; `croaster/` has no MAX31855 code
   and builds its thermocouples exactly as upstream.
@@ -175,7 +178,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   it reads `RoasterProbe`, so correcting it too counts the offset twice.
 - `Controller` (FreeRTOS) has no host build: put the logic a fix needs in a
   pure `croaster-control/src/core` helper (`onPvStep`, `sensorFault`,
-  `crossedWithin`) and test that (design.md D23 item 11, T37).
+  `crossedWithin`, `MainsWatch`, `outputCommandStopsAutotune`,
+  `modeNeedsTuning`) and test that (design.md D23 item 11, T38).
 - `croaster-control/src/core` must not include Arduino, ESP-IDF, `hw/` or
   `app/` headers: the native env compiles only `core/` (`build_filter.py`), so
   such an include breaks `pio test -e native`.

@@ -262,6 +262,7 @@ Resolved by Shawn on 2026-10-27:
 | D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
 | D10 (sdkconfig part) | "Kill ours, keep his": flex's `esp32s3-sdkconfig.defaults` is deleted; flex sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini question stays open. |
 | D23 (mains) | `nomains` trips after 2 s of missing mains while heating (`FLEX_MAINS_GRACE_MS`). |
+| D24 | Autotune required before PID and profiles (`FLEX_REQUIRE_AUTOTUNE 1`); gains set with the `pid` command count as tuned. |
 | D23 item 4 | Fan and heater commands during autotune abort it, heater off (`aborted: fan changed` / `aborted: heater changed`). |
 | D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The flex monitor build reads the chips through `app/MonitorProbes`. |
 
@@ -955,6 +956,30 @@ Proposals, highest priority first (no code changed):
 12. **Debug env warning** (existing): `-D CORE_DEBUG_LEVEL=3` redefines the
     platform's value, one warning per file. Option: `build_unflags =
     -DCORE_DEBUG_LEVEL=0`. Low priority.
+
+### D24. Autotune before PID and profiles — resolved 2026-10-27 (Shawn)
+The default gains are yaeger's, chosen for ET on other hardware (D18), so a
+PID or profile run on a fresh board controls on guesses. Shawn made autotune
+mandatory, behind a switch.
+
+- `FLEX_REQUIRE_AUTOTUNE` (`config.h`, default 1; ConfigCheck: 0 or 1). With
+  1 and no tuned gains, `mode: "pid"` and `startProfile` are refused: the mode
+  stays, `autotune` reads `autotune required`, OLED `Autotune first` for 10 s.
+  A loaded profile stays loaded. Manual and autotune are always allowed.
+  With 0, nothing changes: the default gains are usable.
+- Tuned is stored as NVS key `tuned` (namespace `control`), written by
+  `ConfigStore::saveGains`. Gains with no `tuned` key but a saved `kp` (boards
+  from before this change) count as tuned.
+- **Manually set gains count as tuned** (decision). The `pid` command and
+  yaeger's `setPreferences` gains are a deliberate choice by the operator,
+  for example gains from an earlier board or another tool; requiring an
+  autotune on top would only force a run they don't need. A failed or
+  aborted autotune saves nothing and doesn't count.
+- The controller holds the flag in the snapshot (`gainsTuned`; `getControl`
+  `tuned`). It is set at boot from NVS, on `SetGains`, and when autotune
+  completes. The gate itself is `modeNeedsTuning()` in `control_types.h`
+  (host test `test_autotune_required_gate`).
+- Profile behavior is otherwise unchanged.
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

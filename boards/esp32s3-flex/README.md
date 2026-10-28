@@ -118,9 +118,9 @@ the next reboot. Limits and the PID still work in °C. The flex board adds:
 | `{"command":{"burner":0..100}}` | heater %, manual mode |
 | `{"command":{"fan":0..100}}` | fan % |
 | `{"command":{"setpoint":T}}` | PID setpoint |
-| `{"command":{"mode":"manual"\|"pid"}}` | mode |
+| `{"command":{"mode":"manual"\|"pid"}}` | mode (`pid` needs tuned gains, see Autotune) |
 | `{"command":{"pidInput":"ET"\|"BT"\|"MAX"}}` | PID input (saved; default BT, `FLEX_PID_INPUT`; a saved value wins over the default) |
-| `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved) |
+| `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved; counts as tuned) |
 | `{"command":{"cooldownFan":{"stop":0..100,"trip":0..100}}}` | fan after `stop` (default 65) and when any safety trip starts (default 100); either field alone works; a plain number sets `stop` (saved) |
 | `{"command":{"watchdog":{"enabled":bool,"timeout":s}}}` | comms watchdog on/off and timeout, 2..600 s (saved; either field alone works) |
 | `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile |
@@ -139,7 +139,7 @@ Data broadcasts gain `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `autotune`,
 `Amb`, `Target`, `pidKp`/`pidKi`/`pidKd`, `wifiStrength`. `autotune` holds the
 last autotune status in the display unit: `idle`, `running`, `done`,
 `failed: timeout`, `aborted: stop`, `need setpoint >= 212 F`,
-`need a valid probe`. For 10 s after it changes, the OLED header shows a short
+`need a valid probe`, `autotune required`. For 10 s after it changes, the OLED header shows a short
 form instead ("AT running", "AT: SV<212F").
 
 The PID runs on the ESP32. Clients (Artisan, ICRM, a browser) only send targets
@@ -178,6 +178,24 @@ this hardware). Run it once the heater, fan and the PID input probe (BT by
 default) are installed, and again after changing any of them. Run it empty, or
 with the load you roast with, at the fan speed you roast with.
 
+**Required before PID and profiles** (`FLEX_REQUIRE_AUTOTUNE 1`, the default)
+- Until the board has tuned gains, PID mode and `startProfile` are refused:
+  the mode stays as it is, `autotune` reads `autotune required` in the data
+  and `getControl`, and the OLED header shows `Autotune first` for 10 s.
+  Manual mode and autotune always work. `getControl` `tuned` says whether the
+  board has tuned gains.
+- Tuned means saved in NVS by a completed autotune, or set with the `pid`
+  command (or yaeger's `setPreferences` gains). Gains you set yourself count:
+  if you already know good gains for this roaster, send them and skip the
+  autotune. A failed or aborted autotune doesn't count.
+- A fresh board, or one whose flash was erased (`pio run -t erase`), has no
+  tuned gains. A board that saved gains before this setting existed counts as
+  tuned. Uploading new firmware keeps NVS, so it stays tuned.
+- `FLEX_REQUIRE_AUTOTUNE 0` in `src/config.h` turns the check off: PID and
+  profiles run on the default gains at once.
+- Rerun autotune now and then, and after changing the heater, fan, probe or
+  PID input. A new completed run replaces the saved gains.
+
 How it works: the firmware switches the heater between 100 % and 0 % around
 the setpoint (a relay test). Below SV − 1 °C the heater is on; above
 SV + 1 °C it is off. The temperature then swings around SV at the roaster's
@@ -191,9 +209,13 @@ Background and sources: [`docs/research/autotune.md`](../../docs/research/autotu
    60 %.
 2. Set SV to the temperature to tune at, at least 212 °F (100 °C). Pick one
    in your roasting range, and leave room for the swing (below).
-3. Send `{"command":"autotune"}`, or press Artisan's **Autotune** button.
-   Keep Artisan sampling (ON): the comms watchdog stays active during
-   autotune.
+3. Send `{"command":"autotune"}` from any client: Artisan's **Autotune**
+   event button (`artisan/croaster-flex.aset`), a WebSocket client on port 81
+   (a browser console works) or a BLE client; they all go through the same
+   command handler. Keep Artisan sampling (ON): the comms watchdog stays
+   active during autotune.
+4. Then leave every control alone until it finishes. Touching any of them
+   (fan, heater, SV, mode, PID input, correction) ends it with the heater off.
 
 It refuses to start, and says why, below 212 °F (`need setpoint >= 212 F`,
 OLED `AT: SV<212F`) or without a reading on the PID input probe
@@ -233,7 +255,8 @@ rule (below 30 % → 60 %) doesn't count as a change.
 
 **Result**
 - Done: `autotune` reads `done`, the OLED shows `AT done`. The new gains
-  are live and saved in NVS (`kp`/`ki`/`kd`, same as the `pid` command), and
+  are live and saved in NVS (`kp`/`ki`/`kd`, same as the `pid` command, plus
+  `tuned`), PID and profiles are allowed from now on, and
   `getControl` and `pidKp`/`pidKi`/`pidKd` show them. The firmware returns to
   Manual with the heater at 0 % and the fan at 30 %. Select PID to use them;
   it does not resume on its own.

@@ -12,7 +12,7 @@ namespace autotunetext {
 
 // Telemetry and getControl: "idle", "running", "done", "failed: timeout",
 // "aborted", "aborted: setpoint changed", "need setpoint >= 212 F",
-// "need a valid probe".
+// "need a valid probe", "autotune required".
 inline void full(const Snapshot& s, char unit, char* out, size_t n) {
     const char* r = s.autotuneReason;
     switch (s.autotune) {
@@ -34,6 +34,9 @@ inline void full(const Snapshot& s, char unit, char* out, size_t n) {
     case AutotuneStatus::NeedProbe:
         snprintf(out, n, "need a valid probe");
         break;
+    case AutotuneStatus::Required:
+        snprintf(out, n, "autotune required");
+        break;
     default:
         snprintf(out, n, "idle");
         break;
@@ -41,7 +44,8 @@ inline void full(const Snapshot& s, char unit, char* out, size_t n) {
 }
 
 // OLED header, at most 20 characters: "AT running", "AT done",
-// "AT fail: timeout", "AT aborted", "AT: SV<212F", "AT: no probe".
+// "AT fail: timeout", "AT aborted", "AT: SV<212F", "AT: no probe",
+// "Autotune first".
 inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
     // Short forms of RelayAutotune's and the controller's reasons.
     static const char* const kShort[][2] = {
@@ -80,6 +84,9 @@ inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
         break;
     case AutotuneStatus::NeedProbe:
         snprintf(line, sizeof line, "AT: no probe");
+        break;
+    case AutotuneStatus::Required:
+        snprintf(line, sizeof line, "Autotune first");
         break;
     default:
         line[0] = '\0';

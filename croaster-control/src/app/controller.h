@@ -30,6 +30,7 @@ struct SafetyLimits {
     bool requireMains = true;  // refuse heat when the dimmer sees no zero-cross
     // requireMains: trip once mains is missing this long without a break while heating
     uint32_t mainsGraceMs = 2000;
+    bool requireTunedGains = false; // refuse PID and Profile until gains are tuned (modeNeedsTuning)
 };
 
 class Controller {
@@ -42,7 +43,8 @@ public:
         , pid_(pidCfg()) {}
 
     // tripFanPct: fan % when a safety trip starts (CooldownFan::trip).
-    void begin(const PidGains& gains, PidInput input, float tripFanPct, int core, UBaseType_t priority);
+    void begin(const PidGains& gains, bool gainsTuned, PidInput input, float tripFanPct, int core,
+               UBaseType_t priority);
     bool submit(const Command& c);
     Snapshot snapshot() const;
     // Copies a parsed profile in; takes effect on StartProfile. Network task only.

@@ -156,6 +156,9 @@ settings; see the flex README, "Comms watchdog".
 - **Two PIDs exist in the world.** Artisan has its own software PID ("Control"
   button). It is turned off in our `.aset`. Ours runs on the ESP32. See
   `control-parity.md`.
+- **PID and profiles need tuned gains first** (`FLEX_REQUIRE_AUTOTUNE 1`):
+  until an autotune completes or gains are sent with the `pid` command, they
+  are refused with `autotune required` (D24).
 - **Autotune needs a setpoint ≥ 100 °C (212 °F)** and a working probe. The
   `autotune` field in each data sample and in `getControl` says why it
   refused, failed or stopped; the OLED header shows it for 10 s.

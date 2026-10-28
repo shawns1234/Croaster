@@ -73,6 +73,7 @@ enum class AutotuneStatus : uint8_t {
     Aborted,      // left by a command or a trip; autotuneReason may say why
     NeedSetpoint, // refused: setpoint below kAutotuneMinSetpointC
     NeedProbe,    // refused: PID input probe unreadable
+    Required,     // PID or Profile refused: no tuned gains yet (modeNeedsTuning)
 };
 
 struct Command {
@@ -116,6 +117,7 @@ struct Snapshot {
     Mode mode = Mode::Manual;
     PidInput pidInput = PidInput::BT;
     PidGains gains;
+    bool gainsTuned = false; // gains from a completed autotune or the pid command
     SafetyTrip trip = SafetyTrip::None;
     bool mainsOk = false;
     float profileElapsedS = 0;
@@ -166,6 +168,12 @@ inline const char* outputCommandStopsAutotune(Mode m, Command::Kind k, float req
         return fan != currentFan ? "fan changed" : nullptr;
     }
     return nullptr;
+}
+
+// FLEX_REQUIRE_AUTOTUNE: PID and Profile run on the gains, so with untuned
+// (default) gains they are refused. Manual and Autotune never need tuning.
+inline bool modeNeedsTuning(Mode m, bool requireTuned, bool tuned) {
+    return requireTuned && !tuned && (m == Mode::Pid || m == Mode::Profile);
 }
 
 // The readings can't support the current heat; the controller trips

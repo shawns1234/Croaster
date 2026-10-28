@@ -97,6 +97,10 @@
 #define FLEX_PID_KP 1.0f
 #define FLEX_PID_KI 0.1f
 #define FLEX_PID_KD 0.01f
+// 1: PID and Profile modes are refused ("autotune required") until the board has
+// tuned gains in NVS, from a completed autotune or the pid command. Manual and
+// autotune always work. 0: the default gains above are usable at once.
+#define FLEX_REQUIRE_AUTOTUNE 1
 #define FLEX_OVER_TEMP_C 275      // 527 F; any probe above: heater off, fan 100 %
 #define FLEX_MAX_SETPOINT_C 250   // 482 F; higher setpoints are capped here
 #define FLEX_MIN_FAN_WITH_HEAT 30 // fan forced to at least this while heating

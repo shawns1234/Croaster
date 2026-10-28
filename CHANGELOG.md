@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — flex control board (branch rework/roaster)
 
 ### Added
+- **Flex: autotune required before PID and profiles (D24).** New
+  `FLEX_REQUIRE_AUTOTUNE` (default 1): until the board has tuned gains (a
+  completed autotune or the `pid` command; NVS key `tuned`), `mode: "pid"` and
+  `startProfile` are refused with `autotune required` (OLED `Autotune first`).
+  Manual and autotune always work; `getControl` reports `tuned`. 0 keeps the
+  old behavior.
 - **Flex autotune docs.** README section (what it is, start and stop, OLED
   and status text, limits, duration, how results are saved, credit) and
   `docs/research/autotune.md` (method, tuning rules, how br3ttb, Marlin,

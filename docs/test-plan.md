@@ -97,6 +97,16 @@ build uses `app/MonitorProbes`, D11).
 - `pidInput` change in PID → heater output continues without a jump; the same input again → nothing happens (D23). **host** `test_pv_step_stops_autotune_and_resets_pid`; bench untested
 - Autotune on the real heater → note the swing around SV and the time taken; compare with the README (simulated ±10 to ±45 °C, 4 to 14 min). **untested** (needs AC)
 
+## Autotune required (D24)
+- `FLEX_REQUIRE_AUTOTUNE 1`, erased flash (`pio run -t erase`, then upload) → `getControl` `tuned` false; `{"command":{"mode":"pid"}}` → mode stays Manual, `autotune` "autotune required", OLED "Autotune first" for 10 s. **host** (gate and text, `test_autotune_required_gate`); bench todo
+- Same board, profile loaded, `startProfile` → refused the same way; profile still loaded. **host** (gate); bench todo
+- Same board → Manual heater and `autotune` still work. **host** (gate); bench todo
+- `{"command":{"pid":{"kp":2,"ki":0.02,"kd":5}}}` → `tuned` true, PID allowed, and still after a reboot (NVS `tuned`). **host** (parse); bench todo
+- Autotune completes → `tuned` true, PID allowed, survives reboot. **untested** (needs AC)
+- Autotune fails or is aborted → `tuned` stays false. **untested**
+- Board with gains saved before this change (no `tuned` key) → `tuned` true. **untested**
+- `FLEX_REQUIRE_AUTOTUNE 0` → PID on default gains at once. **host** (gate); bench todo
+
 ## Watchdog and trips
 - Artisan Off, then On → `trip:"comms"`, heater 0, fan at the trip speed; stays tripped after reconnect. **bench 2026-10-26** (when it tripped is unconfirmed; it should only trip while heating)
 - Artisan Off while heating → trip after the 10 s timeout, not before. **untested**

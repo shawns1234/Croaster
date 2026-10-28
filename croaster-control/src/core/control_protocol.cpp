@@ -203,6 +203,7 @@ void writeControlInfo(const Snapshot& s, const CooldownFan& cooldownFan, const W
     char at[48];
     autotunetext::full(s, unit, at, sizeof at);
     o["autotune"] = at;
+    o["tuned"] = s.gainsTuned;
     o["trip"] = tripName(s.trip);
     o["mainsOk"] = s.mainsOk;
     putNum(o["profileElapsed"], s.profileElapsedS, 1.0f);
