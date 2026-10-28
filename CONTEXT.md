@@ -107,6 +107,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
   2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). (design D25)
+- Config prefixes (D26, Shawn 2026-10-28): `CMON_` = settings every Croaster
+  board has (probes, screen, identity, BLE); `CPID_` = control add-on. Only
+  names we created; the upstream author's (`CROASTER_HAS_BLE`, `croaster/`,
+  stock boards) are never renamed.
 - D10 sdkconfig part resolved 2026-10-27: Croaster PID has no sdkconfig file of its
   own; `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`.
   The ini-sharing question stays open.
@@ -168,7 +172,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `.aset` go through Python `str.format`, so literal braces are doubled.
   Artisan's "Control" button is its own PC-side PID; keep it off.
 - Units: control math and limits are °C. Croaster's `tempUnit` (Croaster PID boots in
-  `CPID_TEMP_UNIT`, default "F") sets the screen, telemetry and command
+  `CMON_TEMP_UNIT`, default "F") sets the screen, telemetry and command
   temperatures; convert at the edges (`toCelsius`/`fromCelsius`). Artisan's
   mode and `channel_modes` must match the firmware unit.
 - Corrections (D22): `correctionBt`/`correctionEt` live in core, in the display

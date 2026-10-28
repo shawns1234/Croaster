@@ -2,8 +2,8 @@
 // Compile-time validation of config.h. Each message names the setting to fix.
 #include <cstdint>
 
-#if !defined(CPID_THERMOCOUPLE) || (CPID_THERMOCOUPLE != CPID_TC_MAX31855 && CPID_THERMOCOUPLE != CPID_TC_MAX6675)
-#    error "config.h: CPID_THERMOCOUPLE must be CPID_TC_MAX31855 or CPID_TC_MAX6675"
+#if !defined(CMON_THERMOCOUPLE) || (CMON_THERMOCOUPLE != CMON_TC_MAX31855 && CMON_THERMOCOUPLE != CMON_TC_MAX6675)
+#    error "config.h: CMON_THERMOCOUPLE must be CMON_TC_MAX31855 or CMON_TC_MAX6675"
 #endif
 #if CPID_HEATER != CPID_HEATER_NONE && CPID_HEATER != CPID_HEATER_SSR
 #    error "config.h: CPID_HEATER must be CPID_HEATER_NONE or CPID_HEATER_SSR"
@@ -11,8 +11,8 @@
 #if CPID_FAN != CPID_FAN_NONE && CPID_FAN != CPID_FAN_AC_DIMMER && CPID_FAN != CPID_FAN_PWM
 #    error "config.h: CPID_FAN must be CPID_FAN_NONE, CPID_FAN_AC_DIMMER or CPID_FAN_PWM"
 #endif
-#if CPID_DISPLAY != CPID_DISPLAY_NONE && CPID_DISPLAY != CPID_DISPLAY_SSD1306
-#    error "config.h: CPID_DISPLAY must be CPID_DISPLAY_NONE or CPID_DISPLAY_SSD1306"
+#if CMON_DISPLAY != CMON_DISPLAY_NONE && CMON_DISPLAY != CMON_DISPLAY_SSD1306
+#    error "config.h: CMON_DISPLAY must be CMON_DISPLAY_NONE or CMON_DISPLAY_SSD1306"
 #endif
 #if CPID_HEATER != CPID_HEATER_NONE && CPID_FAN == CPID_FAN_NONE
 #    error "config.h: a heater needs a fan the firmware controls (airflow interlock). Set CPID_FAN."
@@ -32,7 +32,7 @@ namespace configcheck {
 constexpr bool validTempUnit(const char* u) {
     return (u[0] == 'C' || u[0] == 'F' || u[0] == 'K') && u[1] == '\0';
 }
-static_assert(validTempUnit(CPID_TEMP_UNIT), "config.h: CPID_TEMP_UNIT must be \"C\", \"F\" or \"K\"");
+static_assert(validTempUnit(CMON_TEMP_UNIT), "config.h: CMON_TEMP_UNIT must be \"C\", \"F\" or \"K\"");
 // N16R8: GPIO26-32 quad SPI flash, GPIO33-37 octal PSRAM (35-37 are on the header).
 constexpr bool isFlashOrPsramPin(int p) {
     return p >= 26 && p <= 37;
@@ -53,7 +53,7 @@ constexpr bool validGpio(int p) {
 }
 
 constexpr int kPins[] = {
-    CPID_PIN_TC_SCK,     CPID_PIN_TC_MISO, CPID_PIN_TC_CS_ET, CPID_PIN_TC_CS_BT,
+    CMON_PIN_TC_SCK,     CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT,
 #if CPID_HEATER != CPID_HEATER_NONE
     CPID_PIN_HEATER,
 #endif
@@ -63,8 +63,8 @@ constexpr int kPins[] = {
 #if CPID_FAN == CPID_FAN_AC_DIMMER
     CPID_PIN_ZERO_CROSS,
 #endif
-#if CPID_DISPLAY != CPID_DISPLAY_NONE
-    CPID_PIN_I2C_SDA,    CPID_PIN_I2C_SCL,
+#if CMON_DISPLAY != CMON_DISPLAY_NONE
+    CMON_PIN_I2C_SDA,    CMON_PIN_I2C_SCL,
 #endif
 };
 constexpr int kPinCount = sizeof(kPins) / sizeof(kPins[0]);
@@ -75,8 +75,9 @@ constexpr bool allValid(int i = 0) {
 constexpr bool unique(int i = 0, int j = 1) {
     return i >= kPinCount ? true : (j >= kPinCount ? unique(i + 1, i + 2) : (kPins[i] != kPins[j] && unique(i, j + 1)));
 }
-static_assert(allValid(), "config.h: a CPID_PIN_* is reserved or missing (use 1, 2, 4-18, 21, 38-42, 47)");
-static_assert(unique(), "config.h: two CPID_PIN_* settings use the same GPIO");
+static_assert(allValid(),
+              "config.h: a CMON_PIN_* or CPID_PIN_* is reserved or missing (use 1, 2, 4-18, 21, 38-42, 47)");
+static_assert(unique(), "config.h: two CMON_PIN_*/CPID_PIN_* settings use the same GPIO");
 
 #if CPID_FAN == CPID_FAN_AC_DIMMER
 static_assert(CPID_PIN_FAN < 32, "config.h: AC dimmer gate pin must be < 32 (fast GPIO register path)");

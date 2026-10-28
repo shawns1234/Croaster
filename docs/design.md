@@ -26,11 +26,20 @@ Croaster's library/board split and extension model.
 ## Names
 
 The whole project is a roaster, so "roaster" in a name says nothing. Rule:
-board-level things say **Croaster PID** in prose and `CPID_`/`esp32s3-pid` in
-code, control features say **control**, and no class or macro starts with
+board-level things say **Croaster PID** in prose and `esp32s3-pid` in code,
+control features say **control**, and no class or macro starts with
 `Croaster` (that prefix is the upstream author's). A bare "PID" or `pid`
 always means the controller (`Pid`, `PidGains`, `Mode::Pid`, the `pid`
 command), never the board (D25).
+
+Config macro prefixes, for our settings only (D26):
+- `CMON_`: settings every Croaster board has: probes, screen, identity, radio
+  (`CMON_BOARD_NAME`, `CMON_TEMP_UNIT`, `CMON_THERMOCOUPLE`, `CMON_PIN_TC_*`,
+  `CMON_DISPLAY`, `CMON_PIN_I2C_*`, `CMON_PIN_LED`, `CMON_ENABLE_BLE`...).
+- `CPID_`: what the control add-on adds: heater, fan, mains, PID input and
+  gains (`CPID_PID_*`), autotune gate, limits, cooldown, watchdog, control core.
+- The upstream author's names are never renamed: `CROASTER_HAS_BLE` stays and
+  is set from `CMON_ENABLE_BLE` in `config.h`.
 The one exception is the control library folder, `croaster-control/` (lib
 `CroasterControl`), named by Shawn on 2026-10-27 (D1). Renamed 2026-10-26 at
 Shawn's request, then folded into one library on 2026-10-27:
@@ -46,7 +55,7 @@ Shawn's request, then folded into one library on 2026-10-27:
 | `RoasterSettings` | `ControlSettings` | NVS-backed settings |
 | `RoasterLimits` | `SafetyLimits` | Over-temp, max setpoint, min fan, mains check |
 | `RoasterOledDisplay` | removed | The Croaster PID board uses Croaster's `CroasterDisplaySSD1306` |
-| `ROASTER_*` macros in `config.h` | `FLEX_*` | Board config. 2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). |
+| `ROASTER_*` macros in `config.h` | `FLEX_*` | Board config. 2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`); the same day, settings every board has became `CMON_` (D26). |
 | `{"command":"getRoaster"}`, `writeRoasterInfo` | `getControl`, `writeControlInfo` | Status query |
 | FreeRTOS task `"roaster"` | `"control"` | |
 | NVS namespace `"roaster"` | `"control"` | Nothing is deployed, so no settings are lost |
@@ -279,6 +288,7 @@ Resolved by Shawn on 2026-10-28:
 | Decision | Choice |
 |:---|:---|
 | D25 | Board renamed `esp32s3-flex` → `esp32s3-pid` ("Croaster PID"), `FLEX_*` → `CPID_*`, `croaster-pid.aset`. |
+| D26 | Prefix split: settings every Croaster board has are `CMON_`, control settings stay `CPID_`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
 Shawn chose one top-level library next to `croaster/`, split by purpose into
@@ -332,7 +342,7 @@ checks), Kconfig menus (pioarduino only).
 ### D3. Library feature switches from board config — **DECISION**
 `CROASTER_HAS_BLE` must be seen when `croaster/` compiles.
 1. **Force-include `config.h` into every unit (`-include`, implemented).** One
-   file really is the master; cost: every library sees the `CPID_*` macros
+   file really is the master; cost: every library sees the `CMON_*`/`CPID_*` macros
    (prefixed, so collisions are unlikely).
 2. `-D CROASTER_HAS_BLE=0` in `platformio.ini`. Croaster style, but the master
    config is then split across two files.
@@ -660,7 +670,7 @@ Shawn wants °F on the screen and in Artisan. Croaster already has a unit:
 prints the unit, and `getArtisanData` reports it in `"temp"`. The control
 plugin already converts setpoints in and SV/ambient out with
 `toCelsius`/`fromCelsius`, and the controller caps and trips in °C.
-1. **Boot in a configured unit (implemented).** `CPID_TEMP_UNIT` in `config.h`
+1. **Boot in a configured unit (implemented).** `CMON_TEMP_UNIT` in `config.h`
    (default "F"); `main.cpp` calls `core.changeTemperatureUnit()` in `setup()`.
    No core change. The `.aset` ships in °F mode with `channel_modes` 2 (°F).
    The runtime `tempUnit` command still works until the next reboot.
@@ -1005,7 +1015,8 @@ mandatory, behind a switch.
   `esp32s3-pid-pioarduino`; board id `"esp32s3-pid"` (`CPID_BOARD_NAME`).
 - Board macros `FLEX_*` → `CPID_*`. The PID-controller macros keep the
   controller name after the prefix: `CPID_PID_INPUT`, `CPID_PID_KP`,
-  `CPID_PID_KI`, `CPID_PID_KD`.
+  `CPID_PID_KI`, `CPID_PID_KD`. 2026-10-28: settings every board has are
+  now `CMON_` (`CMON_BOARD_NAME` and others, D26).
 - Artisan settings `artisan/croaster-pid.aset`; planned wizard
   `tools/cpid-config.py` with answers file `cpid.ini` (D14).
 - Naming rule (see "Names"): "Croaster PID" in prose, `CPID_`/`esp32s3-pid`
@@ -1017,6 +1028,30 @@ mandatory, behind a switch.
 - Open: the name of the monitor build (`CPID_HEATER_NONE`, no heater or fan).
   It is not a PID board, so docs call it "monitor build (no heater)" until
   Shawn decides.
+
+### D26. `CMON_`/`CPID_` prefix split — resolved 2026-10-28 (Shawn)
+Our config macros say which part of the firmware they belong to (rule in
+"Names"). Applies to names we created only.
+
+- `CMON_` (settings every Croaster board has; same names on every board of
+  ours): `CMON_BOARD_NAME`, `CMON_DUMMY_DATA`, `CMON_TEMP_UNIT`,
+  `CMON_THERMOCOUPLE`, `CMON_TC_MAX31855`, `CMON_TC_MAX6675`,
+  `CMON_PIN_TC_SCK`, `CMON_PIN_TC_MISO`, `CMON_PIN_TC_CS_ET`,
+  `CMON_PIN_TC_CS_BT`, `CMON_DISPLAY`, `CMON_DISPLAY_NONE`,
+  `CMON_DISPLAY_SSD1306`, `CMON_PIN_I2C_SDA`, `CMON_PIN_I2C_SCL`,
+  `CMON_PIN_LED`, `CMON_LED_ON_LEVEL`, `CMON_ENABLE_BLE`.
+- `CPID_` (control add-on, unchanged): heater, fan, mains, `CPID_PID_*`,
+  `CPID_REQUIRE_AUTOTUNE`, `CPID_OVER_TEMP_C`, `CPID_MAX_SETPOINT_C`,
+  `CPID_MIN_FAN_WITH_HEAT`, `CPID_COOLDOWN_*`, `CPID_WATCHDOG_*`,
+  `CPID_CONTROL_CORE`.
+- Prose: "Croaster PID" and "Croaster monitor" for the boards; a bare "PID"
+  is the controller.
+- Not renamed: the upstream author's code and names (`croaster/`,
+  `boards/common`, `boards/esp32s3`, `boards/esp32c3`, `boards/esp8266`,
+  `CROASTER_HAS_BLE`). `config.h` keeps
+  `#define CROASTER_HAS_BLE CMON_ENABLE_BLE`.
+- Firmware unchanged: the Croaster PID build is the same size
+  (RAM 56 844 B, flash 1 724 947 B).
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

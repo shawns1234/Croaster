@@ -10,6 +10,9 @@
 // -include src/config.h) so it can switch Croaster library features such as
 // BLE. Keep it to #defines: no includes, no code.
 //
+// CMON_ settings are the ones every Croaster board has (probes, screen,
+// identity, radio). CPID_ settings are what the control add-on adds.
+//
 // Defaults below: Lonely Binary ESP32-S3 Gold Edition N16R8 (IPEX antenna),
 // MAX31855 x2, RobotDyn AC dimmer (fan), SSR-40DA (heater), 0.96" SSD1306 OLED
 // (128x64, I2C, address 0x3C; confirmed by Shawn 2026-10-26).
@@ -23,23 +26,23 @@
 // Board id reported in getDeviceInfo. The Croaster app (ICRM) picks OTA images
 // by this id; lowercase per AGENTS.md, but NOT "esp32s3": that id belongs to
 // the ES3C28P LCD image, and an app OTA would replace the roaster firmware.
-#define CPID_BOARD_NAME "esp32s3-pid"
-#define CPID_DUMMY_DATA 0 // 1 = report fake temperatures (no probes needed)
+#define CMON_BOARD_NAME "esp32s3-pid"
+#define CMON_DUMMY_DATA 0 // 1 = report fake temperatures (no probes needed)
 // Unit for the screen, telemetry ("temp" field) and incoming setpoints: "C",
 // "F" or "K". Applied at every boot; Croaster's {"command":{"tempUnit":"C"}}
 // changes it until the next reboot. Control limits below stay in Celsius.
 // Artisan's .aset must match: artisan/croaster-pid.aset is set up for "F".
-#define CPID_TEMP_UNIT "F"
+#define CMON_TEMP_UNIT "F"
 
 // ---- Thermocouple converters (ET + BT share SCK/MISO, one CS each) --------
-#define CPID_TC_MAX31855 1 // 14-bit, -200..1350 C, fault bits, cold junction
-#define CPID_TC_MAX6675 2  // 12-bit, 0..1023 C (Croaster's stock module)
-#define CPID_THERMOCOUPLE CPID_TC_MAX31855
+#define CMON_TC_MAX31855 1 // 14-bit, -200..1350 C, fault bits, cold junction
+#define CMON_TC_MAX6675 2  // 12-bit, 0..1023 C (Croaster's stock module)
+#define CMON_THERMOCOUPLE CMON_TC_MAX31855
 
-#define CPID_PIN_TC_SCK 12  // HSPI SCK
-#define CPID_PIN_TC_MISO 13 // HSPI MISO (MAX31855 DO); MOSI unused
-#define CPID_PIN_TC_CS_ET 10
-#define CPID_PIN_TC_CS_BT 11
+#define CMON_PIN_TC_SCK 12  // HSPI SCK
+#define CMON_PIN_TC_MISO 13 // HSPI MISO (MAX31855 DO); MOSI unused
+#define CMON_PIN_TC_CS_ET 10
+#define CMON_PIN_TC_CS_BT 11
 
 // ---- Heater output ----------------------------------------------------------
 #define CPID_HEATER_NONE 0 // temperature monitor only (plain Croaster + your probes)
@@ -66,23 +69,23 @@
 #define CPID_MAINS_GRACE_MS 2000
 
 // ---- Display ----------------------------------------------------------------
-#define CPID_DISPLAY_NONE 0
-#define CPID_DISPLAY_SSD1306 1            // Croaster's shared screen (boards/common); header shows heater/fan/mode
-#define CPID_DISPLAY CPID_DISPLAY_SSD1306 // Shawn's 0.96" 128x64 SSD1306 (confirmed)
+#define CMON_DISPLAY_NONE 0
+#define CMON_DISPLAY_SSD1306 1            // Croaster's shared screen (boards/common); header shows heater/fan/mode
+#define CMON_DISPLAY CMON_DISPLAY_SSD1306 // Shawn's 0.96" 128x64 SSD1306 (confirmed)
 
-#define CPID_PIN_I2C_SDA 8 // Arduino default Wire pins (also what Croaster's display uses)
-#define CPID_PIN_I2C_SCL 9
+#define CMON_PIN_I2C_SDA 8 // Arduino default Wire pins (also what Croaster's display uses)
+#define CMON_PIN_I2C_SCL 9
 
 // ---- Status LED (Croaster "blink" command) ----------------------------------
 // LED_BUILTIN = the WS2812 on GPIO48; Arduino-ESP32 3.x drives it via digitalWrite
 // (white on HIGH). -1 disables.
-#define CPID_PIN_LED LED_BUILTIN
-#define CPID_LED_ON_LEVEL HIGH
+#define CMON_PIN_LED LED_BUILTIN
+#define CMON_LED_ON_LEVEL HIGH
 
 // ---- Features ---------------------------------------------------------------
-#define CPID_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
+#define CMON_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
 
-// ---- Control and safety (always Celsius, whatever CPID_TEMP_UNIT is) --------
+// ---- Control and safety (always Celsius, whatever CMON_TEMP_UNIT is) --------
 // PID input: the probe the firmware PID and autotune regulate. First-boot
 // default; {"command":{"pidInput":"ET"}} changes it at runtime and saves it in
 // NVS, and a saved value wins over this default. Telemetry "Target" shows the
@@ -117,4 +120,4 @@
 #define CPID_CONTROL_CORE 1        // control task core; WiFi/BLE stacks run on core 0
 
 // ---- Derived settings (do not edit) -----------------------------------------
-#define CROASTER_HAS_BLE CPID_ENABLE_BLE // read by croaster/src/CroasterConstants.h
+#define CROASTER_HAS_BLE CMON_ENABLE_BLE // read by croaster/src/CroasterConstants.h

@@ -18,7 +18,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and status text, limits, duration, how results are saved, credit) and
   `docs/research/autotune.md` (method, tuning rules, how br3ttb, Marlin,
   sTune, Artisan and yaeger do it, roaster pitfalls, with sources).
-- **Croaster PID °F by default**: `CPID_TEMP_UNIT` in `config.h` sets Croaster's
+- **Croaster PID °F by default**: `CMON_TEMP_UNIT` in `config.h` sets Croaster's
   unit at boot (screen, telemetry, setpoints); control limits stay in °C. The
   Artisan `.aset` is now in °F mode.
 - **`CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()`**: the
@@ -89,6 +89,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Config prefixes split (D26).** Settings every Croaster board has are now
+  `CMON_*`: `CMON_BOARD_NAME`, `CMON_DUMMY_DATA`, `CMON_TEMP_UNIT`,
+  `CMON_THERMOCOUPLE` (`CMON_TC_MAX31855`/`CMON_TC_MAX6675`),
+  `CMON_PIN_TC_*`, `CMON_DISPLAY*`, `CMON_PIN_I2C_*`, `CMON_PIN_LED`,
+  `CMON_LED_ON_LEVEL`, `CMON_ENABLE_BLE`. Control settings keep `CPID_*`.
+  `CROASTER_HAS_BLE` is unchanged.
 - **Board renamed `esp32s3-flex` → `esp32s3-pid` ("Croaster PID", D25).**
   Folder, envs (`esp32s3-pid`, `-debug`, `-pioarduino`) and board id
   `esp32s3-pid`; `FLEX_*` macros → `CPID_*` (PID-controller settings are

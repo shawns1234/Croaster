@@ -64,6 +64,13 @@ describes.
 - No Arduino IDE — PlatformIO is the only workflow.
 - Board ids are lowercase: `esp32s3` / `esp32c3` / `esp8266` / `unknown`
   (match the ICRM app's `CroasterBoardTypes` enum).
+- Config macro prefixes for our boards (docs/design.md "Names", D26): `CMON_`
+  for settings every Croaster board has (probes, screen, identity, radio),
+  `CPID_` for what the control add-on adds (heater, fan, mains, PID, safety).
+- Never rename the upstream author's names or code: everything in `croaster/`,
+  `boards/common`, `boards/esp32s3`, `boards/esp32c3`, `boards/esp8266`, and
+  his macros such as `CROASTER_HAS_BLE`. Our `config.h` sets them from our
+  macros (`#define CROASTER_HAS_BLE CMON_ENABLE_BLE`).
 
 ## Before you finish a session
 - Working tree clean (or leftovers explicitly noted in CONTEXT.md → Next steps).

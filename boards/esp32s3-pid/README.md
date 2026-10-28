@@ -68,9 +68,13 @@ also switch Croaster library features (`CROASTER_HAS_BLE`).
 Invalid choices fail the build with a message naming the setting:
 
 ```
-src/ConfigCheck.h: error: static assertion failed: config.h: two CPID_PIN_* settings use the same GPIO
+src/ConfigCheck.h: error: static assertion failed: config.h: two CMON_PIN_*/CPID_PIN_* settings use the same GPIO
 src/ConfigCheck.h: error: #error "config.h: CPID_REQUIRE_MAINS needs CPID_FAN_AC_DIMMER ..."
 ```
+
+Setting names: `CMON_` for what every Croaster board has (probes, screen,
+identity, BLE), `CPID_` for what the control add-on adds (heater, fan, mains,
+PID, safety).
 
 `CPID_HEATER_NONE` + `CPID_FAN_NONE` builds a temperature monitor with either
 converter: Croaster's screen, RoR, WebSocket and BLE, with no heater, fan or
@@ -110,7 +114,7 @@ Serial logs: native USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`). Using the other
 
 Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
 `tempUnit`, OTA...). Temperatures are in Croaster's current unit: °F at boot
-(`CPID_TEMP_UNIT` in `config.h`); `{"command":{"tempUnit":"C"}}` switches until
+(`CMON_TEMP_UNIT` in `config.h`); `{"command":{"tempUnit":"C"}}` switches until
 the next reboot. Limits and the PID still work in °C. The Croaster PID board adds:
 
 | JSON | Effect |

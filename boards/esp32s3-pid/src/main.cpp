@@ -31,8 +31,8 @@ FanDimmer fan(CPID_PIN_ZERO_CROSS, CPID_PIN_FAN, CPID_MAINS_HZ);
 FanPwm fan(CPID_PIN_FAN, CPID_FAN_PWM_HZ);
 #    endif
 
-Thermocouples probes(CPID_THERMOCOUPLE == CPID_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CPID_PIN_TC_SCK,
-                     CPID_PIN_TC_MISO, CPID_PIN_TC_CS_ET, CPID_PIN_TC_CS_BT);
+Thermocouples probes(CMON_THERMOCOUPLE == CMON_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CMON_PIN_TC_SCK,
+                     CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT);
 HeaterOutput heater(CPID_PIN_HEATER, CPID_HEATER_WINDOW_MS, CPID_HEATER_MAX_PERCENT, CPID_HEATER_ACTIVE_HIGH);
 
 SafetyLimits limits() {
@@ -50,21 +50,21 @@ Controller controller(probes, heater, fan, limits());
 // The control task owns the SPI bus; Croaster reads its filtered values.
 RoasterProbe btProbe(controller, RoasterProbe::Channel::BT);
 RoasterProbe etProbe(controller, RoasterProbe::Channel::ET);
-CroasterCore core(CPID_DUMMY_DATA, &btProbe, &etProbe);
+CroasterCore core(CMON_DUMMY_DATA, &btProbe, &etProbe);
 Controller* const controllerPtr = &controller;
 
 #else // ===== monitor build: Croaster with the selected converter, no control task =====
 #    include <app/MonitorProbes.h>
 #    include <hw/thermocouples.h>
 
-Thermocouples probes(CPID_THERMOCOUPLE == CPID_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CPID_PIN_TC_SCK,
-                     CPID_PIN_TC_MISO, CPID_PIN_TC_CS_ET, CPID_PIN_TC_CS_BT);
+Thermocouples probes(CMON_THERMOCOUPLE == CMON_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CMON_PIN_TC_SCK,
+                     CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT);
 MonitorProbes monitor(probes); // same reader and decoders as the control build
-CroasterCore core(CPID_DUMMY_DATA, monitor.bt(), monitor.et());
+CroasterCore core(CMON_DUMMY_DATA, monitor.bt(), monitor.et());
 Controller* const controllerPtr = nullptr;
 #endif
 
-#if CPID_DISPLAY == CPID_DISPLAY_SSD1306
+#if CMON_DISPLAY == CMON_DISPLAY_SSD1306
 #    include <CroasterDisplaySSD1306.h>
 CroasterDisplaySSD1306 display(core); // Croaster's shared screen (boards/common)
 CroasterDisplay* const displayPtr = &display;
@@ -72,7 +72,7 @@ CroasterDisplay* const displayPtr = &display;
 CroasterDisplay* const displayPtr = nullptr;
 #endif
 
-CroasterApp app(core, displayPtr, CPID_PIN_LED, CPID_LED_ON_LEVEL);
+CroasterApp app(core, displayPtr, CMON_PIN_LED, CMON_LED_ON_LEVEL);
 
 #if CPID_HEATER != CPID_HEATER_NONE
 static_assert(CPID_PID_INPUT_ET == static_cast<int>(PidInput::ET) &&
@@ -115,9 +115,9 @@ String statusLine(const Snapshot& s) {
 #endif
 
 void setup() {
-    CroasterDeviceIdentity::setBoardName(CPID_BOARD_NAME);
-    core.changeTemperatureUnit(CPID_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
-    Wire.setPins(CPID_PIN_I2C_SDA, CPID_PIN_I2C_SCL); // later Wire.begin() calls use these
+    CroasterDeviceIdentity::setBoardName(CMON_BOARD_NAME);
+    core.changeTemperatureUnit(CMON_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
+    Wire.setPins(CMON_PIN_I2C_SDA, CMON_PIN_I2C_SCL); // later Wire.begin() calls use these
 
 #if CPID_HEATER != CPID_HEATER_NONE
     // Outputs safe before anything else: heater off, fan off.
@@ -128,7 +128,7 @@ void setup() {
     controller.begin(settings.gains, settings.gainsTuned, settings.pidInput, settings.cooldownFan.trip,
                      CPID_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
-#    if CPID_DISPLAY == CPID_DISPLAY_SSD1306
+#    if CMON_DISPLAY == CMON_DISPLAY_SSD1306
     display.setHeaderText([]() {
         return statusLine(controller.snapshot());
     }); // heater/fan/mode or trip

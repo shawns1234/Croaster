@@ -105,8 +105,8 @@ also broadcasts the same data to the ICRM app.
 
 ### Two probes, end to end
 ET and BT are two MAX31855 boards on one SPI bus: shared SCK (GPIO 12) and
-MISO (GPIO 13), one chip-select each (`CPID_PIN_TC_CS_ET` 10,
-`CPID_PIN_TC_CS_BT` 11, in `config.h`; `ConfigCheck.h` rejects a reused pin).
+MISO (GPIO 13), one chip-select each (`CMON_PIN_TC_CS_ET` 10,
+`CMON_PIN_TC_CS_BT` 11, in `config.h`; `ConfigCheck.h` rejects a reused pin).
 
 | Step | Where | What happens |
 |:---|:---|:---|
