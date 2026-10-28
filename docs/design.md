@@ -187,7 +187,11 @@ and one sdkconfig file (D10).
 Existing boards still build with every change above (2026-10-26, temporary
 copies pinned to `espressif32 @ 8.0.0`; esp8266 on its own platform). Release
 sizes: `esp32c3` RAM 44 728 B, flash 1 742 297 B (91.7 %); `esp8266` RAM
-36 484 B, flash 415 739 B. The `esp32s3` result from that round is void: it
+36 484 B, flash 415 739 B. Rebuilt 2026-10-27 after D11 (no MAX31855 code
+in `croaster/`), the RoR revert and the unit-change offset fix: `esp32c3` RAM
+44 712 B, flash 1 740 813 B (91.6 %); `esp8266` RAM 36 468 B, flash
+414 979 B; same warnings as upstream (`BLE2902` deprecated on esp32c3,
+WiFiManager `-Wformat`). The `esp32s3` result from that round is void: it
 was built from the board as edited during Shawn's testing before this project
 (see "Stock boards and upstream" below).
 
