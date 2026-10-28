@@ -51,10 +51,14 @@ RoasterProbe etProbe(controller, RoasterProbe::Channel::ET);
 CroasterCore core(FLEX_DUMMY_DATA, &btProbe, &etProbe);
 Controller* const controllerPtr = &controller;
 
-#else // ===== monitor build: plain Croaster with the selected converter =====
-CroasterCore
-    core(FLEX_DUMMY_DATA, CroasterPinConfig{FLEX_PIN_TC_SCK, FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_BT, FLEX_PIN_TC_CS_ET},
-         FLEX_THERMOCOUPLE == FLEX_TC_MAX6675 ? CroasterThermocoupleType::MAX6675 : CroasterThermocoupleType::MAX31855);
+#else // ===== monitor build: Croaster with the selected converter, no control task =====
+#    include <app/MonitorProbes.h>
+#    include <hw/thermocouples.h>
+
+Thermocouples probes(FLEX_THERMOCOUPLE == FLEX_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, FLEX_PIN_TC_SCK,
+                     FLEX_PIN_TC_MISO, FLEX_PIN_TC_CS_ET, FLEX_PIN_TC_CS_BT);
+MonitorProbes monitor(probes); // same reader and decoders as the control build
+CroasterCore core(FLEX_DUMMY_DATA, monitor.bt(), monitor.et());
 Controller* const controllerPtr = nullptr;
 #endif
 
@@ -127,6 +131,8 @@ void setup() {
         return statusLine(controller.snapshot());
     }); // heater/fan/mode or trip
 #    endif
+#else
+    monitor.begin();
 #endif
 
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display

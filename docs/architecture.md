@@ -110,7 +110,7 @@ Load-bearing decisions:
   `snapshot()`, `loadProfile`. Mode logic, bumpless transfer, anti-windup,
   interlocks, the SSR window and autotune all sit behind those four calls.
 - **Croaster changes are small additive hooks** (sensor-injection constructor,
-  `onJsonData`, `lastCommandMillis`, MAX31855 type, BLE switch). Every existing
+  `onJsonData`, `lastCommandMillis`, correction getters, BLE switch). Every existing
   board builds unchanged.
 - **Board config is compile-time** (`config.h` + `static_assert`s), so a bad
   pin or a conflicting choice fails the build, not the roast.
@@ -179,8 +179,8 @@ Taken from Croaster: everything about connectivity, display and boards.
 6. D10: how the flex board's `platformio.ini` relates to Croaster's
    `boards/esp32s3` (standalone, `extends` his env, or a shared chip-level base
    ini). See design.md.
-7. D11: one MAX31855 decoder in core, or drop core's `CroasterMAX31855` and
-   flex's monitor build?
+7. D11: resolved 2026-10-27, one decoder in `croaster-control/src/core`;
+   `croaster/` reads MAX6675 only, as upstream.
 8. D13: is typing the IP into Artisan fine, or add `ESPmDNS` for
    `croaster-flex.local`?
 9. D14: config wizard as a Python script (recommended) or another option?

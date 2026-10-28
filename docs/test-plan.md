@@ -29,8 +29,9 @@ Status tags:
 - Manual, heater on, both probes unplugged → `trip:"sensor"` after 2 s, heater 0; heater 0 → no trip; one probe left → no trip (D23). **host** `test_sensor_fault_rules`; bench untested
 
 ## MAX6675 library fork (D21)
-Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) and the flex monitor
-build read probes through `SmoothThermocouple`; the flex control build does not.
+Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
+`SmoothThermocouple`; neither flex build does (since 2026-10-27 the monitor
+build uses `app/MonitorProbes`, D11).
 - First reading seeds the average; 0 °C keeps the average. **host (fork)** `testFirstSampleSeedsAverage`, `testZeroKeepsAverage`, `testZeroSeed`
 - 100, 100, NAN, 100 → 100, 100, NAN, 100 (recovers). **host (fork)** `testRecoversAfterNan`
 - MAX6675 frames decode as before, with a wait before every pin change; 33 us of waits per read. **host (fork)** `testMax6675Decode`, `testMax6675ReadTime`
@@ -40,6 +41,13 @@ build read probes through `SmoothThermocouple`; the flex control build does not.
 - Plug it back in at a different temperature → the new temperature on the next sample, no slow ramp from the old value (before: `N/A` until reboot). **untested**
 - `esp32s3-debug` (stock) links without `SmoothThermocoupleFix.cpp`. **build 2026-10-26** (upstream board files, in a copy pinned to `espressif32 @ 6.13.0`; see T13)
 - Flex after the library change: ET at room temperature as before; unplug ET → `N/A`, replug → reading returns. **untested**
+
+## Flex monitor build (`FLEX_HEATER_NONE`, D11)
+- Builds with `FLEX_TC_MAX31855` and with `FLEX_TC_MAX6675` (`FLEX_FAN_NONE`). **build 2026-10-27** (temporary config copies)
+- MAX31855 monitor: BT and ET at room temperature on the OLED and in `getArtisanData`; boiling water ≈ 100 °C / 212 °F. **untested**
+- MAX6675 monitor: same checks on MAX6675 modules. **untested**
+- Unplug one probe → that probe `N/A` after the third bad read (under 1 s), the other unaffected; plug back → reading returns. **untested**
+- Heater and fan pins stay idle; control commands such as `getControl` get no control reply (the plugin is not built). **untested**
 
 ## OLED
 - Temperatures shown in °F. **bench 2026-10-26**

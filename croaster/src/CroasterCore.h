@@ -94,8 +94,7 @@ public:
      * @param pins The thermocouple pin layout for the target board (provided by
      *             the implementation's config.h — there is no library default).
      */
-    CroasterCore(bool dummyMode, CroasterPinConfig pins,
-                 CroasterThermocoupleType type = CroasterThermocoupleType::MAX6675);
+    CroasterCore(bool dummyMode, CroasterPinConfig pins);
 
     /**
      * @brief Constructs a CroasterCore that reads temperatures from caller-provided

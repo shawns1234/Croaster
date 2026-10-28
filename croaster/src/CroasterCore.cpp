@@ -4,21 +4,14 @@
 
 #include "CroasterConstants.h"
 #include "CroasterDeviceIdentity.h"
-#include "CroasterMAX31855.h"
 
-namespace {
-Thermocouple* makeThermocouple(CroasterThermocoupleType type, const CroasterPinConfig& p, int8_t cs) {
-    if (type == CroasterThermocoupleType::MAX31855)
-        return new CroasterMAX31855(p.sckPin, cs, p.soPin);
-    return new MAX6675_Thermocouple(p.sckPin, cs, p.soPin);
-}
-} // namespace
-
-CroasterCore::CroasterCore(bool dummyMode, CroasterPinConfig pins, CroasterThermocoupleType type)
+CroasterCore::CroasterCore(bool dummyMode, CroasterPinConfig pins)
     : _pins(pins)
     , useDummyData(dummyMode) {
-    thermocoupleBT = new SmoothThermocouple(makeThermocouple(type, _pins, _pins.csPinBt), SMOOTHING_FACTOR);
-    thermocoupleET = new SmoothThermocouple(makeThermocouple(type, _pins, _pins.csPinEt), SMOOTHING_FACTOR);
+    thermocoupleBT =
+        new SmoothThermocouple(new MAX6675_Thermocouple(_pins.sckPin, _pins.csPinBt, _pins.soPin), SMOOTHING_FACTOR);
+    thermocoupleET =
+        new SmoothThermocouple(new MAX6675_Thermocouple(_pins.sckPin, _pins.csPinEt, _pins.soPin), SMOOTHING_FACTOR);
 }
 
 CroasterCore::CroasterCore(bool dummyMode, Thermocouple* bt, Thermocouple* et)

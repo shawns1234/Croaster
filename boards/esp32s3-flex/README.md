@@ -72,8 +72,10 @@ src/ConfigCheck.h: error: static assertion failed: config.h: two FLEX_PIN_* sett
 src/ConfigCheck.h: error: #error "config.h: FLEX_REQUIRE_MAINS needs FLEX_FAN_AC_DIMMER ..."
 ```
 
-`FLEX_HEATER_NONE` + `FLEX_FAN_NONE` builds a plain Croaster temperature
-monitor (no control libs used) with either converter.
+`FLEX_HEATER_NONE` + `FLEX_FAN_NONE` builds a temperature monitor with either
+converter: Croaster's screen, RoR, WebSocket and BLE, with no heater, fan or
+control task. The probes are read by the same code as the control build
+(`croaster-control` `hw/thermocouples` and `app/MonitorProbes`).
 
 ---
 

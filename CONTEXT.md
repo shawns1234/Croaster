@@ -16,7 +16,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
 | `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
-| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-flex/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe`. `build_filter.py` limits native builds to `src/core` |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-flex/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (control build) and `MonitorProbes` (monitor build, `FLEX_HEATER_NONE`). `build_filter.py` limits native builds to `src/core` |
 | `docs/` | `design.md` (architecture + decisions D1–D23), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -92,7 +92,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   fork's `master`, to see what upstream has.
 - Shawn's fork: branch `rework/roaster` off `master` (`0845ba8`), pushed to
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
-  sensor-injection ctor, `onJsonData()`, MAX31855 (`CroasterThermocoupleType`),
+  sensor-injection ctor, `onJsonData()`,
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
   `CroasterCommandHandler::lastCommandMillis()`,
   `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` (D22), two
@@ -105,12 +105,15 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   and a new pin. Host tests: see its README.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
+- D11 resolved 2026-10-27: the only MAX31855 decoder is
+  `croaster-control/src/core/max31855.h`; `croaster/` has no MAX31855 code
+  and builds its thermocouples exactly as upstream.
 - D1 resolved 2026-10-27: `control-core/` + `control-esp32/` became one
   library, `croaster-control/src/{core,hw,app}` (history kept via `git mv`).
 - Decisions pending (Shawn), all in design.md: D3 (force-included config), D6 (watchdog via core `lastCommandMillis()`),
   D9 (traffic watchdog,
   configurable, vs instant cut on disconnect), D10 (flex ini vs Croaster's
-  `boards/esp32s3` ini), D11 (two MAX31855 decoders), D12 (Croaster display
+  `boards/esp32s3` ini), D12 (Croaster display
   plus header hook), D13 (Croaster OTA only, no mDNS), D14 (config wizard,
   design only), D15 (MAX6675 library stays a core dependency). design.md
   lists which of these changed on 2026-10-26.

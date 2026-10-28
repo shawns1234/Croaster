@@ -89,7 +89,7 @@ config stays in the board; control logic is reusable by any future board
 
 | Feature | Lands in | Why |
 |:---|:---|:---|
-| MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
+| MAX31855 or MAX6675 in the flex monitor build | `croaster-control/src/app/MonitorProbes.h` over `hw/thermocouples` | One reader and one decoder per chip for both flex builds; `croaster/` keeps upstream's MAX6675 path (D11). |
 | MAX31855/MAX6675 decode for control | `croaster-control/src/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
 | Per-probe filter and fault count | `croaster-control/src/core/probe_channel.h` | Pure logic; both channels tested on the host. |
 | PID, autotune, profiles, safety rules, command protocol | `croaster-control/src/core` | Pure logic, unit-tested on the host. |
@@ -109,7 +109,7 @@ Board folder `boards/esp32s3-flex/`:
 
 | File | Relation | Why it is here |
 |:---|:---|:---|
-| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Has two builds: control (`FLEX_HEATER_*`) and monitor (`FLEX_HEATER_NONE`, plain Croaster with MAX31855). |
+| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Has two builds: control (`FLEX_HEATER_*`) and monitor (`FLEX_HEATER_NONE`: no control task; Croaster reads the probes through `app/MonitorProbes`). |
 | `src/config.h` | new | The one master file for pins, chips, drivers and limits (D2). Croaster boards set pins in `main.cpp`. |
 | `src/ConfigCheck.h` | new | Compile-time checks on `config.h` (reserved pins, duplicates, ranges). |
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
@@ -123,13 +123,14 @@ two libraries, `control-core/` and `control-esp32/`):
 
 | File | Relation | Why it is here |
 |:---|:---|:---|
-| `core/max31855.h` | duplicates | Same decode as core's `CroasterMAX31855`. The control task needs the decode without core's bus code. D11. |
+| `core/max31855.h` | new | The only MAX31855 decoder (D11). Croaster has none; one 32-bit frame gives temperature, cold junction and fault bits. |
 | `core/max6675.h` | duplicates | Same decode as the `MAX6675_Thermocouple` library, which reads the bus itself and has no fault bit API. Used only if a control board picks MAX6675. |
 | `core/moving_average.h`, `probe_channel.h` | new | Per-probe filter and fault count for the control loop. Croaster's `SmoothThermocouple` wraps a sensor that reads the bus, and has no fault count, so it can't sit on the control task's readings. |
 | `core/pid.*`, `relay_autotune.*`, `roast_profile.*`, `time_proportional.h` | new | Control features Croaster doesn't have. |
 | `core/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands and yaeger's named commands); builds the extra data fields. |
 | `app/ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
 | `app/RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
+| `app/MonitorProbes.h` | extends | Monitor build only: two Croaster `Thermocouple`s over `hw/thermocouples`, read on the loop task (no control task). Same chip choice, decoders and fault filter as the control build (D11). |
 | `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
 | `app/config_store.*` | new | NVS for PID gains, PID input, cooldown fan (stop and trip) and watchdog. Croaster core stores nothing. |
 | `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
@@ -137,8 +138,8 @@ two libraries, `control-core/` and `control-esp32/`):
 Clear wins done this round: the board's own SSD1306 class (now Croaster's
 display plus a hook, D12), `partitions.csv` (identical to `default_16MB.csv`),
 ArduinoOTA (D13), and the probe filter moved out of `hw/` into a pure,
-tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
-(D11) and the copied sdkconfig file (D10, option C can carry it).
+tested `ProbeChannel`. Since then (2026-10-27): one MAX31855 decoder (D11)
+and one sdkconfig file (D10).
 
 ## Data flow
 1. Control task (core 1, every 10 ms tick): reads both converters on its own
@@ -175,7 +176,6 @@ tested `ProbeChannel`. Left open, with options: the two MAX31855 decoders
 |:---|:---|:---|
 | `CroasterCore(bool, Thermocouple* bt, Thermocouple* et)` | needed | Two owners of one SPI bus would race; this lets the control task own it. Additive, existing constructor unchanged. |
 | `CroasterCore::onJsonData(fn)` | needed | Artisan must see heater/fan/setpoint in the same `getArtisanData` payload; no existing hook. Additive. |
-| `CroasterThermocoupleType` + `CroasterMAX31855` | requested | MAX31855 alongside MAX6675 for monitor builds; default stays MAX6675. |
 | `CroasterDisplaySSD1306::setHeaderText(fn)` (boards/common) | small | Lets a board show its own state in the header line instead of a second display class. Additive; default header unchanged. |
 | `#ifndef CROASTER_HAS_BLE` | small | Lets a board turn BLE off (~310 KB less flash in our build). Default unchanged. |
 | `CroasterCommandHandler::lastCommandMillis()` | needed for the comms watchdog | Lets an add-on see client traffic on Croaster's own WebSocket/BLE path, built-in commands included. Additive getter; `handle()` stores `millis()` when it accepts a message. See D6. |
@@ -259,6 +259,7 @@ Resolved by Shawn on 2026-10-27:
 | Decision | Choice |
 |:---|:---|
 | D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
+| D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The flex monitor build reads the chips through `app/MonitorProbes`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
 Shawn chose one top-level library next to `croaster/`, split by purpose into
@@ -507,18 +508,34 @@ place) without B's hidden coupling. Avoid B: it looks like reuse but needs nearl
 option overridden, and it makes our build depend on edits to his file.
 **Reversible:** yes. Moving A→C only touches ini files.
 
-### D11. Two MAX31855 implementations — **DECISION (new 2026-10-26, open, no change made)**
-There are two: `croaster/src/CroasterMAX31855.*` (added by us, bit-banged,
+### D11. Two MAX31855 implementations — resolved 2026-10-27: one decoder, in `croaster-control`
+Shawn: the MAX31855 code is ours, written for this project, and belongs in
+`croaster-control`, not in Croaster's library. Done:
+- Removed from `croaster/`: `CroasterMAX31855.{h,cpp}`, `CroasterThermocoupleType`,
+  the third `CroasterCore` constructor argument, `makeThermocouple`, the
+  `library.json` header entry and the MAX31855 mentions in its description and
+  keywords. `croaster/` now builds its two `SmoothThermocouple(MAX6675_Thermocouple)`
+  exactly as upstream `5445a4d`.
+- The flex monitor build (`FLEX_HEATER_NONE`) builds the same
+  `hw/Thermocouples` as the control build and wraps it in
+  `app/MonitorProbes`, two `Thermocouple`s passed to the sensor-injection
+  constructor. No controller is built or started. Both `FLEX_TC_MAX31855` and
+  `FLEX_TC_MAX6675` work.
+- Behaviour change in the monitor build: readings go through `ProbeChannel`
+  (4-sample average, NaN after 3 bad reads) instead of Croaster's
+  `SmoothThermocouple`, the same filter the control build uses.
+
+Analysis before the decision (2026-10-26). There were two: `croaster/src/CroasterMAX31855.*` (added by us, bit-banged,
 decodes inline, used only by flex's monitor build `FLEX_HEATER_NONE` and by
 any stock board that picks it) and `croaster-control/src/core/max31855.h`
 (pure, host-tested decoder) read by `croaster-control/src/hw/thermocouples.cpp`
-on hardware SPI. They decode the same 32-bit frame twice.
+on hardware SPI. They decoded the same 32-bit frame twice.
 
 Adafruit_MAX31855 was weighed against the in-house decoder: keep ours. One
 32-bit read gives temperature, cold junction and fault bits together, where
 Adafruit's `readCelsius()` and `readInternal()` each read the chip again. Ours
 is host-tested and needs no Adafruit BusIO.
-1. Keep both (today). Core stays independent of `croaster-control`; the decode is
+1. Keep both (until 2026-10-27). Core stays independent of `croaster-control`; the decode is
    written twice.
 2. One decoder in core: move `max31855::decode` into `croaster/src`
    (e.g. `CroasterMAX31855::decode(uint32_t)`), have `CroasterMAX31855` and
@@ -531,6 +548,8 @@ is host-tested and needs no Adafruit BusIO.
    and a new dependency.
 Recommendation: 2, after Shawn says whether core should offer MAX31855 to
 other boards at all (if not, 3).
+Chosen: 3's core change (core back to MAX6675 only), with the monitor build
+kept and moved onto `croaster-control`.
 
 ### D12. Flex screen uses Croaster's SSD1306 display — **DECISION (new 2026-10-26)**
 Flex had its own `RoasterOledDisplay` (U8g2), a second SSD1306 class next to
@@ -599,7 +618,7 @@ Shawn asked to remove the MAX6675 library. Core needs it to compile:
 1. **Leave it to core (implemented).** Removed from flex's `lib_deps`;
    PlatformIO still installs it through `croaster/library.json`. No core change.
 2. Define a `CroasterThermocouple` interface in core and include the MAX6675
-   library only where `CroasterThermocoupleType::MAX6675` is built. Removes
+   library only where a MAX6675 is built. Removes
    the dependency from control builds; touches every core sensor path.
 3. Vendor the ~100 lines of the MAX6675 library into core. No external
    dependency, but upstream fixes stop flowing in.

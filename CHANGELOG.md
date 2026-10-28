@@ -28,9 +28,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   compile time by `src/ConfigCheck.h`.
 - **`control-core/`** (pure, host-tested) and **`control-esp32/`** (ESP32)
   libraries; host tests (`pio test -e native`, 23 now).
-- **MAX31855 support** in the library: `CroasterMAX31855`,
-  `CroasterThermocoupleType`, optional third `CroasterCore` constructor argument
-  (default MAX6675).
 - **`CroasterCore(bool, Thermocouple* bt, Thermocouple* et)`** — inject sensors
   owned elsewhere (e.g. a control task that owns the SPI bus).
 - **`CroasterCore::onJsonData(fn)`** — boards add fields to every data payload.
@@ -86,6 +83,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **One MAX31855 decoder (D11).** The MAX31855 reader written for this
+  project moves out of `croaster/`: `CroasterMAX31855`,
+  `CroasterThermocoupleType` and the third `CroasterCore` constructor argument
+  are gone, so `croaster/` reads MAX6675 exactly as upstream. The flex monitor
+  build (`FLEX_HEATER_NONE`) reads MAX31855 or MAX6675 through
+  `croaster-control` (`hw/thermocouples`, `app/MonitorProbes`) and the sensor
+  injection constructor, with the control build's 4-sample filter.
 - **One control library, `croaster-control/` (D1).** `control-core/` and
   `control-esp32/` are merged into `croaster-control/src/core` (pure logic,
   host-tested), `src/hw` (ESP32 drivers) and `src/app` (control task, NVS,
