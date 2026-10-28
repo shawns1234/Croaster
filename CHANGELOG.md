@@ -51,6 +51,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **`config.h` edits rebuild (T47).** SCons does not track headers given with
+  `-include`, so a change to `config.h` alone could reuse stale objects.
+  `tools/force_include_deps.py` (a pre: extra script in both S3 boards'
+  `platformio.ini`) makes every object compiled with it depend on it.
 - **Croaster PID: a `pidInput` change didn't stop autotune or reset the PID (D23).**
   The PV steps by the difference between the probes, so autotune measured
   the step and PID took a derivative kick. Autotune now aborts

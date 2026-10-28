@@ -63,7 +63,8 @@ that wiring.
 The one file to edit: thermocouple chip, heater, fan driver, display, pins,
 features (BLE), PID defaults, safety limits, control core. It is
 force-included into every translation unit (`-include src/config.h`) so it can
-also switch Croaster library features (`CROASTER_HAS_BLE`).
+also switch Croaster library features (`CROASTER_HAS_BLE`). Editing it rebuilds
+every unit (`tools/force_include_deps.py`).
 
 Invalid choices fail the build with a message naming the setting:
 

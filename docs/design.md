@@ -355,7 +355,9 @@ checks), Kconfig menus (pioarduino only).
 `CROASTER_HAS_BLE` must be seen when `croaster/` compiles.
 1. **Force-include `config.h` into every unit (`-include`, implemented).** One
    file really is the master; cost: every library sees the `CMON_*`/`CPID_*` macros
-   (prefixed, so collisions are unlikely).
+   (prefixed, so collisions are unlikely), and a `config.h` edit recompiles
+   every unit. SCons does not track `-include` headers;
+   `tools/force_include_deps.py` adds the dependency (T47).
 2. `-D CROASTER_HAS_BLE=0` in `platformio.ini`. Croaster style, but the master
    config is then split across two files.
 3. Runtime switch (`CroasterApp` option to skip BLE). BLE code still linked

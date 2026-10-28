@@ -35,6 +35,8 @@ describes.
   `boards/esp32s3-monitor` (Croaster monitor, probe path only) via
   `CroasterControl=symlink://../../croaster-control`. Board config never goes
   here either.
+- `tools/` — build helpers shared by boards (`force_include_deps.py`: makes the
+  force-included `config.h` a rebuild dependency).
 - `builds/` — gitignored; firmware output of `build_all.sh`.
 
 ## Build & release

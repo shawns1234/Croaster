@@ -52,7 +52,8 @@ or `CMON_TC_MAX6675`), display, pins, temperature unit (`CMON_TEMP_UNIT`,
 default "F") and BLE (`CMON_ENABLE_BLE`). Every setting uses the `CMON_`
 prefix, the same names Croaster PID uses for the same settings. The file is
 force-included into every translation unit (`-include src/config.h`) so it can
-also switch Croaster library features (`CROASTER_HAS_BLE`).
+also switch Croaster library features (`CROASTER_HAS_BLE`). Editing it rebuilds
+every unit (`tools/force_include_deps.py`).
 
 The board id is `"esp32s3-monitor"` (`CMON_BOARD_NAME`). Do not set it to
 `"esp32s3"`: that id belongs to the ES3C28P LCD image, and an app OTA would

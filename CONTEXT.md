@@ -19,6 +19,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
 | `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
 | `docs/` | `design.md` (architecture + decisions D1–D26), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `tools/` | Build helpers: `force_include_deps.py` (pre: extra script; force-included `config.h` as a rebuild dependency, T47) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -195,6 +196,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   pure `croaster-control/src/core` helper (`onPvStep`, `sensorFault`,
   `crossedWithin`, `MainsWatch`, `outputCommandStopsAutotune`,
   `modeNeedsTuning`) and test that (design.md D23 item 11, T38).
+- SCons does not track headers passed with `-include`. Both S3 boards load
+  `tools/force_include_deps.py`, so a `config.h` edit recompiles every unit
+  (~170 objects); a board without it reuses stale objects after a
+  `config.h`-only change.
 - `croaster-control/src/core` must not include Arduino, ESP-IDF, `hw/` or
   `app/` headers: the native env compiles only `core/` (`build_filter.py`), so
   such an include breaks `pio test -e native`.
