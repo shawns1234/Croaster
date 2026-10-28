@@ -95,7 +95,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   sensor-injection ctor, `onJsonData()`,
   `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
   `CroasterCommandHandler::lastCommandMillis()`,
-  `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` (D22), two
+  `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` (D22),
+  correction offsets rescaled on a `tempUnit` change (D22), two
   warning fixes (`CroasterBleManager` initializer order,
   `CroasterDeviceIdentity` `PRIX32` format), and `MAX6675_Thermocouple` from
   Shawn's fork at `v2.0.3` with `SmoothThermocoupleFix.cpp` removed (D21).
@@ -168,7 +169,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Corrections (D22): `correctionBt`/`correctionEt` live in core, in the display
   unit. `ControlPlugin::loop()` passes them to the controller as °C
   (`SetCorrection`); PID/autotune use corrected values, over-temperature uses
-  max(raw, corrected). Keep the snapshot uncorrected: core adds the offset when
+  max(raw, corrected). A `tempUnit` change rescales the offsets (C→F ×9/5).
+  Keep the snapshot uncorrected: core adds the offset when
   it reads `RoasterProbe`, so correcting it too counts the offset twice.
 - `Controller` (FreeRTOS) has no host build: put the logic a fix needs in a
   pure `croaster-control/src/core` helper (`onPvStep`, `sensorFault`,

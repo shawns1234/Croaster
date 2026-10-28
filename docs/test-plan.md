@@ -142,7 +142,8 @@ build uses `app/MonitorProbes`, D11).
 - Snapshot BT/ET → uncorrected, so the offset is added once. **host** `test_snapshot_stays_uncorrected`
 - °F mode, `{"command":{"correctionBt":10}}`, PID on BT, SV 300 °F → displayed BT settles at 300 °F, not 310 °F. **untested** (needs AC)
 - `{"command":{"correctionBt":-50}}` with `FLEX_OVER_TEMP_C` set low → `trip:"overtemp"` when the raw BT passes the limit, while the display still reads 50 °F lower. **untested**
-- Correction set in °F, then `{"command":{"tempUnit":"C"}}` → the same number now applies in °C on the display and in PID; PID holds the displayed SV. **untested**
+- `{"command":{"correctionBt":9}}` in °F, then `{"command":{"tempUnit":"C"}}` → `cBT` 5 in the data, the displayed BT moves by the unit change only (no extra 4 °C jump), PID holds the displayed SV. Back to °F → `cBT` 9. `tempUnit` "K" → `cBT` stays 5. **bench todo** (no AC needed: watch `cBT` and BT in `getArtisanData`)
+- Same `tempUnit` sent again → `cBT`/`cET` unchanged. **bench todo**
 - Correction change during autotune → `autotune` "aborted: correction changed", OLED "AT abort: offset", heater 0. **host** (text, `test_autotune_status_text`); bench untested
 - Correction change in PID → heater output continues without a jump. **untested**
 - Stock boards (`esp32c3`, `esp8266`) → same RAM and flash use and the same warnings with the getters added. **build 2026-10-26**

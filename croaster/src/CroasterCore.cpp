@@ -149,6 +149,10 @@ void CroasterCore::changeTemperatureUnit(String unit) {
     }
 
     if (unit == "C" || unit == "F" || unit == "K") {
+        // Corrections are offsets: rescale them to the new unit (a K step equals a C step).
+        const double scale = (unit == "F") == (tempUnit == "F") ? 1.0 : unit == "F" ? 9.0 / 5.0 : 5.0 / 9.0;
+        correctionBt *= scale;
+        correctionEt *= scale;
         tempUnit = unit;
 
         resetHistory("tempUnit");

@@ -140,7 +140,7 @@ void ControlPlugin::loop() {
         ConfigStore::saveGains(s.gains);
     }
 
-    // The offsets change with correctionBt/correctionEt and with the unit; poll both.
+    // The offsets change with correctionBt/correctionEt (a unit change keeps them); poll them.
     // A non-finite offset would make every PID input NaN; treat it as no offset.
     const float btCore = app_->core().correctionBtCelsius();
     const float etCore = app_->core().correctionEtCelsius();

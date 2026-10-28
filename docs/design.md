@@ -181,6 +181,7 @@ and one sdkconfig file (D10).
 | `CroasterCommandHandler::lastCommandMillis()` | needed for the comms watchdog | Lets an add-on see client traffic on Croaster's own WebSocket/BLE path, built-in commands included. Additive getter; `handle()` stores `millis()` when it accepts a message. See D6. |
 | `CroasterBleManager` initializer order, `CroasterDeviceIdentity` `PRIX32` + `snprintf` | warning fixes | `-Wreorder` and `-Wformat` on ESP32 builds. No behaviour change; the chip id string is identical. |
 | `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` | needed for correct PID | The control task reads the probes itself, so it needs the user's correction offsets to work on the displayed scale. Two const getters; stock boards never call them. See D22. |
+| `changeTemperatureUnit` rescales `correctionBt`/`correctionEt` | bug fix | The offsets are differences in the display unit; a unit change kept the number, so the applied offset grew or shrank by 1.8×. See D22. |
 | Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
 
 Existing boards still build with every change above (2026-10-26, temporary
@@ -817,9 +818,7 @@ Options (Shawn: the PID must never control on the wrong scale):
 1. **Core getters (chosen).** `CroasterCore::correctionBtCelsius()` and
    `correctionEtCelsius()` return the offsets as °C differences (÷ 1.8 in
    °F). `ControlPlugin::loop()` polls them and sends `SetCorrection` when
-   either changes, so a `tempUnit` change, which changes what the stored
-   number means, is picked up too. Two additive const getters; stock boards
-   never call them.
+   either changes. Two additive const getters; stock boards never call them.
 2. Parse `correctionBt`/`correctionEt` again in the plugin (`onJsonCommand`).
    No core change, but it duplicates core's parsing and unit rules, needs
    `tempUnit` parsed as well, and breaks silently if core changes how it
@@ -850,6 +849,12 @@ Rules, in `core/probe_correction.h` (host-tested) and the controller:
   derivative term doesn't kick.
 - The plugin treats a non-finite offset as 0. Corrections are still not saved
   by core and reset at reboot.
+- A `tempUnit` change rescales both offsets (Shawn, 2026-10-27). Before, the
+  stored number kept its value, so +10 °F became +10 °C (18 °F) after
+  `{"command":{"tempUnit":"C"}}`. `CroasterCore::changeTemperatureUnit` now
+  converts it as a difference: C→F ×9/5, F→C ×5/9, C↔K unchanged. The same
+  unit again changes nothing. The °C getters return the same value before and
+  after (to rounding), so the controller sees no correction change.
 
 Stock boards: `esp32c3` and `esp8266` release builds have the same RAM and
 flash use and the same warnings with the getters added (2026-10-26).
