@@ -145,7 +145,8 @@ form instead ("AT running", "AT: SV<212F").
 The PID runs on the ESP32. Clients (Artisan, ICRM, a browser) only send targets
 and commands.
 
-Safety: over-temperature, probe fault, no mains (dimmer sees no zero-cross),
+Safety: over-temperature, probe fault, no mains (with `FLEX_REQUIRE_MAINS 1`,
+the dimmer sees no zero-cross for `FLEX_MAINS_GRACE_MS`, 2 s, while heating),
 OTA in progress, and comms lost (below) all turn the heater off and latch a
 trip. `clearTrip`, or any heater, mode, autotune or profile command, clears it;
 the firmware trips again at once if the cause is still there. Fan and setpoint

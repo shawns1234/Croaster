@@ -126,6 +126,7 @@ two libraries, `control-core/` and `control-esp32/`):
 | `core/max6675.h` | duplicates | Same decode as the `MAX6675_Thermocouple` library, which reads the bus itself and has no fault bit API. Used only if a control board picks MAX6675. |
 | `core/moving_average.h`, `probe_channel.h` | new | Per-probe filter and fault count for the control loop. Croaster's `SmoothThermocouple` wraps a sensor that reads the bus, and has no fault count, so it can't sit on the control task's readings. |
 | `core/pid.*`, `relay_autotune.*`, `roast_profile.*`, `time_proportional.h` | new | Control features Croaster doesn't have. |
+| `core/zero_cross.h`, `mains_watch.h` | new | Mains detection for the AC dimmer: crossing age, and the grace period before a `nomains` trip. |
 | `core/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands and yaeger's named commands); builds the extra data fields. |
 | `app/ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
 | `app/RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
@@ -259,6 +260,7 @@ Resolved by Shawn on 2026-10-27:
 |:---|:---|
 | D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
 | D10 (sdkconfig part) | "Kill ours, keep his": flex's `esp32s3-sdkconfig.defaults` is deleted; flex sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini question stays open. |
+| D23 (mains) | `nomains` trips after 2 s of missing mains while heating (`FLEX_MAINS_GRACE_MS`). |
 | D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The flex monitor build reads the chips through `app/MonitorProbes`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
@@ -884,6 +886,15 @@ Fixed (clear bugs, host-tested):
   `FLEX_REQUIRE_MAINS 1`. It now reads the crossing first (until two reads
   agree, against a torn 64-bit read) and treats a crossing after "now" as
   recent. `core/zero_cross.h`; `test_zero_cross_age`.
+- **Mains grace period** (Shawn, 2026-10-27: "2-3 s is fine"). With
+  `FLEX_REQUIRE_MAINS 1`, one missed 100 ms check while heating tripped
+  `nomains`. It now trips only after mains has been missing for
+  `FLEX_MAINS_GRACE_MS` (default 2000, 0..10000; 0 is the old behavior)
+  without a break while the heater is on, like the 2 s sensor-fault delay.
+  Mains back or heater 0 resets the count. Cost: with no AC at all the heater
+  runs up to 2 s before the trip. `core/mains_watch.h`;
+  `test_mains_dropout_under_grace_does_not_trip`,
+  `test_mains_absent_past_grace_trips`, `test_mains_heater_off_resets_grace`.
 
 Proposals, highest priority first (no code changed):
 1. **Profile end holds the last setpoint forever, unattended.** The

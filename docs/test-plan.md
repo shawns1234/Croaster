@@ -114,7 +114,8 @@ build uses `app/MonitorProbes`, D11).
 - `{"command":{"cooldownFan":65}}` then Stop → fan 65 %, survives reboot. **untested**
 
 ## Mains detection
-- `FLEX_REQUIRE_MAINS 1`, no AC → heat refused, `trip:"nomains"`. **bench 2026-10-26**
+- `FLEX_REQUIRE_MAINS 1`, no AC → heat refused, `trip:"nomains"`. **bench 2026-10-26** (before the grace period; bench todo: trip now comes about 2 s after heat is set)
+- Grace period (`FLEX_MAINS_GRACE_MS` 2000): a dropout under 2 s while heating does not trip; over 2 s trips; heater 0 resets the count. **host** `test_mains_dropout_under_grace_does_not_trip`, `test_mains_absent_past_grace_trips`, `test_mains_heater_off_resets_grace`; bench todo: pull the dimmer's Z-C wire for 1 s while heating (no trip), then for 3 s (trip)
 - AC connected → `getControl` `mainsOk` true, heat allowed. **untested**
 - `FLEX_REQUIRE_MAINS 1`, AC connected, heater on for an hour → no `nomains` trip; a crossing stored after the control task read the timer counts as recent (D23). **host** `test_zero_cross_age`; bench untested
 

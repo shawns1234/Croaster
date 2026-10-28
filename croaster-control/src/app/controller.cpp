@@ -265,7 +265,7 @@ void Controller::controlStep(uint32_t now) {
         st_.trip = SafetyTrip::Firmware;
 
     st_.mainsOk = fan_.mainsDetected();
-    if (out > 0 && lim_.requireMains && !st_.mainsOk)
+    if (mainsWatch_.update(out > 0 && lim_.requireMains, st_.mainsOk, now, lim_.mainsGraceMs))
         st_.trip = SafetyTrip::NoMainsSync;
 
     if (st_.trip == SafetyTrip::None) {

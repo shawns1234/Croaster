@@ -62,6 +62,8 @@
 #define FLEX_MAINS_HZ 60      // 50 or 60 (AC dimmer only); US mains = 60
 #define FLEX_FAN_PWM_HZ 25000 // PWM fan only
 #define FLEX_REQUIRE_MAINS 0  // AC dimmer: refuse heat when no zero-cross is seen
+// FLEX_REQUIRE_MAINS: trip only after mains has been missing this long while heating
+#define FLEX_MAINS_GRACE_MS 2000
 
 // ---- Display ----------------------------------------------------------------
 #define FLEX_DISPLAY_NONE 0

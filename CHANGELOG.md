@@ -83,6 +83,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Flex: `nomains` trip waits 2 s (D23).** With `FLEX_REQUIRE_MAINS 1`, mains
+  must be missing for `FLEX_MAINS_GRACE_MS` (new, default 2000) without a
+  break while heating before the trip; one missed check no longer trips.
 - **Flex uses Croaster's `boards/esp32s3/esp32s3-sdkconfig.defaults` (D10).**
   Flex's identical copy is deleted; `board_build.sdkconfig_path` points at
   `../esp32s3/esp32s3-sdkconfig.defaults`.

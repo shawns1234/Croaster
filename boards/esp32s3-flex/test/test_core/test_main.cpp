@@ -8,6 +8,7 @@
 
 #include "core/autotune_status.h"
 #include "core/control_protocol.h"
+#include "core/mains_watch.h"
 #include "core/max31855.h"
 #include "core/max6675.h"
 #include "core/moving_average.h"
@@ -626,6 +627,42 @@ void test_zero_cross_age() {
     TEST_ASSERT_TRUE(crossedWithin(1000000, 1000000, 100000));
 }
 
+// FLEX_REQUIRE_MAINS grace period (2 s default).
+void test_mains_dropout_under_grace_does_not_trip() {
+    MainsWatch w;
+    TEST_ASSERT_FALSE(w.update(true, true, 1000, 2000));
+    TEST_ASSERT_FALSE(w.update(true, false, 1010, 2000)); // mains lost
+    TEST_ASSERT_FALSE(w.update(true, false, 3009, 2000)); // 1999 ms
+    TEST_ASSERT_FALSE(w.update(true, true, 3010, 2000));  // back before 2 s
+    TEST_ASSERT_FALSE(w.update(true, false, 3020, 2000)); // a new dropout starts from 0
+    TEST_ASSERT_FALSE(w.update(true, false, 5019, 2000));
+}
+
+void test_mains_absent_past_grace_trips() {
+    MainsWatch w;
+    TEST_ASSERT_FALSE(w.update(true, false, 0, 2000)); // lost at millis() == 0
+    TEST_ASSERT_FALSE(w.update(true, false, 1999, 2000));
+    TEST_ASSERT_TRUE(w.update(true, false, 2000, 2000));
+    TEST_ASSERT_TRUE(w.update(true, false, 2500, 2000));
+
+    MainsWatch wrap; // across the millis() wrap
+    TEST_ASSERT_FALSE(wrap.update(true, false, 0xFFFFFF00u, 2000));
+    TEST_ASSERT_TRUE(wrap.update(true, false, 0xFFFFFF00u + 2000u, 2000));
+
+    MainsWatch now; // grace 0: trips on the first missed check, as before the grace period
+    TEST_ASSERT_TRUE(now.update(true, false, 5000, 0));
+}
+
+void test_mains_heater_off_resets_grace() {
+    MainsWatch w;
+    TEST_ASSERT_FALSE(w.update(true, false, 1000, 2000));
+    TEST_ASSERT_FALSE(w.update(false, false, 2500, 2000)); // heater 0: no trip, count cleared
+    TEST_ASSERT_FALSE(w.update(true, false, 2600, 2000));  // heating again, mains still absent
+    TEST_ASSERT_FALSE(w.update(true, false, 4599, 2000));
+    TEST_ASSERT_TRUE(w.update(true, false, 4600, 2000));
+    TEST_ASSERT_FALSE(w.update(false, false, 9000, 2000)); // never trips with the heater off
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_moving_average_seeds_with_first_sample);
@@ -659,5 +696,8 @@ int main() {
     RUN_TEST(test_pv_step_stops_autotune_and_resets_pid);
     RUN_TEST(test_sensor_fault_rules);
     RUN_TEST(test_zero_cross_age);
+    RUN_TEST(test_mains_dropout_under_grace_does_not_trip);
+    RUN_TEST(test_mains_absent_past_grace_trips);
+    RUN_TEST(test_mains_heater_off_resets_grace);
     return UNITY_END();
 }

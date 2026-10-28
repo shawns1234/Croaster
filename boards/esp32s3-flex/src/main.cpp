@@ -41,6 +41,7 @@ SafetyLimits limits() {
     l.maxSetpointC = FLEX_MAX_SETPOINT_C;
     l.minFanWithHeat = FLEX_MIN_FAN_WITH_HEAT;
     l.requireMains = FLEX_REQUIRE_MAINS;
+    l.mainsGraceMs = FLEX_MAINS_GRACE_MS;
     return l;
 }
 Controller controller(probes, heater, fan, limits());

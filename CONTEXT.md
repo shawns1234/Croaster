@@ -108,6 +108,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - D10 sdkconfig part resolved 2026-10-27: flex has no sdkconfig file of its
   own; `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`.
   The ini-sharing question stays open.
+- `nomains` trip: only after `FLEX_MAINS_GRACE_MS` (2000) of missing mains
+  while heating (`core/mains_watch.h`, Shawn 2026-10-27).
 - D11 resolved 2026-10-27: the only MAX31855 decoder is
   `croaster-control/src/core/max31855.h`; `croaster/` has no MAX31855 code
   and builds its thermocouples exactly as upstream.

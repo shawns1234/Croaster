@@ -12,6 +12,7 @@
 #include <freertos/task.h>
 
 #include "core/control_types.h"
+#include "core/mains_watch.h"
 #include "core/pid.h"
 #include "core/probe_correction.h"
 #include "core/relay_autotune.h"
@@ -27,6 +28,8 @@ struct SafetyLimits {
     float maxSetpointC = 250;  // legacy clamp in Control::setSetpoint
     float minFanWithHeat = 30; // legacy: heater on with fan <= 10 forced fan to 30
     bool requireMains = true;  // refuse heat when the dimmer sees no zero-cross
+    // requireMains: trip once mains is missing this long without a break while heating
+    uint32_t mainsGraceMs = 2000;
 };
 
 class Controller {
@@ -84,6 +87,7 @@ private:
     float manualHeater_ = 0;
     float tripFan_ = 100;
     bool tripFanApplied_ = false; // trip fan set for the current trip
+    MainsWatch mainsWatch_;
     uint32_t profileStartMs_ = 0, sensorBadSinceMs_ = 0;
     Snapshot published_;
 };

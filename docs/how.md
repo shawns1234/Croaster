@@ -32,7 +32,8 @@ thermometer library, and the control logic sits next to it.
   `Profile` (the firmware walks a list of time/temperature steps) and
   `Tuning` (relay autotune finds PID gains).
 - **Trips.** Safety stops: over-temperature, probe fault, no mains for the
-  dimmer, OTA in progress, and lost comms. A trip turns the heater off and
+  dimmer (2 s without a break while heating, `FLEX_MAINS_GRACE_MS`), OTA in
+  progress, and lost comms. A trip turns the heater off and
   stays latched until `clearTrip`.
 - **ControlPlugin.** The glue. It registers our JSON commands with Croaster,
   adds our fields to the data Croaster sends, runs the comms watchdog and
