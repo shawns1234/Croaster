@@ -1,9 +1,9 @@
 #pragma once
-// Grace period before a missing-mains trip. FanDimmer::mainsDetected() looks at
+// Grace period before a `nomains` trip. FanDimmer::mainsDetected() looks at
 // the last 100 ms only, so a short dropout or a few missed zero-cross pulses
-// would trip it at once. update() reports a trip only once mains has been
-// missing for graceMs without a break while the heater is on. Mains coming
-// back, or the heater turning off, starts the count again.
+// would trip it at once. update() reports a trip only once the zero-cross has
+// been missing for graceMs without a break while the heater is on. The
+// zero-cross coming back, or the heater turning off, starts the count again.
 #include <cstdint>
 
 class MainsWatch {

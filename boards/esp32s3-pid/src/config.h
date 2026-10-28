@@ -65,7 +65,7 @@
 #define CPID_MAINS_HZ 60      // 50 or 60 (AC dimmer only); US mains = 60
 #define CPID_FAN_PWM_HZ 25000 // PWM fan only
 #define CPID_REQUIRE_MAINS 0  // AC dimmer: refuse heat when no zero-cross is seen
-// CPID_REQUIRE_MAINS: trip only after mains has been missing this long while heating
+// CPID_REQUIRE_MAINS: trip only after the zero-cross has been missing this long while heating
 #define CPID_MAINS_GRACE_MS 2000
 
 // ---- Display ----------------------------------------------------------------

@@ -78,7 +78,7 @@ static_assert(CPID_CONTROL_CORE == 0 || CPID_CONTROL_CORE == 1, "CPID_CONTROL_CO
 static_assert(CPID_WATCHDOG_ENABLED == 0 || CPID_WATCHDOG_ENABLED == 1, "CPID_WATCHDOG_ENABLED: 0 or 1");
 static_assert(CPID_REQUIRE_AUTOTUNE == 0 || CPID_REQUIRE_AUTOTUNE == 1, "CPID_REQUIRE_AUTOTUNE: 0 or 1");
 static_assert(CPID_MAINS_GRACE_MS >= 0 && CPID_MAINS_GRACE_MS <= 10000,
-              "CPID_MAINS_GRACE_MS: 0..10000 (heat continues this long without mains)");
+              "CPID_MAINS_GRACE_MS: 0..10000 (heat continues this long after the zero-cross is lost)");
 static_assert(CPID_WATCHDOG_TIMEOUT_S >= 2 && CPID_WATCHDOG_TIMEOUT_S <= 600,
               "CPID_WATCHDOG_TIMEOUT_S: 2..600 (WatchdogSettings limits)");
 } // namespace configcheck

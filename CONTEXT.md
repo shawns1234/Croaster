@@ -124,8 +124,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Pin rules (T46, 2026-10-28): chip and octal-PSRAM module rules live once in
   `croaster-control/src/hw/esp32s3_opi_pins.h`; each board's `ConfigCheck.h`
   adds its dev-board wiring (UART0 43/44, RGB LED 48). Accepted pins unchanged.
-- `nomains` trip: only after `CPID_MAINS_GRACE_MS` (2000) of missing mains
-  while heating (`core/mains_watch.h`, Shawn 2026-10-27).
+- `nomains` trip: only after `CPID_MAINS_GRACE_MS` (2000) without a
+  zero-cross while heating (`core/mains_watch.h`, Shawn 2026-10-27).
 - D24 (2026-10-27): `CPID_REQUIRE_AUTOTUNE 1` refuses PID and Profile until
   NVS `tuned` is set (completed autotune or the `pid` command);
   `modeNeedsTuning()` in core.
