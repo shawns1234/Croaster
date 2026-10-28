@@ -49,7 +49,7 @@ PlatformIO only; release envs for `build_all.sh`, `-debug` envs for
 | Network transport | Croaster WebSocket :81 | already speaks Artisan; sync server, no AsyncTCP |
 | Bluetooth | Croaster (ICRM app) | yaeger has none |
 | OTA | Croaster (WS/BLE, ICRM app) | ElegantOTA needs an HTTP server; ArduinoOTA was yaeger carry-over (D13) |
-| RoR | Croaster, clamp fixed | see design.md core changes |
+| RoR | Croaster, as upstream (falling temperature reads 0) | see design.md core changes |
 | Thermocouple | new MAX31855 decode (both repos' ideas) | control task owns the bus; fault bits; filter reset |
 | Heater | rewritten from yaeger | SSR time-proportional window, not 50 Hz PWM (zero-cross SSR cannot follow 50 Hz PWM) |
 | Fan | new AC dimmer driver (+ PWM option from yaeger) | Shawn's fan is mains AC |

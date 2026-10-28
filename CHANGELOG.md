@@ -83,6 +83,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **RoR back to upstream (core).** `updateROR` again reports 0 for a falling
+  temperature, as Croaster's `5445a4d` does; the earlier change that kept
+  negative RoR is reverted. Artisan computes its own RoR.
 - **`tempUnit` change keeps the correction offsets (core).** `correctionBt`/
   `correctionEt` are rescaled as differences (C→F ×9/5, F→C ×5/9, K like C)
   instead of keeping their number in the new unit.
@@ -172,7 +175,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Croaster, and a table of decisions changed on 2026-10-26.
 - Comms watchdog: 10 s (was 30 s), and a trip also sets the cooldown fan.
 - Display default confirmed: 0.96" I2C 128×64 SSD1306.
-- **RoR keeps negative values** (falling temperature was reported as 0).
 - `CROASTER_HAS_BLE` can be preset by a board (`#ifndef`).
 - `format.sh` also formats `control-core/` and `control-esp32/`.
 

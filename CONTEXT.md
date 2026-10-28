@@ -93,7 +93,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Shawn's fork: branch `rework/roaster` off `master` (`0845ba8`), pushed to
   `origin/rework/roaster` (shawns1234/Croaster). Adds the roaster board + libs + docs and these core changes:
   sensor-injection ctor, `onJsonData()`,
-  `#ifndef CROASTER_HAS_BLE`, negative RoR no longer forced to 0,
+  `#ifndef CROASTER_HAS_BLE`,
   `CroasterCommandHandler::lastCommandMillis()`,
   `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` (D22),
   correction offsets rescaled on a `tempUnit` change (D22), two

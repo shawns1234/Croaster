@@ -182,7 +182,7 @@ and one sdkconfig file (D10).
 | `CroasterBleManager` initializer order, `CroasterDeviceIdentity` `PRIX32` + `snprintf` | warning fixes | `-Wreorder` and `-Wformat` on ESP32 builds. No behaviour change; the chip id string is identical. |
 | `CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()` | needed for correct PID | The control task reads the probes itself, so it needs the user's correction offsets to work on the displayed scale. Two const getters; stock boards never call them. See D22. |
 | `changeTemperatureUnit` rescales `correctionBt`/`correctionEt` | bug fix | The offsets are differences in the display unit; a unit change kept the number, so the applied offset grew or shrank by 1.8×. See D22. |
-| Removed negative-RoR clamp | **genuinely poor** | Any falling temperature reported RoR = 0 (`deltaET > 0` test), hiding the post-charge turning point and cooling. Artisan computes its own RoR, but the ICRM app and OLED showed 0 instead of the real negative rate. |
+| ~~Removed negative-RoR clamp~~ | **reverted 2026-10-27** (Shawn) | Upstream's `deltaET > 0` / `deltaBT > 0` test is back, so a falling temperature reads RoR 0 as in upstream. Artisan computes its own RoR, no consumer needs negative values, and the display keeps upstream behavior. `updateROR` matches `5445a4d`. |
 
 Existing boards still build with every change above (2026-10-26, temporary
 copies pinned to `espressif32 @ 8.0.0`; esp8266 on its own platform). Release
