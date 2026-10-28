@@ -1,8 +1,9 @@
-# Design — flex control board on Croaster (ESP32-S3)
+# Design — Croaster PID control board on Croaster (ESP32-S3)
 
 Status: skeleton, builds and host-tests pass; not yet run on hardware.
 Owner decisions still open are marked **DECISION**.
 Board renamed `esp32s3-roaster` → `esp32s3-flex` on 2026-10-26 (D5).
+2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). (D25)
 
 ## Goal
 Shawn's roaster (SSR heater, AC-dimmer fan, 2 × MAX31855, I2C OLED, Lonely
@@ -25,8 +26,11 @@ Croaster's library/board split and extension model.
 ## Names
 
 The whole project is a roaster, so "roaster" in a name says nothing. Rule:
-board-level things say **flex**, control features say **control**, and no
-class or macro starts with `Croaster` (that prefix is the upstream author's).
+board-level things say **Croaster PID** in prose and `CPID_`/`esp32s3-pid` in
+code, control features say **control**, and no class or macro starts with
+`Croaster` (that prefix is the upstream author's). A bare "PID" or `pid`
+always means the controller (`Pid`, `PidGains`, `Mode::Pid`, the `pid`
+command), never the board (D25).
 The one exception is the control library folder, `croaster-control/` (lib
 `CroasterControl`), named by Shawn on 2026-10-27 (D1). Renamed 2026-10-26 at
 Shawn's request, then folded into one library on 2026-10-27:
@@ -41,8 +45,8 @@ Shawn's request, then folded into one library on 2026-10-27:
 | `RoasterPlugin`, `RoasterPluginConfig` | `ControlPlugin`, `ControlPluginConfig` | Registers commands with `CroasterApp` |
 | `RoasterSettings` | `ControlSettings` | NVS-backed settings |
 | `RoasterLimits` | `SafetyLimits` | Over-temp, max setpoint, min fan, mains check |
-| `RoasterOledDisplay` | removed | The flex board uses Croaster's `CroasterDisplaySSD1306` |
-| `ROASTER_*` macros in `config.h` | `FLEX_*` | Board config |
+| `RoasterOledDisplay` | removed | The Croaster PID board uses Croaster's `CroasterDisplaySSD1306` |
+| `ROASTER_*` macros in `config.h` | `FLEX_*` | Board config. 2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). |
 | `{"command":"getRoaster"}`, `writeRoasterInfo` | `getControl`, `writeControlInfo` | Status query |
 | FreeRTOS task `"roaster"` | `"control"` | |
 | NVS namespace `"roaster"` | `"control"` | Nothing is deployed, so no settings are lost |
@@ -62,7 +66,7 @@ physical machine.
 ## Layers
 
 ```
-boards/esp32s3-flex/          board: config.h, ConfigCheck.h, main.cpp
+boards/esp32s3-pid/          board: config.h, ConfigCheck.h, main.cpp
         |  constructs + injects
         v
 croaster-control/src/app/  (Arduino/ESP32)  ControlPlugin  --registers-->  CroasterApp commands / onJsonData
@@ -89,14 +93,14 @@ config stays in the board; control logic is reusable by any future board
 
 | Feature | Lands in | Why |
 |:---|:---|:---|
-| MAX31855 or MAX6675 in the flex monitor build | `croaster-control/src/app/MonitorProbes.h` over `hw/thermocouples` | One reader and one decoder per chip for both flex builds; `croaster/` keeps upstream's MAX6675 path (D11). |
+| MAX31855 or MAX6675 in the monitor build (no heater) | `croaster-control/src/app/MonitorProbes.h` over `hw/thermocouples` | One reader and one decoder per chip for both builds (control and monitor); `croaster/` keeps upstream's MAX6675 path (D11). |
 | MAX31855/MAX6675 decode for control | `croaster-control/src/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
 | Per-probe filter and fault count | `croaster-control/src/core/probe_channel.h` | Pure logic; both channels tested on the host. |
 | PID, autotune, profiles, safety rules, command protocol | `croaster-control/src/core` | Pure logic, unit-tested on the host. |
 | SSR, dimmer, PWM fan, probe reading | `croaster-control/src/hw` | ESP32 hardware, shared by any ESP32 control board. |
 | Control loop + safety, NVS settings | `croaster-control/src/app/controller`, `app/config_store` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog | `croaster-control/src/app/ControlPlugin` | Uses only Croaster's public extension points. |
-| Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
+| Pins, chip/driver/display choice, limits | `boards/esp32s3-pid/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
 
 ### Every file we added, against Croaster (review point 9, 2026-10-26)
@@ -105,15 +109,15 @@ Relation: **new** (Croaster has nothing like it), **extends** (adds to a
 Croaster part through its own extension point), **duplicates** (a second copy
 of something Croaster or our code already has).
 
-Board folder `boards/esp32s3-flex/`:
+Board folder `boards/esp32s3-pid/`:
 
 | File | Relation | Why it is here |
 |:---|:---|:---|
-| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Has two builds: control (`FLEX_HEATER_*`) and monitor (`FLEX_HEATER_NONE`: no control task; Croaster reads the probes through `app/MonitorProbes`). |
+| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Has two builds: control (`CPID_HEATER_*`) and monitor (`CPID_HEATER_NONE`: no control task; Croaster reads the probes through `app/MonitorProbes`). |
 | `src/config.h` | new | The one master file for pins, chips, drivers and limits (D2). Croaster boards set pins in `main.cpp`. |
 | `src/ConfigCheck.h` | new | Compile-time checks on `config.h` (reserved pins, duplicates, ranges). |
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
-| `artisan/croaster-flex.aset` | new | Artisan settings for heater, fan, PID and the data request. |
+| `artisan/croaster-pid.aset` | new | Artisan settings for heater, fan, PID and the data request. |
 | `test/test_core/test_main.cpp` | new | Host tests for `croaster-control/src/core`. |
 | `README.md`, `.gitignore` | new | Wiring, settings and generated-file ignores. |
 
@@ -210,7 +214,7 @@ and added `build.log`, `croaster/src/Croaster.code-workspace`,
 On 2026-10-26 the stock board files went back to upstream byte for byte. Two
 exceptions: the stock inis keep D21's removal of the registry
 `MAX6675_Thermocouple` (listing it next to the core's fork fails to link), and
-`boards/esp32-s3-devkitm1-n16r8.json` stays because flex uses it.
+`boards/esp32-s3-devkitm1-n16r8.json` stays because the Croaster PID board uses it.
 `build.log` and `Croaster.code-workspace` are deleted. `To-Implement.md` is
 Shawn's design note and stays.
 
@@ -239,7 +243,7 @@ Changes from Shawn's nine review points (2026-10-26):
 | D13 | new | Croaster's OTA only; ArduinoOTA and its mDNS name dropped. |
 | D14 | new, design only | Config wizard. |
 | D15 | new | `MAX6675_Thermocouple` stays a core dependency. |
-| D16 | new | Temperature unit: Croaster's `tempUnit`, °F at boot on flex; control stays in °C. |
+| D16 | new | Temperature unit: Croaster's `tempUnit`, °F at boot on the Croaster PID board; control stays in °C. |
 | D9 | note added | How a comms trip clears, and why reconnecting doesn't clear it. |
 | D17 | new | Visible autotune status: `autotune` in telemetry and on the OLED. |
 | D18 | new, open | PID input (ET or BT) and default gains. |
@@ -264,17 +268,23 @@ Resolved by Shawn on 2026-10-27:
 | Decision | Choice |
 |:---|:---|
 | D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
-| D10 (sdkconfig part) | "Kill ours, keep his": flex's `esp32s3-sdkconfig.defaults` is deleted; flex sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini question stays open. |
-| D23 (mains) | `nomains` trips after 2 s of missing mains while heating (`FLEX_MAINS_GRACE_MS`). |
-| D24 | Autotune required before PID and profiles (`FLEX_REQUIRE_AUTOTUNE 1`); gains set with the `pid` command count as tuned. |
+| D10 (sdkconfig part) | "Kill ours, keep his": the Croaster PID board's `esp32s3-sdkconfig.defaults` is deleted; it sets `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini question stays open. |
+| D23 (mains) | `nomains` trips after 2 s of missing mains while heating (`CPID_MAINS_GRACE_MS`). |
+| D24 | Autotune required before PID and profiles (`CPID_REQUIRE_AUTOTUNE 1`); gains set with the `pid` command count as tuned. |
 | D23 item 4 | Fan and heater commands during autotune abort it, heater off (`aborted: fan changed` / `aborted: heater changed`). |
-| D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The flex monitor build reads the chips through `app/MonitorProbes`. |
+| D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The monitor build (no heater) reads the chips through `app/MonitorProbes`. |
+
+Resolved by Shawn on 2026-10-28:
+
+| Decision | Choice |
+|:---|:---|
+| D25 | Board renamed `esp32s3-flex` → `esp32s3-pid` ("Croaster PID"), `FLEX_*` → `CPID_*`, `croaster-pid.aset`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
 Shawn chose one top-level library next to `croaster/`, split by purpose into
 `src/core` (pure, host-tested), `src/hw` (ESP32 drivers) and `src/app`
 (control task, NVS settings, Croaster integration). `croaster/` stays the
-monitor library; board-only files stay in `boards/esp32s3-flex/`.
+monitor library; board-only files stay in `boards/esp32s3-pid/`.
 
 Layout choice: the folders sit under `src/`, PlatformIO's default library
 source dir. PlatformIO then compiles all three and puts `src/` on the include
@@ -309,7 +319,7 @@ Earlier options, kept for the record (AGENTS.md then listed only `croaster/`,
 3. Fold into `croaster/src/roaster/`. One library, but every board (ESP8266
    too) compiles heater/fan code and it breaks "monitor library, no board
    specifics" intent.
-4. Keep everything inside `boards/esp32s3-flex/src/`. Zero layout change,
+4. Keep everything inside `boards/esp32s3-pid/src/`. Zero layout change,
    but nothing is reusable for a second control board and tests live with one board.
 
 ### D2. One master config vs `config.h` + `pins.h` — resolved
@@ -322,7 +332,7 @@ checks), Kconfig menus (pioarduino only).
 ### D3. Library feature switches from board config — **DECISION**
 `CROASTER_HAS_BLE` must be seen when `croaster/` compiles.
 1. **Force-include `config.h` into every unit (`-include`, implemented).** One
-   file really is the master; cost: every library sees the `FLEX_*` macros
+   file really is the master; cost: every library sees the `CPID_*` macros
    (prefixed, so collisions are unlikely).
 2. `-D CROASTER_HAS_BLE=0` in `platformio.ini`. Croaster style, but the master
    config is then split across two files.
@@ -333,7 +343,7 @@ Recommendation: 1.
 
 ### D4. Compile-time feature selection in `main.cpp`
 AGENTS.md: "no board-specific compile-time guards" (meaning: the library never
-`#ifdef`s on a board). Our `#if FLEX_FAN == ...` are feature selections inside
+`#ifdef`s on a board). Our `#if CPID_FAN == ...` are feature selections inside
 one board, which the rule does not forbid, but they are guards. Alternatives:
 separate board folders per variant (monitor / control; duplicates main.cpp),
 runtime selection (all drivers linked, invalid configs only caught at boot),
@@ -354,6 +364,8 @@ were considered:
    over this firmware (heater control lost).
 3. `"unknown"`. Safe, but the app learns nothing.
 4. Add `esp32s3Flex` to ICRM's enum (needs the app author). Still worth doing later.
+
+2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). The ICRM enum entry would now be `esp32s3Pid` (D25).
 
 ### D6. How the watchdog sees client traffic — **DECISION** (changed 2026-10-26)
 The heater must stop when the client disappears, so the watchdog needs to see
@@ -436,11 +448,11 @@ and fan 100. No protection in PID, and none for silent WiFi loss.
 Recommendation: 1; add 2 later if a faster cut on clean disconnects is
 wanted.
 
-Settings (changed 2026-10-26, Shawn's point 4): `FLEX_WATCHDOG_ENABLED` and
-`FLEX_WATCHDOG_TIMEOUT_S` in `config.h` set the first-boot defaults.
+Settings (changed 2026-10-26, Shawn's point 4): `CPID_WATCHDOG_ENABLED` and
+`CPID_WATCHDOG_TIMEOUT_S` in `config.h` set the first-boot defaults.
 `{"command":{"watchdog":{"enabled":false}}}` turns the cutoff off entirely and
 `{"command":{"watchdog":{"timeout":20}}}` changes the timeout (2 to 600 s).
-Both are saved in NVS and reported by `getControl`. Usage: flex README,
+Both are saved in NVS and reported by `getControl`. Usage: board README,
 "Comms watchdog".
 
 Clearing (note added 2026-10-26 after a bench test). A comms trip latches
@@ -455,29 +467,29 @@ received them (no `[CMD-SOCKET]` line in its log). yaeger has no
 latch: on a clean disconnect in Manual it sets heater 0 and fan 100, and the
 next heater command simply applies.
 
-### D10. How the flex board relates to Croaster's esp32s3 board config — **DECISION (open; sdkconfig part resolved 2026-10-27)**
+### D10. How the Croaster PID board relates to Croaster's esp32s3 board config — **DECISION (open; sdkconfig part resolved 2026-10-27)**
 
-Resolved part (Shawn, 2026-10-27: "kill ours, keep his"): flex's
-`esp32s3-sdkconfig.defaults` is deleted, and every flex env sets
+Resolved part (Shawn, 2026-10-27: "kill ours, keep his"): the Croaster PID board's
+`esp32s3-sdkconfig.defaults` is deleted, and every Croaster PID env sets
 `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`. The ini
 question below is still open.
 
-Shawn asked (2026-10-26) whether a "flex" board's `platformio.ini` could `extends = core`,
+Shawn asked (2026-10-26) whether the Croaster PID board's `platformio.ini` could `extends = core`,
 or otherwise reuse what `boards/esp32s3/platformio.ini` already says. This is a discussion
-item. Nothing in the build has changed; flex is still option A.
+item. Nothing in the build has changed; the Croaster PID board is still option A.
 
 **First, what "core" is.** Croaster core (`croaster/`) is a **library**, not an ini section.
 It has a `library.json`, and each board pulls it in with
 `lib_deps = Croaster=symlink://../../croaster`. PlatformIO's `extends` only works between
 ini sections (`[env:x]` or a plain `[section]`), so `extends = core` isn't something
-PlatformIO can do. The flex board already gets every line of core code through that same
+PlatformIO can do. The Croaster PID board already gets every line of core code through that same
 symlink. The only things two boards could share at the ini level are build *settings*:
 board json, platform, framework, flash size, upload and monitor options, and common flags.
 
-**What flex and his esp32s3 actually have in common:** the ESP32-S3 chip, 16 MB flash,
+**What Croaster PID and his esp32s3 actually have in common:** the ESP32-S3 chip, 16 MB flash,
 `ARDUINO_USB_CDC_ON_BOOT=1`, `BOARD_HAS_PSRAM`, the upload and monitor speeds, the partition
-table (`default_16MB.csv`) and the sdkconfig file (since 2026-10-27 flex points at
-`../esp32s3/esp32s3-sdkconfig.defaults`, his copy; flex's own copy is deleted).
+table (`default_16MB.csv`) and the sdkconfig file (since 2026-10-27 Croaster PID points at
+`../esp32s3/esp32s3-sdkconfig.defaults`, his copy; its own copy is deleted).
 **What differs:** the board json (his is PlatformIO's stock `esp32-s3-devkitc-1` for the
 ES3C28P; ours is `esp32-s3-devkitm1-n16r8.json` for the Lonely Binary N16R8), lib_deps (his
 has ILI9341 + LVGL; ours has Adafruit SSD1306 + CroasterControl), build_flags (his
@@ -493,21 +505,21 @@ C base can no longer carry `board` or `platform`, because the two boards differ 
 
 | | How | Pros | Cons |
 |---|---|---|---|
-| **A** (today) | Standalone `boards/esp32s3-flex/platformio.ini` | The AGENTS.md model: each board owns its config, and an edit to one board can't break another. No change to his files. | About 10 chip-level lines are duplicated. A fix to his esp32s3 ini (e.g. upload flags) has to be copied by hand. |
-| **B** | Flex ini has `[platformio] extra_configs = ../esp32s3/platformio.ini` plus `[env:esp32s3-flex] extends = env:esp32s3`, and overrides lib_deps, build_flags, memory_type, sdkconfig_path, partitions and platform | No edit to his files. Reuses his env literally. | Most of his env has to be overridden, so very little is actually reused. His `[env]` section merges into our project too: if we leave out our own lib_deps we silently inherit his (ILI9341, LVGL, ...). His `env:esp32s3` and `env:esp32s3-debug` show up in our project's env list. Any later edit he makes to `env:esp32s3` silently changes our build. It also couples us to his file layout, and his unpinned platform needs Arduino-ESP32 2.x while flex needs 3.x, so the platform has to be overridden too. |
+| **A** (today) | Standalone `boards/esp32s3-pid/platformio.ini` | The AGENTS.md model: each board owns its config, and an edit to one board can't break another. No change to his files. | About 10 chip-level lines are duplicated. A fix to his esp32s3 ini (e.g. upload flags) has to be copied by hand. |
+| **B** | The Croaster PID ini has `[platformio] extra_configs = ../esp32s3/platformio.ini` plus `[env:esp32s3-pid] extends = env:esp32s3`, and overrides lib_deps, build_flags, memory_type, sdkconfig_path, partitions and platform | No edit to his files. Reuses his env literally. | Most of his env has to be overridden, so very little is actually reused. His `[env]` section merges into our project too: if we leave out our own lib_deps we silently inherit his (ILI9341, LVGL, ...). His `env:esp32s3` and `env:esp32s3-debug` show up in our project's env list. Any later edit he makes to `env:esp32s3` silently changes our build. It also couples us to his file layout, and his unpinned platform needs Arduino-ESP32 2.x while Croaster PID needs 3.x, so the platform has to be overridden too. |
 | **C** | Shared chip-level base `boards/common/esp32s3-base.ini` with an `[esp32s3_base]` section (board, framework, flash size, upload/monitor, PSRAM/USB flags). Both boards do `extra_configs = ../common/esp32s3-base.ini` and `extends = esp32s3_base`, and each keeps its own lib_deps, flags, PSRAM mode and sdkconfig. | Shares only what is truly the same chip. Nothing leaks between boards: no `[env]` merge and no foreign envs. Each board's diffs stay visible in its own ini. Fits Croaster's "board owns its config" rule, with the chip facts in one place. `boards/common` is a library dir without a `platformio.ini`, so `build_all.sh` doesn't pick up the base ini as a board. | Needs a small edit to his `boards/esp32s3/platformio.ini` (extra_configs, extends, and `${esp32s3_base.build_flags}`), which upstream has to accept. An edit to the base affects both boards, though that's intended. The platform pin has to be decided: either the base pins it for everyone, or each board pins its own. |
-| **D** | Flex as a second env inside `boards/esp32s3`, separated with `build_src_filter` | One ini and one folder for the "esp32s3 chip". | Awkward: `src_dir`, `include`, `test` and `config.h` are per *project*, so two firmwares end up sharing one `src/` tree, filtered file by file. `-include src/config.h` and his `src/ui` collide. It breaks the AGENTS.md "one board = one folder + config" model and Croaster's env naming (`<board>`, `<board>-debug`). |
+| **D** | Croaster PID as a second env inside `boards/esp32s3`, separated with `build_src_filter` | One ini and one folder for the "esp32s3 chip". | Awkward: `src_dir`, `include`, `test` and `config.h` are per *project*, so two firmwares end up sharing one `src/` tree, filtered file by file. `-include src/config.h` and his `src/ui` collide. It breaks the AGENTS.md "one board = one folder + config" model and Croaster's env naming (`<board>`, `<board>-debug`). |
 
 **Throwaway test builds (2026-10-26, espressif32 @ 8.0.0; test folders deleted afterwards):**
 
-- **B builds.** A copy of flex with `extra_configs = ../esp32s3/platformio.ini` and
+- **B builds.** A copy of the Croaster PID board with `extra_configs = ../esp32s3/platformio.ini` and
   `extends = env:esp32s3` plus the overrides above built with SUCCESS: RAM 62,332 B,
   flash 1,773,207 B, byte-for-byte the same sizes as standalone A.
   `pio project config` showed sections `env`, `env:esp32s3` and `env:esp32s3-debug` from his
-  file inside our project. In a variant without our own lib_deps, the resolved flex env
+  file inside our project. In a variant without our own lib_deps, the resolved Croaster PID env
   inherited his `[env]` lib_deps (Croaster, WebSockets, ArduinoJson, Adafruit ILI9341,
   MAX6675, WiFiManager, lvgl). That confirms the silent-leak risk.
-- **C builds, both sides.** The test used a base ini with `[esp32s3_base]`. The flex copy with
+- **C builds, both sides.** The test used a base ini with `[esp32s3_base]`. The Croaster PID copy with
   `extends = esp32s3_base` gave SUCCESS: RAM 62,332 B, flash 1,773,207 B (same as A).
   The copy of *his* esp32s3 board (as edited before this project) with
   `extends = esp32s3_base` (plus `boards_dir = ..`) also built `-e esp32s3`: SUCCESS, RAM 105,184 B, flash 2,518,962 B. Comparing his resolved
@@ -531,17 +543,17 @@ Shawn: the MAX31855 code is ours, written for this project, and belongs in
   `library.json` header entry and the MAX31855 mentions in its description and
   keywords. `croaster/` now builds its two `SmoothThermocouple(MAX6675_Thermocouple)`
   exactly as upstream `5445a4d`.
-- The flex monitor build (`FLEX_HEATER_NONE`) builds the same
+- The monitor build (no heater, `CPID_HEATER_NONE`) builds the same
   `hw/Thermocouples` as the control build and wraps it in
   `app/MonitorProbes`, two `Thermocouple`s passed to the sensor-injection
-  constructor. No controller is built or started. Both `FLEX_TC_MAX31855` and
-  `FLEX_TC_MAX6675` work.
+  constructor. No controller is built or started. Both `CPID_TC_MAX31855` and
+  `CPID_TC_MAX6675` work.
 - Behaviour change in the monitor build: readings go through `ProbeChannel`
   (4-sample average, NaN after 3 bad reads) instead of Croaster's
   `SmoothThermocouple`, the same filter the control build uses.
 
 Analysis before the decision (2026-10-26). There were two: `croaster/src/CroasterMAX31855.*` (added by us, bit-banged,
-decodes inline, used only by flex's monitor build `FLEX_HEATER_NONE` and by
+decodes inline, used only by the monitor build (no heater, `CPID_HEATER_NONE`) and by
 any stock board that picks it) and `croaster-control/src/core/max31855.h`
 (pure, host-tested decoder) read by `croaster-control/src/hw/thermocouples.cpp`
 on hardware SPI. They decoded the same 32-bit frame twice.
@@ -556,7 +568,7 @@ is host-tested and needs no Adafruit BusIO.
    (e.g. `CroasterMAX31855::decode(uint32_t)`), have `CroasterMAX31855` and
    `hw/thermocouples` both call it, and point the host tests at it. One copy;
    `croaster-control` then includes a core header.
-3. Drop `CroasterMAX31855` and flex's monitor build. Core goes back to
+3. Drop `CroasterMAX31855` and the monitor build (no heater). Core goes back to
    MAX6675-only, removing one of our core changes; a temperature-only board
    then uses Croaster's stock MAX6675 boards.
 4. Use Adafruit_MAX31855 in core. Smallest new code, but two reads per sample
@@ -566,8 +578,8 @@ other boards at all (if not, 3).
 Chosen: 3's core change (core back to MAX6675 only), with the monitor build
 kept and moved onto `croaster-control`.
 
-### D12. Flex screen uses Croaster's SSD1306 display — **DECISION (new 2026-10-26)**
-Flex had its own `RoasterOledDisplay` (U8g2), a second SSD1306 class next to
+### D12. Croaster PID screen uses Croaster's SSD1306 display — **DECISION (new 2026-10-26)**
+The Croaster PID board had its own `RoasterOledDisplay` (U8g2), a second SSD1306 class next to
 Croaster's `boards/common` one.
 1. **Croaster's `CroasterDisplaySSD1306` plus `setHeaderText(fn)` (implemented).**
    The header shows heater %, fan % and mode, or the trip, alternating with the
@@ -601,17 +613,17 @@ sat next to each other in `ControlPlugin`.
 Recommendation: 1; take 3 if typing the IP into Artisan gets annoying.
 
 ### D14. Config wizard for `config.h` — **DECISION (new 2026-10-26, design only)**
-Goal: someone builds flex without reading `config.h`: they answer questions
+Goal: someone builds the Croaster PID board without reading `config.h`: they answer questions
 (probe chip, heater, fan driver, display, pins) and get a valid `config.h`.
 `ConfigCheck.h` stays the authority: whatever the wizard writes must still
 pass it at compile time.
-1. **Standalone Python script `tools/flex-config.py` (recommended).** Asks
+1. **Standalone Python script `tools/cpid-config.py` (recommended).** Asks
    questions in the terminal (or reads answers from a file), validates them
    with the same rules as `ConfigCheck.h` (reserved pins, duplicates, mains
    requires the dimmer), and writes `src/config.h` from a template. Run once,
    commit the result. No PlatformIO coupling; works from any shell.
 2. PlatformIO `extra_scripts = pre:` that generates `config.h` from a
-   `flex.ini` or JSON answers file on every build. The answers file becomes the
+   `cpid.ini` or JSON answers file on every build. The answers file becomes the
    master and `config.h` a build product, which reverses D2 (the header is no
    longer the file you edit) and hides errors in build logs.
 3. JSON/ini answers file turned into a header by a small generator, run by
@@ -630,7 +642,7 @@ Shawn asked to remove the MAX6675 library. Core needs it to compile:
 `croaster/library.json` lists it, and `CroasterCore.h` includes
 `MAX6675_Thermocouple.h`, `SmoothThermocouple.h` and `Thermocouple.h`. The
 `Thermocouple` base class that `RoasterProbe` implements comes from it.
-1. **Leave it to core (implemented).** Removed from flex's `lib_deps`;
+1. **Leave it to core (implemented).** Removed from the Croaster PID `lib_deps`;
    PlatformIO still installs it through `croaster/library.json`. No core change.
 2. Define a `CroasterThermocouple` interface in core and include the MAX6675
    library only where a MAX6675 is built. Removes
@@ -648,7 +660,7 @@ Shawn wants °F on the screen and in Artisan. Croaster already has a unit:
 prints the unit, and `getArtisanData` reports it in `"temp"`. The control
 plugin already converts setpoints in and SV/ambient out with
 `toCelsius`/`fromCelsius`, and the controller caps and trips in °C.
-1. **Boot in a configured unit (implemented).** `FLEX_TEMP_UNIT` in `config.h`
+1. **Boot in a configured unit (implemented).** `CPID_TEMP_UNIT` in `config.h`
    (default "F"); `main.cpp` calls `core.changeTemperatureUnit()` in `setup()`.
    No core change. The `.aset` ships in °F mode with `channel_modes` 2 (°F).
    The runtime `tempUnit` command still works until the next reboot.
@@ -692,7 +704,7 @@ oscillation too small) or aborted. The reason is only in `getControl`'s
 Recommendation: 3. **Implemented.**
 
 ### D18. PID input and default gains — resolved 2026-10-26: BT by default (option 2)
-Shawn chose option 2. `FLEX_PID_INPUT` in `config.h` (`FLEX_PID_INPUT_BT`)
+Shawn chose option 2. `CPID_PID_INPUT` in `config.h` (`CPID_PID_INPUT_BT`)
 is the first-boot default; `{"command":{"pidInput":"ET"}}` still switches at
 runtime and saves to NVS. yaeger's gains stay as defaults, with a `config.h`
 note that they were chosen for ET and need an autotune on BT.
@@ -710,7 +722,7 @@ start ("valid probe"). Use `{"command":{"pidInput":"ET"}}` until BT is fitted.
 Analysis before the decision:
 The firmware PID follows `Target` (ET by default, as in yaeger, saved in NVS;
 `{"command":{"pidInput":"BT"}}` changes it). Default gains are yaeger's
-`Kp 1, Ki 0.1, Kd 0.01` (`FLEX_PID_KP/KI/KD`), in % heater per °C, per °C·s
+`Kp 1, Ki 0.1, Kd 0.01` (`CPID_PID_KP/KI/KD`), in % heater per °C, per °C·s
 and %·s per °C. They are the controller's live gains, not leftover fields.
 They are gentle: a 10 °C error asks for 10 % heater plus 1 % per second from
 the integral, so the output moves slowly (the 0.5 %/s decay seen on the bench
@@ -730,7 +742,7 @@ connected; consider 3 if BT tracking matters after real roasts.
 
 ### D19. Cooldown fan default — resolved 2026-10-26: 65 % after stop, 100 % after a trip (option 3)
 Shawn chose option 3. `cooldownFan` is now two settings, `stop` (65 %) and
-`trip` (100 %): defaults `FLEX_COOLDOWN_FAN_STOP`/`FLEX_COOLDOWN_FAN_TRIP`,
+`trip` (100 %): defaults `CPID_COOLDOWN_FAN_STOP`/`CPID_COOLDOWN_FAN_TRIP`,
 runtime `{"command":{"cooldownFan":{"stop":N,"trip":N}}}` (a plain number
 still sets `stop`; yaeger's `cooldownFanSpeed` is `stop`), NVS keys `cool`
 and `coolTrip`, and `getControl` reports both. The controller applies the trip
@@ -738,7 +750,7 @@ speed once when any trip starts (comms, sensor, no mains, OTA), so a fan
 command while tripped still works; over-temperature always runs the fan at
 100 %. A board that already stored `cool` in NVS keeps that stop value.
 
-Before: `FLEX_COOLDOWN_FAN` (100 %) was the fan after `stop` and after a comms trip.
+Before: `CPID_COOLDOWN_FAN` (100 %) was the fan after `stop` and after a comms trip.
 yaeger stores 65 % for its cooldown preference but uses 100 % on disconnect.
 1. 100 %. Fastest cooling; can blow light beans out of a fluid-bed
    chamber.
@@ -775,7 +787,7 @@ must run without a laptop.
 
 ### D21. `MAX6675_Thermocouple` fixes — resolved 2026-10-26: maintained fork (option 3)
 The upstream library (yuriisalimov 2.0.2, last release 2019) had three faults
-that reach Croaster's MAX6675 boards and the flex monitor build:
+that reach Croaster's MAX6675 boards and the monitor build (no heater):
 - `SmoothThermocouple` latched NAN. One open-probe reading was blended into
   the average, and because the "no average yet" check was `data == 0`, the
   average never reseeded. The probe read `N/A` until reboot.
@@ -809,7 +821,7 @@ and the link fails with multiple definitions.
 
 Behaviour change on MAX6675 boards: unplugging a probe shows `N/A` and
 plugging it back in shows the new temperature on the next read (250 ms),
-without a ramp from the old value. The flex control build is unaffected (its
+without a ramp from the old value. The Croaster PID control build is unaffected (its
 probes go through `RoasterProbe` and `ProbeChannel`, not `SmoothThermocouple`).
 
 ### D22. Correction offsets reach control — resolved 2026-10-26: core getters (option 1)
@@ -838,12 +850,12 @@ Rules, in `core/probe_correction.h` (host-tested) and the controller:
 - The snapshot, and so `RoasterProbe`, stays uncorrected: CroasterCore adds
   the offset itself, and correcting both would count it twice.
 - Safety limits use the higher of the raw and the corrected reading.
-  Over-temperature trips when either is above `FLEX_OVER_TEMP_C`, so a
+  Over-temperature trips when either is above `CPID_OVER_TEMP_C`, so a
   negative offset cannot hide a hot probe, and a positive one trips early.
-- Autotune's abort above `FLEX_OVER_TEMP_C` compares the corrected input; the
+- Autotune's abort above `CPID_OVER_TEMP_C` compares the corrected input; the
   raw over-temperature trip ends autotune as well, so the higher reading wins
   here too.
-- `FLEX_MAX_SETPOINT_C` caps the setpoint, which is on the corrected scale.
+- `CPID_MAX_SETPOINT_C` caps the setpoint, which is on the corrected scale.
   With a negative offset the probe can run above the cap; the raw
   over-temperature trip still applies.
 - The autotune gate (setpoint >= 100 °C / 212 °F) is on the setpoint, so it
@@ -867,7 +879,7 @@ flash use and the same warnings with the getters added (2026-10-26).
 
 ### D23. Autotune and control review — fixes made, proposals **DECISION (new 2026-10-26, open)**
 Review of autotune end to end and of the control code. Research and sources:
-`docs/research/autotune.md`; usage: flex README, "Autotune".
+`docs/research/autotune.md`; usage: board README, "Autotune".
 
 Verdict: the autotune is a real Åström–Hägglund relay test with consistent
 units (heater request % per °C, seconds). yaeger's vendored AutoTunePID
@@ -894,13 +906,13 @@ Fixed (clear bugs, host-tested):
 - **False `nomains` trip.** `FanDimmer::mainsDetected()` read the timer, then
   the ISR's last-crossing time. A crossing in between made the age wrap to
   about 2^64 µs: "no mains", a latched trip while heating with
-  `FLEX_REQUIRE_MAINS 1`. It now reads the crossing first (until two reads
+  `CPID_REQUIRE_MAINS 1`. It now reads the crossing first (until two reads
   agree, against a torn 64-bit read) and treats a crossing after "now" as
   recent. `core/zero_cross.h`; `test_zero_cross_age`.
 - **Mains grace period** (Shawn, 2026-10-27: "2-3 s is fine"). With
-  `FLEX_REQUIRE_MAINS 1`, one missed 100 ms check while heating tripped
+  `CPID_REQUIRE_MAINS 1`, one missed 100 ms check while heating tripped
   `nomains`. It now trips only after mains has been missing for
-  `FLEX_MAINS_GRACE_MS` (default 2000, 0..10000; 0 is the old behavior)
+  `CPID_MAINS_GRACE_MS` (default 2000, 0..10000; 0 is the old behavior)
   without a break while the heater is on, like the 2 s sensor-fault delay.
   Mains back or heater 0 resets the count. Cost: with no AC at all the heater
   runs up to 2 s before the trip. `core/mains_watch.h`;
@@ -966,7 +978,7 @@ The default gains are yaeger's, chosen for ET on other hardware (D18), so a
 PID or profile run on a fresh board controls on guesses. Shawn made autotune
 mandatory, behind a switch.
 
-- `FLEX_REQUIRE_AUTOTUNE` (`config.h`, default 1; ConfigCheck: 0 or 1). With
+- `CPID_REQUIRE_AUTOTUNE` (`config.h`, default 1; ConfigCheck: 0 or 1). With
   1 and no tuned gains, `mode: "pid"` and `startProfile` are refused: the mode
   stays, `autotune` reads `autotune required`, OLED `Autotune first` for 10 s.
   A loaded profile stays loaded. Manual and autotune are always allowed.
@@ -985,13 +997,34 @@ mandatory, behind a switch.
   (host test `test_autotune_required_gate`).
 - Profile behavior is otherwise unchanged.
 
+### D25. Board renamed to Croaster PID — resolved 2026-10-28 (Shawn)
+"flex" said nothing about what the board does. Shawn renamed it to
+**Croaster PID**:
+
+- Folder `boards/esp32s3-pid/`, envs `esp32s3-pid`, `esp32s3-pid-debug`,
+  `esp32s3-pid-pioarduino`; board id `"esp32s3-pid"` (`CPID_BOARD_NAME`).
+- Board macros `FLEX_*` → `CPID_*`. The PID-controller macros keep the
+  controller name after the prefix: `CPID_PID_INPUT`, `CPID_PID_KP`,
+  `CPID_PID_KI`, `CPID_PID_KD`.
+- Artisan settings `artisan/croaster-pid.aset`; planned wizard
+  `tools/cpid-config.py` with answers file `cpid.ini` (D14).
+- Naming rule (see "Names"): "Croaster PID" in prose, `CPID_`/`esp32s3-pid`
+  in code; a bare "PID"/`pid` always means the controller. Controller names
+  are unchanged: `Pid`, `PidGains`, `PidInput`, `Mode::Pid`, JSON mode `pid`,
+  the `pid` and `pidInput` commands, NVS namespace `control` and its keys.
+- Earlier records (D5, the "Names" table, done tickets) keep the old name
+  with a dated note.
+- Open: the name of the monitor build (`CPID_HEATER_NONE`, no heater or fan).
+  It is not a PID board, so docs call it "monitor build (no heater)" until
+  Shawn decides.
+
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
   Arduino builds ignore `board_build.sdkconfig_path`; stock libs already have
   PSRAM malloc on.
 - pioarduino 55.03.312 (same Arduino core) builds too; only it can apply
   `custom_sdkconfig` (recompiles IDF libs).
-- Flex sets `board_build.sdkconfig_path` like Croaster's esp32s3 board
+- Croaster PID sets `board_build.sdkconfig_path` like Croaster's esp32s3 board
   (Shawn, 2026-10-26) and, since 2026-10-27, points it at his file:
   `../esp32s3/esp32s3-sdkconfig.defaults` (D10). It has no `custom_sdkconfig`
   env. To apply the file, add
@@ -1015,7 +1048,7 @@ mandatory, behind a switch.
   - This firmware uses no TLS (plain `ws://`), so none of it is required.
 
 ## Hardware notes driving defaults
-See `boards/esp32s3-flex/README.md` (pins, power, probe isolation, IPEX).
+See `boards/esp32s3-pid/README.md` (pins, power, probe isolation, IPEX).
 - Display **confirmed by Shawn (2026-10-26)**: 0.96" I2C 128×64 SSD1306
   module, address 0x3C. It uses Croaster's shared `CroasterDisplaySSD1306`
   (Adafruit SSD1306). The header line shows heater %, fan % and mode, or the

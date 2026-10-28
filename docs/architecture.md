@@ -28,7 +28,7 @@ A board wires it up in `main.cpp`. This is the whole public surface a board sees
 
 ```cpp
 Thermocouples probes(TcChip::MAX31855, SCK, MISO, CS_ET, CS_BT);
-HeaterOutput heater(FLEX_PIN_HEATER, FLEX_HEATER_WINDOW_MS, 90, true);
+HeaterOutput heater(CPID_PIN_HEATER, CPID_HEATER_WINDOW_MS, 90, true);
 FanDimmer fan(...);                                     // or FanPwm, chosen in config.h
 Controller controller(probes, heater, fan, limits()); // control task
 RoasterProbe btProbe(roaster, RoasterProbe::Channel::BT); // Croaster reads the snapshot
@@ -58,7 +58,7 @@ A client sees JSON only:
 
 ```mermaid
 flowchart TB
-    subgraph board["boards/esp32s3-flex (board)"]
+    subgraph board["boards/esp32s3-pid (board)"]
         CFG[config.h + ConfigCheck.h]
         MAIN[main.cpp]
         OLED[CroasterDisplaySSD1306]
@@ -176,7 +176,7 @@ Taken from Croaster: everything about connectivity, display and boards.
    on disconnect as well?
 4. D8: resolved 2026-10-26, flat keys and the `onOtherJson` hook dropped.
 5. Cooldown fan default: 100 % (ours) or 65 % (yaeger)?
-6. D10: how the flex board's `platformio.ini` relates to Croaster's
+6. D10: how the Croaster PID board's `platformio.ini` relates to Croaster's
    `boards/esp32s3` (standalone, `extends` his env, or a shared chip-level base
    ini). See design.md.
 7. D11: resolved 2026-10-27, one decoder in `croaster-control/src/core`;
@@ -185,7 +185,8 @@ Taken from Croaster: everything about connectivity, display and boards.
    `croaster-flex.local`?
 9. D14: config wizard as a Python script (recommended) or another option?
 
-Resolved: D5, board id `esp32s3-flex` (Shawn, 2026-10-26).
+Resolved: D5, board id `esp32s3-flex` (Shawn, 2026-10-26); D25, renamed to
+`esp32s3-pid` ("Croaster PID", Shawn, 2026-10-28).
 
 ## Next implementation step
 Bench bring-up (T2): flash, confirm the OLED, both probes and `getArtisanData` in

@@ -43,7 +43,7 @@ until the comms watchdog stops the heater.
 |:---|:---|:---|
 | `{"BurnerVal":v}`: heater %, switches to Manual | `{"command":{"burner":v}}` or `{"command":"setBurner","value":v}`; the flat key is not accepted | **dropped** (D8, 2026-10-26) |
 | `{"FanVal":v}` | `{"command":{"fan":v}}` or `setFan`; flat key not accepted | **dropped** (D8) |
-| `{"Setpoint":T}`, clamped 0..250 | `{"command":{"setpoint":T}}`, clamped to `FLEX_MAX_SETPOINT_C` 250; flat key not accepted | **dropped** (D8) / clamp matches |
+| `{"Setpoint":T}`, clamped 0..250 | `{"command":{"setpoint":T}}`, clamped to `CPID_MAX_SETPOINT_C` 250; flat key not accepted | **dropped** (D8) / clamp matches |
 | `{"Mode":"Manual"\|"PID"}` (prefix match) | `{"command":{"mode":"manual"\|"pid"}}`; flat key not accepted | **dropped** (D8) |
 | `{"Target":"ET"\|"BT"\|"MAX"}`: PID input, saved | `{"command":{"pidInput":..}}`, saved to NVS; flat key not accepted | **dropped** (D8) |
 | `{"command":"setBurner","value":v}` / `setFan` | Same | **closed** |
@@ -58,8 +58,8 @@ until the comms watchdog stops the heater.
 | yaeger | Ours | Status |
 |:---|:---|:---|
 | PID on the ESP32 | PID on the ESP32, core 1, own FreeRTOS task (10 ms tick, PID every 250 ms), not blocked by WiFi or the display | match / **better** |
-| Heater ceiling 90 % | `FLEX_HEATER_MAX_PERCENT 90`, applied after PID and manual | match |
-| Fan floor: heat > 0 and fan ≤ 10 → fan 30 | Fan forced to ≥ `FLEX_MIN_FAN_WITH_HEAT` (30) whenever heating | match (slightly stricter: 11–29 % is also raised) |
+| Heater ceiling 90 % | `CPID_HEATER_MAX_PERCENT 90`, applied after PID and manual | match |
+| Fan floor: heat > 0 and fan ≤ 10 → fan 30 | Fan forced to ≥ `CPID_MIN_FAN_WITH_HEAT` (30) whenever heating | match (slightly stricter: 11–29 % is also raised) |
 | Autotune: fan to 60 if below 30 | Same | match |
 | Autotune done: fan 30, setpoint 0, gains saved | Same, gains saved to NVS | match |
 | Anti-windup: integral clamp at 0.8 | Conditional integration (integral frozen while the output is saturated) | **better**: no overshoot from a stored integral |
@@ -68,7 +68,7 @@ until the comms watchdog stops the heater.
 | Heater drive: 50 Hz PWM on an SSR pin | Time-proportional SSR window (zero-cross SSR switches whole half-cycles, so fast PWM gets rounded off) | **better** for a zero-cross SSR |
 | Fan drive: PWM / dimmer | AC dimmer (zero-cross + phase angle) or PWM, chosen in `config.h` | match |
 | Profile follower: in the README only, not in Shawn's yaeger code | Firmware profiles: steps of duration/setpoint/interpolation/fan, run on the ESP32 | **better** |
-| Cooldown fan default 65 % | 65 % after `stop` (`FLEX_COOLDOWN_FAN_STOP`), 100 % when any trip starts (`FLEX_COOLDOWN_FAN_TRIP`); both changeable via `cooldownFan`, the stop value also via `setPreferences`, saved | **match** after stop; trips follow yaeger's disconnect (D19) |
+| Cooldown fan default 65 % | 65 % after `stop` (`CPID_COOLDOWN_FAN_STOP`), 100 % when any trip starts (`CPID_COOLDOWN_FAN_TRIP`); both changeable via `cooldownFan`, the stop value also via `setPreferences`, saved | **match** after stop; trips follow yaeger's disconnect (D19) |
 
 ## Safety
 
@@ -98,7 +98,7 @@ until the comms watchdog stops the heater.
 1. yaeger's flat-key messages (`BurnerVal`, `FanVal`, `Setpoint`, `Mode`,
    `Target`) are not accepted. Shawn chose to drop them on 2026-10-26 (D8):
    nothing we ship sends them, and accepting them needed a core change.
-   yaeger's web UI and old yaeger `.aset` files don't work with flex.
+   yaeger's web UI and old yaeger `.aset` files don't work with the Croaster PID board.
 2. `setBurner`/`setFan`/`setPreferences`/`getPreferences` were missing. Now
    implemented with yaeger's reply format.
 3. Telemetry lacked `Amb`, `Target`, `pidKp/Ki/Kd` and `wifiStrength`. Added.

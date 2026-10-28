@@ -5,20 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — flex control board (branch rework/roaster)
+## [Unreleased] — Croaster PID control board (branch rework/roaster)
 
 ### Added
-- **Flex: autotune required before PID and profiles (D24).** New
-  `FLEX_REQUIRE_AUTOTUNE` (default 1): until the board has tuned gains (a
+- **Croaster PID: autotune required before PID and profiles (D24).** New
+  `CPID_REQUIRE_AUTOTUNE` (default 1): until the board has tuned gains (a
   completed autotune or the `pid` command; NVS key `tuned`), `mode: "pid"` and
   `startProfile` are refused with `autotune required` (OLED `Autotune first`).
   Manual and autotune always work; `getControl` reports `tuned`. 0 keeps the
   old behavior.
-- **Flex autotune docs.** README section (what it is, start and stop, OLED
+- **Croaster PID autotune docs.** README section (what it is, start and stop, OLED
   and status text, limits, duration, how results are saved, credit) and
   `docs/research/autotune.md` (method, tuning rules, how br3ttb, Marlin,
   sTune, Artisan and yaeger do it, roaster pitfalls, with sources).
-- **Flex °F by default**: `FLEX_TEMP_UNIT` in `config.h` sets Croaster's
+- **Croaster PID °F by default**: `CPID_TEMP_UNIT` in `config.h` sets Croaster's
   unit at boot (screen, telemetry, setpoints); control limits stay in °C. The
   Artisan `.aset` is now in °F mode.
 - **`CroasterCore::correctionBtCelsius()`/`correctionEtCelsius()`**: the
@@ -26,7 +26,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   themselves (D22).
 - **`CroasterCommandHandler::lastCommandMillis()`**: when the handler last
   accepted a message (WebSocket or BLE), for add-ons such as a comms watchdog.
-- **`boards/esp32s3-flex`** ("flex") — heater + fan control board for the Lonely Binary
+- **`boards/esp32s3-pid`** ("Croaster PID") — heater + fan control board for the Lonely Binary
   ESP32-S3 N16R8: PID heater via SSR (time-proportional window), RobotDyn AC
   dimmer or PWM fan, roast profiles, relay autotune, safety trips (over-temp,
   sensor fault, no mains, OTA, comms lost), Croaster's shared SSD1306 screen,
@@ -45,18 +45,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
-- **Flex: a `pidInput` change didn't stop autotune or reset the PID (D23).**
+- **Croaster PID: a `pidInput` change didn't stop autotune or reset the PID (D23).**
   The PV steps by the difference between the probes, so autotune measured
   the step and PID took a derivative kick. Autotune now aborts
   ("aborted: input changed", OLED "AT abort: input"); PID and Profile restart
   bumpless, as for a correction change.
-- **Flex: heating in Manual with both probes unreadable didn't trip (D23).**
+- **Croaster PID: heating in Manual with both probes unreadable didn't trip (D23).**
   The over-temperature trip can't see anything then. Manual now trips
   `sensor` after 2 s when the heater is on and neither probe reads.
-- **Flex: rare false `nomains` trip (D23).** A zero crossing between the two
+- **Croaster PID: rare false `nomains` trip (D23).** A zero crossing between the two
   reads in `FanDimmer::mainsDetected()` made its age wrap around, reporting no
-  mains and latching the trip while heating with `FLEX_REQUIRE_MAINS 1`.
-- **Flex PID ignored Croaster's correction offsets (D22).** PID and autotune
+  mains and latching the trip while heating with `CPID_REQUIRE_MAINS 1`.
+- **Croaster PID: the PID ignored Croaster's correction offsets (D22).** PID and autotune
   ran on the uncorrected probe while setpoints arrived on the displayed,
   corrected scale, so the probe was held off by `correctionBt`/`correctionEt`.
   The controller now adds the offsets to its PID and autotune input;
@@ -71,11 +71,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **CHANGELOG**: the "Croaster's OTA only" and `default_16MB.csv` entries
   had been copied into every older release section; they are now only under
   this one.
-- **Flex Artisan settings: Heater and Fan LCDs swapped, SV LCD empty.**
+- **Croaster PID Artisan settings: Heater and Fan LCDs swapped, SV LCD empty.**
   `channel_nodes` is now `BT, ET, BurnerVal, FanVal, SV`.
-- **Flex `Amb` read 0 °C (32 °F) with no BT chip fitted.** It now uses
+- **Croaster PID `Amb` read 0 °C (32 °F) with no BT chip fitted.** It now uses
   whichever MAX31855 answers.
-- **Flex autotune exits.** Switching to Manual or PID during autotune no
+- **Croaster PID autotune exits.** Switching to Manual or PID during autotune no
   longer keeps the relay's 100 % heater output, and a setpoint change during
   autotune stops it instead of being ignored.
 - **Compiler warnings in the library.** `CroasterBleManager`'s constructor
@@ -89,7 +89,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
-- **Flex: fan and heater commands stop autotune (D23).** A fan command that
+- **Board renamed `esp32s3-flex` → `esp32s3-pid` ("Croaster PID", D25).**
+  Folder, envs (`esp32s3-pid`, `-debug`, `-pioarduino`) and board id
+  `esp32s3-pid`; `FLEX_*` macros → `CPID_*` (PID-controller settings are
+  `CPID_PID_*`); `artisan/croaster-flex.aset` → `artisan/croaster-pid.aset`.
+  Controller names (`pid` mode and command, `pidInput`, NVS keys) are unchanged.
+- **Croaster PID: fan and heater commands stop autotune (D23).** A fan command that
   changes the speed, or any heater command, ends autotune with the heater off:
   `aborted: fan changed` / `aborted: heater changed` (OLED `AT abort: fan` /
   `AT abort: heater`). The start rule (fan below 30 % → 60 %) doesn't count.
@@ -99,24 +104,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`tempUnit` change keeps the correction offsets (core).** `correctionBt`/
   `correctionEt` are rescaled as differences (C→F ×9/5, F→C ×5/9, K like C)
   instead of keeping their number in the new unit.
-- **Flex: `nomains` trip waits 2 s (D23).** With `FLEX_REQUIRE_MAINS 1`, mains
-  must be missing for `FLEX_MAINS_GRACE_MS` (new, default 2000) without a
+- **Croaster PID: `nomains` trip waits 2 s (D23).** With `CPID_REQUIRE_MAINS 1`, mains
+  must be missing for `CPID_MAINS_GRACE_MS` (new, default 2000) without a
   break while heating before the trip; one missed check no longer trips.
-- **Flex uses Croaster's `boards/esp32s3/esp32s3-sdkconfig.defaults` (D10).**
-  Flex's identical copy is deleted; `board_build.sdkconfig_path` points at
+- **Croaster PID uses Croaster's `boards/esp32s3/esp32s3-sdkconfig.defaults` (D10).**
+  Its identical copy is deleted; `board_build.sdkconfig_path` points at
   `../esp32s3/esp32s3-sdkconfig.defaults`.
 - **One MAX31855 decoder (D11).** The MAX31855 reader written for this
   project moves out of `croaster/`: `CroasterMAX31855`,
   `CroasterThermocoupleType` and the third `CroasterCore` constructor argument
-  are gone, so `croaster/` reads MAX6675 exactly as upstream. The flex monitor
-  build (`FLEX_HEATER_NONE`) reads MAX31855 or MAX6675 through
+  are gone, so `croaster/` reads MAX6675 exactly as upstream. The monitor
+  build (no heater, `CPID_HEATER_NONE`) reads MAX31855 or MAX6675 through
   `croaster-control` (`hw/thermocouples`, `app/MonitorProbes`) and the sensor
   injection constructor, with the control build's 4-sample filter.
 - **One control library, `croaster-control/` (D1).** `control-core/` and
   `control-esp32/` are merged into `croaster-control/src/core` (pure logic,
   host-tested), `src/hw` (ESP32 drivers) and `src/app` (control task, NVS,
   `ControlPlugin`, `RoasterProbe`); the inner `control/` folder is gone.
-  Includes read `core/…`, `hw/…`, `app/…`. Flex `lib_deps` has one entry,
+  Includes read `core/…`, `hw/…`, `app/…`. The Croaster PID `lib_deps` has one entry,
   `CroasterControl=symlink://../../croaster-control`. The native test env
   compiles only `src/core` (`build_filter.py`). No behaviour change.
   `format.sh` covers `croaster-control/` and its messages name the real folders.
@@ -127,7 +132,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`dummyMode = true`, `ledPin = -48`, a custom board json, stripped ini
   comments). The stock inis still leave out the registry
   `MAX6675_Thermocouple` (D21). `boards/esp32s3/build.log` and
-  `croaster/src/Croaster.code-workspace` are removed; flex's `.gitignore`
+  `croaster/src/Croaster.code-workspace` are removed; the Croaster PID `.gitignore`
   ignores PlatformIO's generated `.vscode/` files.
 - **`MAX6675_Thermocouple` from the fork (D21).** `croaster/library.json`
   depends on `https://github.com/shawns1234/MAX6675_Thermocouple.git#v2.0.3`;
@@ -138,13 +143,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `need setpoint >= 212 F`, in the display unit); `getControl` uses the same
   text. The OLED header shows a short form for 10 s after each change. A
   refused start now names the missing condition (setpoint or probe).
-- **PID input defaults to BT (D18).** `FLEX_PID_INPUT` in `config.h`
-  (default `FLEX_PID_INPUT_BT`); `{"command":{"pidInput":"ET"}}` still
+- **PID input defaults to BT (D18).** `CPID_PID_INPUT` in `config.h`
+  (default `CPID_PID_INPUT_BT`); `{"command":{"pidInput":"ET"}}` still
   switches at runtime and a saved choice in NVS wins over the default.
   Default gains stay yaeger's; autotune on BT.
 - **Cooldown fan: 65 % after stop, 100 % after any trip (D19).** `cooldownFan`
-  has `stop` and `trip` values: `FLEX_COOLDOWN_FAN_STOP`/`_TRIP` in `config.h`
-  (replaces `FLEX_COOLDOWN_FAN`), `{"command":{"cooldownFan":{"stop":N,"trip":N}}}`
+  has `stop` and `trip` values: `CPID_COOLDOWN_FAN_STOP`/`_TRIP` in `config.h`
+  (replaces `CPID_COOLDOWN_FAN`), `{"command":{"cooldownFan":{"stop":N,"trip":N}}}`
   (a plain number sets `stop`), saved in NVS, both in `getControl`. Every
   safety trip now sets the fan to the trip speed when it starts; before, only
   comms and over-temperature trips touched the fan.
@@ -159,26 +164,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Comms watchdog counts every client message** through
   `CroasterCommandHandler` (WebSocket and BLE, `getArtisanData` included), so
   the `getData` alias is gone and the `.aset` polls `getArtisanData`. It can be
-  turned off and its timeout changed: `FLEX_WATCHDOG_ENABLED`,
-  `FLEX_WATCHDOG_TIMEOUT_S`, and `{"command":{"watchdog":...}}` (saved in NVS).
+  turned off and its timeout changed: `CPID_WATCHDOG_ENABLED`,
+  `CPID_WATCHDOG_TIMEOUT_S`, and `{"command":{"watchdog":...}}` (saved in NVS).
 - **Croaster's OTA only**: ArduinoOTA (yaeger carry-over), its `-ota` env and
-  `FLEX_ENABLE_ARDUINO_OTA`/`FLEX_OTA_PASSWORD` removed. The `.aset` host is
+  `CPID_ENABLE_ARDUINO_OTA`/`CPID_OTA_PASSWORD` removed. The `.aset` host is
   Croaster's AP address `192.168.4.1` (no mDNS without ArduinoOTA).
-- Flex uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
-  identical copy); `MAX6675_Thermocouple` is no longer listed in the flex
+- Croaster PID uses Arduino's `default_16MB.csv` (the local `partitions.csv` was an
+  identical copy); `MAX6675_Thermocouple` is no longer listed in the Croaster PID
   `lib_deps` (Croaster's `library.json` already pulls it).
-- **Names say flex or control, not roaster** (map in `docs/design.md`, "Names"):
+- **Names say Croaster PID or control, not roaster** (map in `docs/design.md`, "Names"):
   `control-core/` (`controlproto`), `control-esp32/` (`Controller`,
-  `ControlPlugin`, `ControlSettings`, `SafetyLimits`), `FLEX_*` macros,
+  `ControlPlugin`, `ControlSettings`, `SafetyLimits`), `CPID_*` macros,
   `getControl`, task and NVS namespace `control`.
-- **Flex screen is Croaster's `CroasterDisplaySSD1306`** (boards/common), with a
+- **Croaster PID screen is Croaster's `CroasterDisplaySSD1306`** (boards/common), with a
   new `setHeaderText(fn)` so the header shows heater/fan/mode or the trip.
   `RoasterOledDisplay`, the U8g2 dependency and the SH1106 option are gone.
-- **Board renamed `esp32s3-roaster` → `esp32s3-flex`**: folder (history kept
-  via `git mv`), envs `esp32s3-flex[-debug|-pioarduino]`,
-  board id `esp32s3-flex`,
-  `artisan/croaster-flex.aset`.
-- Flex env list: the `-pioarduino-sdkconfig` env is gone; every env sets
+- **Board renamed `esp32s3-roaster` → `esp32s3-pid`**: folder (history kept
+  via `git mv`), envs `esp32s3-pid[-debug|-pioarduino]`,
+  board id `esp32s3-pid`,
+  `artisan/croaster-pid.aset`.
+- Croaster PID env list: the `-pioarduino-sdkconfig` env is gone; every env sets
   `board_build.sdkconfig_path`, as Croaster's esp32s3 board does.
 - design.md: decisions D11–D15 (MAX31855 decoders, display, OTA, config
   wizard, MAX6675 dependency), D8 rewritten, a file-by-file inventory against

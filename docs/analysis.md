@@ -66,7 +66,7 @@ PlatformIO only; release envs for `build_all.sh`, `-debug` envs for
 | bblanchon/ArduinoJson 7.4.3 | all | |
 | tzapu/WiFiManager 2.0.17 | Croaster | `-Wformat` warnings only |
 | MAX6675_Thermocouple 2.0.3 (shawns1234 fork, git tag `v2.0.3`) | Croaster | provides the `Thermocouple` interface we implement; fork fixes in design D21 |
-| adafruit/Adafruit SSD1306 2.5.17 | boards/common | the flex screen |
+| adafruit/Adafruit SSD1306 2.5.17 | boards/common | the Croaster PID screen |
 | Arduino BLE (NimBLE in Arduino 3.3) | Croaster | |
 Dropped from yaeger: ESPAsyncWebServer/AsyncTCP, ElegantOTA, WebSerial,
 Adafruit MAX31855, nexgen_filter, Moving-Average lib, LiquidCrystal_I2C,
@@ -91,17 +91,17 @@ NeoPixel (Arduino 3.x drives the WS2812 via `digitalWrite(LED_BUILTIN)`).
 - Control: yaeger's flat `{"BurnerVal":v}` is not routable by Croaster
   (no `command` key), so the `.aset` sends `{"command":{"burner":v}}` /
   `{"command":{"fan":v}}`. Full list: board README.
-- `boards/esp32s3-flex/artisan/croaster-flex.aset` = yaeger's settings
+- `boards/esp32s3-pid/artisan/croaster-pid.aset` = yaeger's settings
   with port 81, empty path, host `192.168.4.1`, new slider/button
   commands, personal paths cleared.
 
 ## 6. Bluetooth
 yaeger: none. Croaster: BLE GATT server for the ICRM Android app (same JSON
-commands, OTA over BLE). Kept, on by default (`FLEX_ENABLE_BLE`); control
+commands, OTA over BLE). Kept, on by default (`CPID_ENABLE_BLE`); control
 commands work over BLE too because they register in the shared command handler.
 Artisan has no BLE path for this protocol; use WiFi.
 
-## 7. Master config (`boards/esp32s3-flex/src/config.h`)
+## 7. Master config (`boards/esp32s3-pid/src/config.h`)
 - Only `#define`s; force-included into every unit so it also sets Croaster's
   `CROASTER_HAS_BLE`.
 - Selects: converter (MAX31855/MAX6675), heater (NONE/SSR), fan

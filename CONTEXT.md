@@ -15,8 +15,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32c3/` | ESP32-C3 Super Mini — SSD1306 OLED; custom OTA partition (`custom32c3sm.csv` lives in this folder) |
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
-| `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
-| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-flex/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (control build) and `MonitorProbes` (monitor build, `FLEX_HEATER_NONE`). `build_filter.py` limits native builds to `src/core` |
+| `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (control build) and `MonitorProbes` (monitor build, `CPID_HEATER_NONE`). `build_filter.py` limits native builds to `src/core` |
 | `docs/` | `design.md` (architecture + decisions D1–D24), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -26,7 +26,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-flex` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-flex` | 26.3% (1 724 947 B), RAM 56 844 B (2026-10-27) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 26.3% (1 724 947 B), RAM 56 844 B (2026-10-27) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -41,7 +41,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   (`build_type = release`; `pio run -e <board>`); `./upload_monitor.sh <board>`
   builds + uploads the **debug** variant (`<board>-debug`, `extends` the
   release env) to the connected board, then opens the serial monitor.
-- Flex board: control task (core 1, prio max-3) owns the SPI bus and
+- Croaster PID board: control task (core 1, prio max-3) owns the SPI bus and
   publishes a snapshot; `RoasterProbe` feeds it to `CroasterCore` via the
   sensor-injection constructor; `ControlPlugin` registers control commands
   (`onJsonCommand`/`onCommand`), adds data fields via `CroasterCore::onJsonData`,
@@ -59,7 +59,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   "failed: timeout", "aborted: comms", "need setpoint >= 212 F"); it holds
   until the next change. The OLED header shows a 20-character form ("AT:
   SV<212F") for 10 s after each change, refusals included; a trip line wins.
-- PID input defaults to BT (D18, `FLEX_PID_INPUT`); `pidInput` command and
+- PID input defaults to BT (D18, `CPID_PID_INPUT`); `pidInput` command and
   NVS key `in` still switch it, and a saved value overrides the default.
   Without a BT probe, PID mode trips `sensor`: send `pidInput` ET. Default
   gains are yaeger's (tuned for ET); autotune on BT.
@@ -67,10 +67,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   (`lastCommandMillis()`, WebSocket or BLE) for the timeout while heating
   (not in Profile) → heater off, `trip:"comms"`.
   Cooldown fan (D19): 65 % after `stop`, 100 % when any trip starts
-  (`FLEX_COOLDOWN_FAN_STOP`/`_TRIP`, `{"command":{"cooldownFan":{...}}}`,
+  (`CPID_COOLDOWN_FAN_STOP`/`_TRIP`, `{"command":{"cooldownFan":{...}}}`,
   NVS keys `cool`/`coolTrip`, reported by `getControl`). The controller sets
   the trip fan once per trip; over-temperature always uses 100 %. Defaults
-  `FLEX_WATCHDOG_ENABLED`/`FLEX_WATCHDOG_TIMEOUT_S`; runtime command
+  `CPID_WATCHDOG_ENABLED`/`CPID_WATCHDOG_TIMEOUT_S`; runtime command
   `{"command":{"watchdog":...}}` saves to NVS.
 - Artisan: `.aset` verified against Artisan source (`docs/artisan-settings.md`).
   Input 1 = BT, Input 2 = ET, one `getArtisanData` per second, extra devices
@@ -106,12 +106,13 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   and a new pin. Host tests: see its README.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
-- D10 sdkconfig part resolved 2026-10-27: flex has no sdkconfig file of its
+  2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). (design D25)
+- D10 sdkconfig part resolved 2026-10-27: Croaster PID has no sdkconfig file of its
   own; `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`.
   The ini-sharing question stays open.
-- `nomains` trip: only after `FLEX_MAINS_GRACE_MS` (2000) of missing mains
+- `nomains` trip: only after `CPID_MAINS_GRACE_MS` (2000) of missing mains
   while heating (`core/mains_watch.h`, Shawn 2026-10-27).
-- D24 (2026-10-27): `FLEX_REQUIRE_AUTOTUNE 1` refuses PID and Profile until
+- D24 (2026-10-27): `CPID_REQUIRE_AUTOTUNE 1` refuses PID and Profile until
   NVS `tuned` is set (completed autotune or the `pid` command);
   `modeNeedsTuning()` in core.
 - D11 resolved 2026-10-27: the only MAX31855 decoder is
@@ -121,7 +122,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   library, `croaster-control/src/{core,hw,app}` (history kept via `git mv`).
 - Decisions pending (Shawn), all in design.md: D3 (force-included config), D6 (watchdog via core `lastCommandMillis()`),
   D9 (traffic watchdog,
-  configurable, vs instant cut on disconnect), D10 (flex ini vs Croaster's
+  configurable, vs instant cut on disconnect), D10 (Croaster PID ini vs Croaster's
   `boards/esp32s3` ini), D12 (Croaster display
   plus header hook), D13 (Croaster OTA only, no mDNS), D14 (config wizard,
   design only), D15 (MAX6675 library stays a core dependency). design.md
@@ -148,7 +149,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `library.json`).
 
 ## Next steps
-- Flex: hardware bring-up and the rest of `docs/tickets.md` (T2–T14).
+- Croaster PID: hardware bring-up and the rest of `docs/tickets.md` (T2–T14).
 - Update the ICRM app's `lib_deps` for the `croaster/` subfolder.
 - Flash + verify the esp32s3 build on real hardware (touch, chart swipe,
   dark mode, OTA over BLE/WebSocket).
@@ -166,8 +167,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Artisan WebSocket: replies must echo the request `id`. Command strings in the
   `.aset` go through Python `str.format`, so literal braces are doubled.
   Artisan's "Control" button is its own PC-side PID; keep it off.
-- Units: control math and limits are °C. Croaster's `tempUnit` (flex boots in
-  `FLEX_TEMP_UNIT`, default "F") sets the screen, telemetry and command
+- Units: control math and limits are °C. Croaster's `tempUnit` (Croaster PID boots in
+  `CPID_TEMP_UNIT`, default "F") sets the screen, telemetry and command
   temperatures; convert at the edges (`toCelsius`/`fromCelsius`). Artisan's
   mode and `channel_modes` must match the firmware unit.
 - Corrections (D22): `correctionBt`/`correctionEt` live in core, in the display
@@ -192,7 +193,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   pioarduino (T13).
 - `custom_sdkconfig` (pioarduino) writes `managed_components/`, `sdkconfig.*`,
   `CMakeLists.txt`, `src/idf_component.yml` into the board folder (gitignored in
-  `esp32s3-flex`). `MBEDTLS_SSL_IN/OUT_CONTENT_LEN` need
+  `esp32s3-pid`). `MBEDTLS_SSL_IN/OUT_CONTENT_LEN` need
   `MBEDTLS_ASYMMETRIC_CONTENT_LEN=y` to take effect.
 - `.clang-format` is LLVM-based with attached braces; AGENTS.md says Allman.
   Sources follow `.clang-format`.

@@ -1,4 +1,4 @@
-# Functional test list — flex control board
+# Functional test list — Croaster PID control board
 
 A running list of behaviours to build a proper test plan around. One line per
 check: what to do, then the expected outcome after the arrow. Add to it as
@@ -6,12 +6,12 @@ features and bench sessions happen.
 
 Status tags:
 - **host**: covered by a host test (`pio test -e native` in
-  `boards/esp32s3-flex`); the test name follows.
+  `boards/esp32s3-pid`); the test name follows.
 - **host (fork)**: covered by a host test in the `MAX6675_Thermocouple` fork
   (`test/host`, run steps in its README); the test name follows.
 - **build 2026-10-26**: checked by a clean build on that date.
 - **bench 2026-10-26**: seen on the bench on that date (ET probe, OLED and SSR
-  DC side connected; no BT probe, no AC, `FLEX_REQUIRE_MAINS 0` except where
+  DC side connected; no BT probe, no AC, `CPID_REQUIRE_MAINS 0` except where
   noted).
 - **untested**: not checked yet. "Bench todo" marks items queued for the next
   session.
@@ -30,7 +30,7 @@ Status tags:
 
 ## MAX6675 library fork (D21)
 Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
-`SmoothThermocouple`; neither flex build does (since 2026-10-27 the monitor
+`SmoothThermocouple`; neither the control build nor the monitor build (no heater) does (since 2026-10-27 the monitor
 build uses `app/MonitorProbes`, D11).
 - First reading seeds the average; 0 °C keeps the average. **host (fork)** `testFirstSampleSeedsAverage`, `testZeroKeepsAverage`, `testZeroSeed`
 - 100, 100, NAN, 100 → 100, 100, NAN, 100 (recovers). **host (fork)** `testRecoversAfterNan`
@@ -40,10 +40,10 @@ build uses `app/MonitorProbes`, D11).
 - MAX6675 board, unplug one probe → that probe `N/A` on the screen and absent from `getArtisanData`, the other unaffected. **untested**
 - Plug it back in at a different temperature → the new temperature on the next sample, no slow ramp from the old value (before: `N/A` until reboot). **untested**
 - `esp32s3-debug` (stock) links without `SmoothThermocoupleFix.cpp`. **build 2026-10-26** (upstream board files, in a copy pinned to `espressif32 @ 6.13.0`; see T13)
-- Flex after the library change: ET at room temperature as before; unplug ET → `N/A`, replug → reading returns. **untested**
+- Croaster PID after the library change: ET at room temperature as before; unplug ET → `N/A`, replug → reading returns. **untested**
 
-## Flex monitor build (`FLEX_HEATER_NONE`, D11)
-- Builds with `FLEX_TC_MAX31855` and with `FLEX_TC_MAX6675` (`FLEX_FAN_NONE`). **build 2026-10-27** (temporary config copies)
+## Monitor build (no heater) (`CPID_HEATER_NONE`, D11)
+- Builds with `CPID_TC_MAX31855` and with `CPID_TC_MAX6675` (`CPID_FAN_NONE`). **build 2026-10-27** (temporary config copies)
 - MAX31855 monitor: BT and ET at room temperature on the OLED and in `getArtisanData`; boiling water ≈ 100 °C / 212 °F. **untested**
 - MAX6675 monitor: same checks on MAX6675 modules. **untested**
 - Unplug one probe → that probe `N/A` after the third bad read (under 1 s), the other unaffected; plug back → reading returns. **untested**
@@ -98,14 +98,14 @@ build uses `app/MonitorProbes`, D11).
 - Autotune on the real heater → note the swing around SV and the time taken; compare with the README (simulated ±10 to ±45 °C, 4 to 14 min). **untested** (needs AC)
 
 ## Autotune required (D24)
-- `FLEX_REQUIRE_AUTOTUNE 1`, erased flash (`pio run -t erase`, then upload) → `getControl` `tuned` false; `{"command":{"mode":"pid"}}` → mode stays Manual, `autotune` "autotune required", OLED "Autotune first" for 10 s. **host** (gate and text, `test_autotune_required_gate`); bench todo
+- `CPID_REQUIRE_AUTOTUNE 1`, erased flash (`pio run -t erase`, then upload) → `getControl` `tuned` false; `{"command":{"mode":"pid"}}` → mode stays Manual, `autotune` "autotune required", OLED "Autotune first" for 10 s. **host** (gate and text, `test_autotune_required_gate`); bench todo
 - Same board, profile loaded, `startProfile` → refused the same way; profile still loaded. **host** (gate); bench todo
 - Same board → Manual heater and `autotune` still work. **host** (gate); bench todo
 - `{"command":{"pid":{"kp":2,"ki":0.02,"kd":5}}}` → `tuned` true, PID allowed, and still after a reboot (NVS `tuned`). **host** (parse); bench todo
 - Autotune completes → `tuned` true, PID allowed, survives reboot. **untested** (needs AC)
 - Autotune fails or is aborted → `tuned` stays false. **untested**
 - Board with gains saved before this change (no `tuned` key) → `tuned` true. **untested**
-- `FLEX_REQUIRE_AUTOTUNE 0` → PID on default gains at once. **host** (gate); bench todo
+- `CPID_REQUIRE_AUTOTUNE 0` → PID on default gains at once. **host** (gate); bench todo
 
 ## Watchdog and trips
 - Artisan Off, then On → `trip:"comms"`, heater 0, fan at the trip speed; stays tripped after reconnect. **bench 2026-10-26** (when it tripped is unconfirmed; it should only trip while heating)
@@ -114,7 +114,7 @@ build uses `app/MonitorProbes`, D11).
 - Fan or setpoint command while tripped → applied, trip stays. **untested**
 - Watchdog timeout and enabled flag parse from JSON. **host** `test_protocol_watchdog`
 - `{"command":{"watchdog":{"enabled":false}}}` → no comms trip, survives reboot. **untested**
-- Probe above `FLEX_OVER_TEMP_C` (set low to test) → `trip:"overtemp"`, heater 0, fan 100 %. **untested**
+- Probe above `CPID_OVER_TEMP_C` (set low to test) → `trip:"overtemp"`, heater 0, fan 100 %. **untested**
 - OTA starts → `trip:"ota"`, heater 0. **untested**
 
 ## Stop and cooldown
@@ -126,10 +126,10 @@ build uses `app/MonitorProbes`, D11).
 - `{"command":{"cooldownFan":65}}` then Stop → fan 65 %, survives reboot. **untested**
 
 ## Mains detection
-- `FLEX_REQUIRE_MAINS 1`, no AC → heat refused, `trip:"nomains"`. **bench 2026-10-26** (before the grace period; bench todo: trip now comes about 2 s after heat is set)
-- Grace period (`FLEX_MAINS_GRACE_MS` 2000): a dropout under 2 s while heating does not trip; over 2 s trips; heater 0 resets the count. **host** `test_mains_dropout_under_grace_does_not_trip`, `test_mains_absent_past_grace_trips`, `test_mains_heater_off_resets_grace`; bench todo: pull the dimmer's Z-C wire for 1 s while heating (no trip), then for 3 s (trip)
+- `CPID_REQUIRE_MAINS 1`, no AC → heat refused, `trip:"nomains"`. **bench 2026-10-26** (before the grace period; bench todo: trip now comes about 2 s after heat is set)
+- Grace period (`CPID_MAINS_GRACE_MS` 2000): a dropout under 2 s while heating does not trip; over 2 s trips; heater 0 resets the count. **host** `test_mains_dropout_under_grace_does_not_trip`, `test_mains_absent_past_grace_trips`, `test_mains_heater_off_resets_grace`; bench todo: pull the dimmer's Z-C wire for 1 s while heating (no trip), then for 3 s (trip)
 - AC connected → `getControl` `mainsOk` true, heat allowed. **untested**
-- `FLEX_REQUIRE_MAINS 1`, AC connected, heater on for an hour → no `nomains` trip; a crossing stored after the control task read the timer counts as recent (D23). **host** `test_zero_cross_age`; bench untested
+- `CPID_REQUIRE_MAINS 1`, AC connected, heater on for an hour → no `nomains` trip; a crossing stored after the control task read the timer counts as recent (D23). **host** `test_zero_cross_age`; bench untested
 
 ## °F conversion
 - °F/°C/K conversions both ways. **host** `test_unit_conversion`
@@ -153,7 +153,7 @@ build uses `app/MonitorProbes`, D11).
 - Negative offset hiding a hot probe → over-temperature trips on the raw reading. **host** `test_overtemp_uses_raw_and_corrected`
 - Snapshot BT/ET → uncorrected, so the offset is added once. **host** `test_snapshot_stays_uncorrected`
 - °F mode, `{"command":{"correctionBt":10}}`, PID on BT, SV 300 °F → displayed BT settles at 300 °F, not 310 °F. **untested** (needs AC)
-- `{"command":{"correctionBt":-50}}` with `FLEX_OVER_TEMP_C` set low → `trip:"overtemp"` when the raw BT passes the limit, while the display still reads 50 °F lower. **untested**
+- `{"command":{"correctionBt":-50}}` with `CPID_OVER_TEMP_C` set low → `trip:"overtemp"` when the raw BT passes the limit, while the display still reads 50 °F lower. **untested**
 - `{"command":{"correctionBt":9}}` in °F, then `{"command":{"tempUnit":"C"}}` → `cBT` 5 in the data, the displayed BT moves by the unit change only (no extra 4 °C jump), PID holds the displayed SV. Back to °F → `cBT` 9. `tempUnit` "K" → `cBT` stays 5. **bench todo** (no AC needed: watch `cBT` and BT in `getArtisanData`)
 - Same `tempUnit` sent again → `cBT`/`cET` unchanged. **bench todo**
 - Correction change during autotune → `autotune` "aborted: correction changed", OLED "AT abort: offset", heater 0. **host** (text, `test_autotune_status_text`); bench untested

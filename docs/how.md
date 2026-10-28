@@ -1,4 +1,4 @@
-# How the flex control firmware works
+# How the Croaster PID control firmware works
 
 Plain-language tour of `rework/roaster`, written with the `/how` method:
 overview, key ideas, the flow step by step, where things live, gotchas.
@@ -32,7 +32,7 @@ thermometer library, and the control logic sits next to it.
   `Profile` (the firmware walks a list of time/temperature steps) and
   `Tuning` (relay autotune finds PID gains).
 - **Trips.** Safety stops: over-temperature, probe fault, no mains for the
-  dimmer (2 s without a break while heating, `FLEX_MAINS_GRACE_MS`), OTA in
+  dimmer (2 s without a break while heating, `CPID_MAINS_GRACE_MS`), OTA in
   progress, and lost comms. A trip turns the heater off and
   stays latched until `clearTrip`.
 - **ControlPlugin.** The glue. It registers our JSON commands with Croaster,
@@ -42,7 +42,7 @@ thermometer library, and the control logic sits next to it.
 ## How it works
 
 ### Boot
-`boards/esp32s3-flex/src/main.cpp` `setup()`:
+`boards/esp32s3-pid/src/main.cpp` `setup()`:
 1. Heater and fan outputs start **off** before anything else.
 2. Saved settings (PID gains, PID input, cooldown fan) load from NVS.
 3. The control task starts on core 1.
@@ -105,8 +105,8 @@ also broadcasts the same data to the ICRM app.
 
 ### Two probes, end to end
 ET and BT are two MAX31855 boards on one SPI bus: shared SCK (GPIO 12) and
-MISO (GPIO 13), one chip-select each (`FLEX_PIN_TC_CS_ET` 10,
-`FLEX_PIN_TC_CS_BT` 11, in `config.h`; `ConfigCheck.h` rejects a reused pin).
+MISO (GPIO 13), one chip-select each (`CPID_PIN_TC_CS_ET` 10,
+`CPID_PIN_TC_CS_BT` 11, in `config.h`; `ConfigCheck.h` rejects a reused pin).
 
 | Step | Where | What happens |
 |:---|:---|:---|
@@ -131,18 +131,18 @@ Croaster's command handler records when it last accepted a message
 Autotune) and that is older than the timeout (10 s by default), the plugin
 trips `comms`: heater off; the controller sets the fan to the trip speed. Profiles are exempt
 because they are meant to run on their own. The timeout and an off switch are
-settings; see the flex README, "Comms watchdog".
+settings; see the board README, "Comms watchdog".
 
 ## Where things live
 
 | Path | What |
 |:---|:---|
-| `boards/esp32s3-flex/src/config.h` | **The one file to edit**: pins, parts, limits, PID defaults |
-| `boards/esp32s3-flex/src/ConfigCheck.h` | Compile-time checks on config.h (bad pins, conflicts) |
-| `boards/esp32s3-flex/src/main.cpp` | Wires everything together |
+| `boards/esp32s3-pid/src/config.h` | **The one file to edit**: pins, parts, limits, PID defaults |
+| `boards/esp32s3-pid/src/ConfigCheck.h` | Compile-time checks on config.h (bad pins, conflicts) |
+| `boards/esp32s3-pid/src/main.cpp` | Wires everything together |
 | `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
-| `boards/esp32s3-flex/artisan/croaster-flex.aset` | Artisan settings (see `artisan-settings.md`) |
-| `boards/esp32s3-flex/test/` | Host unit tests (`pio test -e native`) |
+| `boards/esp32s3-pid/artisan/croaster-pid.aset` | Artisan settings (see `artisan-settings.md`) |
+| `boards/esp32s3-pid/test/` | Host unit tests (`pio test -e native`) |
 | `croaster-control/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding, probe fault filter, safety rules. The only part the host tests compile |
 | `croaster-control/src/app/controller.*` | The control task |
 | `croaster-control/src/app/ControlPlugin.*` | Commands, data fields, watchdog |
@@ -156,7 +156,7 @@ settings; see the flex README, "Comms watchdog".
 - **Two PIDs exist in the world.** Artisan has its own software PID ("Control"
   button). It is turned off in our `.aset`. Ours runs on the ESP32. See
   `control-parity.md`.
-- **PID and profiles need tuned gains first** (`FLEX_REQUIRE_AUTOTUNE 1`):
+- **PID and profiles need tuned gains first** (`CPID_REQUIRE_AUTOTUNE 1`):
   until an autotune completes or gains are sent with the `pid` command, they
   are refused with `autotune required` (D24).
 - **Autotune needs a setpoint ≥ 100 °C (212 °F)** and a working probe. The

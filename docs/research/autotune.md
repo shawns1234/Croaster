@@ -1,6 +1,6 @@
 # Relay autotune: how it works, and how ours compares
 
-Researched 2026-10-26 for the flex board's `{"command":"autotune"}`. Code:
+Researched 2026-10-26 for the Croaster PID board's `{"command":"autotune"}`. Code:
 `croaster-control/src/core/relay_autotune.{h,cpp}`. Simulation numbers are
 from a first-order-plus-dead-time (FOPDT) plant like the one in the host test
 `test_relay_autotune_identifies_and_controls`, run on the host the same day.
@@ -79,7 +79,7 @@ Parallel form used here: Ki = Kp/Ti, Kd = Kp·Td.
 A new Åström–Hägglund relay written for this project (first in commit
 22d53fc on shawns1234/yaeger, then moved here). It is not yaeger's or
 lily-osp's code.
-- Relay 100/0 % (heater request; physical duty × `FLEX_HEATER_MAX_PERCENT`),
+- Relay 100/0 % (heater request; physical duty × `CPID_HEATER_MAX_PERCENT`),
   hysteresis 1 °C, sample 0.25 s.
 - Skips the heat-up and the first full cycle, then averages 4 cycles:
   amplitude (max − min)/2 and period between low switches.
