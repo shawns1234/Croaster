@@ -5,9 +5,9 @@
 // per conversion). Only the control task calls read(), so it owns the bus.
 #include <cstdint>
 
-#include "control/control_types.h" // ThermoSample
-#include "control/max31855.h"
-#include "control/probe_channel.h"
+#include "core/control_types.h" // ThermoSample
+#include "core/max31855.h"
+#include "core/probe_channel.h"
 
 enum class TcChip : uint8_t { MAX31855, MAX6675 };
 

@@ -1,7 +1,7 @@
 # Relay autotune: how it works, and how ours compares
 
 Researched 2026-10-26 for the flex board's `{"command":"autotune"}`. Code:
-`control-core/src/control/relay_autotune.{h,cpp}`. Simulation numbers are
+`croaster-control/src/core/relay_autotune.{h,cpp}`. Simulation numbers are
 from a first-order-plus-dead-time (FOPDT) plant like the one in the host test
 `test_relay_autotune_identifies_and_controls`, run on the host the same day.
 

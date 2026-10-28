@@ -7,7 +7,7 @@
 #include <CroasterApp.h>
 #include <CroasterDeviceIdentity.h>
 
-class Controller; // ControlEsp32; only defined in the control build
+class Controller; // croaster-control; only defined in the control build
 
 // ---------------------------------------------------------------------------
 // Board wiring: build the parts selected in config.h and hand them to
@@ -17,10 +17,10 @@ class Controller; // ControlEsp32; only defined in the control build
 // ---------------------------------------------------------------------------
 
 #if FLEX_HEATER != FLEX_HEATER_NONE // ===== control build =====
-#    include <ControlPlugin.h>
-#    include <RoasterProbe.h>
+#    include <app/ControlPlugin.h>
+#    include <app/RoasterProbe.h>
 #    include <app/controller.h>
-#    include <control/autotune_status.h>
+#    include <core/autotune_status.h>
 #    include <hw/heater_output.h>
 #    include <hw/thermocouples.h>
 #    if FLEX_FAN == FLEX_FAN_AC_DIMMER

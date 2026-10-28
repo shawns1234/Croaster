@@ -29,6 +29,11 @@ describes.
   `src/config.h` (pins/dummy/LED), board-specific display code, and a per-board
   README. `boards/common/` holds the shared SSD1306 display used by the
   non-LVGL boards.
+- `croaster-control/` — heater and fan control add-on (`src/core` pure and
+  host-tested, `src/hw` ESP32 drivers, `src/app` control task and
+  `ControlPlugin`). Used by `boards/esp32s3-flex` via
+  `CroasterControl=symlink://../../croaster-control`. Board config never goes
+  here either.
 - `builds/` — gitignored; firmware output of `build_all.sh`.
 
 ## Build & release

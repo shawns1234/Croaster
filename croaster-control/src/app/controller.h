@@ -1,5 +1,5 @@
 #pragma once
-// The control core. Owns sensors, PID/autotune/profile and both actuators, and runs
+// The controller. Owns sensors, PID/autotune/profile and both actuators, and runs
 // them in one fixed-rate FreeRTOS task (default: core 1). Everything else talks to
 // it through two calls:
 //   submit(Command)  - thread-safe, non-blocking (queue)
@@ -11,11 +11,11 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 
-#include "control/control_types.h"
-#include "control/pid.h"
-#include "control/probe_correction.h"
-#include "control/relay_autotune.h"
-#include "control/roast_profile.h"
+#include "core/control_types.h"
+#include "core/pid.h"
+#include "core/probe_correction.h"
+#include "core/relay_autotune.h"
+#include "core/roast_profile.h"
 #include "hw/fan_output.h"
 #include "hw/heater_output.h"
 #include "hw/thermocouples.h"

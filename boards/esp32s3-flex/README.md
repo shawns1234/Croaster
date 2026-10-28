@@ -10,8 +10,7 @@ Artisan control over Croaster's WebSocket. It consumes:
 |:---|:---|
 | `Croaster=symlink://../../croaster` | Croaster core: WiFiManager, WebSocket :81, BLE, OTA, RoR, roast timer |
 | `CroasterDisplaySSD1306=symlink://../common` | Croaster's shared OLED screen; its header line shows heater %, fan % and mode (or the trip, or an autotune status for 10 s) |
-| `ControlCore=symlink://../../control-core` | Pure control logic: PID, autotune, profiles, MAX31855/MAX6675 decode, command protocol (host-tested) |
-| `ControlEsp32=symlink://../../control-esp32` | ESP32 side: control task, SSR, dimmer/PWM fan, probes, NVS, `ControlPlugin` |
+| `CroasterControl=symlink://../../croaster-control` | Control add-on. `src/core`: PID, autotune, profiles, MAX31855/MAX6675 decode, command protocol (pure, host-tested). `src/hw`: probe SPI reads, SSR, dimmer/PWM fan. `src/app`: control task, NVS, `ControlPlugin` |
 
 Design notes and decisions: [`docs/design.md`](../../docs/design.md).
 Whether this ini should share chip-level settings with `boards/esp32s3` (standalone,
@@ -85,7 +84,7 @@ cd boards/esp32s3-flex
 pio run -e esp32s3-flex                    # release (what ../../build_all.sh builds)
 pio run -e esp32s3-flex -t upload          # flash over USB
 ../../upload_monitor.sh esp32s3-flex       # debug build + upload + monitor
-pio test -e native                            # host unit tests (control-core)
+pio test -e native                            # host unit tests (croaster-control/src/core)
 ```
 
 | Env | Platform | Use |
@@ -248,7 +247,7 @@ changes the roaster under test, so don't.
   [lily-osp/AutoTunePID](https://github.com/lily-osp/AutoTunePID). That
   autotune toggles the heater every 2 s regardless of temperature, so its
   gains don't depend on the roaster.
-- The relay test here (`control-core/src/control/relay_autotune.cpp`) is new
+- The relay test here (`croaster-control/src/core/relay_autotune.cpp`) is new
   code written for this project, not taken from yaeger or AutoTunePID. So
   are the 212 °F gate, the aborts and the status text. It follows the
   published method; [br3ttb's Arduino PID AutoTune

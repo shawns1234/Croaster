@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# format.sh — run clang-format over the C/C++ sources in croaster/ and boards/.
+# format.sh — run clang-format over the C/C++ sources in croaster/, croaster-control/ and boards/.
 #
 #   ./format.sh            # format in place (-i)
 #   ./format.sh --check    # verify formatting (exit 1 if any file needs changes)
@@ -32,12 +32,12 @@ if ! command -v "$CLANG_FORMAT" >/dev/null 2>&1; then
     exit 1
 fi
 
-# All C/C++ sources under croaster/, boards/ and the roaster-* extension libs, skipping .pio build artifacts.
+# All C/C++ sources under croaster/, croaster-control/ and boards/, skipping .pio build artifacts.
 FILES=()
 while IFS= read -r -d '' f; do
     FILES+=("$f")
 done < <(
-    find "$ROOT/croaster" "$ROOT/boards" "$ROOT/control-core" "$ROOT/control-esp32" \
+    find "$ROOT/croaster" "$ROOT/croaster-control" "$ROOT/boards" \
         -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \
                    -o -name '*.cc' -o -name '*.cxx' -o -name '*.ino' \) \
         -not -path '*/.pio/*' -not -path '*/managed_components/*' -not -path '*/.dummy/*' \
@@ -45,7 +45,7 @@ done < <(
 )
 
 if [ "${#FILES[@]}" -eq 0 ]; then
-    echo "no C/C++ sources found under croaster/ or boards/"
+    echo "no C/C++ sources found under croaster/, croaster-control/ or boards/"
     exit 0
 fi
 
@@ -64,6 +64,6 @@ case "$MODE" in
         ;;
     inplace)
         "$CLANG_FORMAT" -i "${FILES[@]}"
-        echo "formatted ${#FILES[@]} files (croaster/ + boards/ + roaster-*)"
+        echo "formatted ${#FILES[@]} files (croaster/ + croaster-control/ + boards/)"
         ;;
 esac

@@ -26,13 +26,15 @@ Croaster's library/board split and extension model.
 
 The whole project is a roaster, so "roaster" in a name says nothing. Rule:
 board-level things say **flex**, control features say **control**, and no
-name starts with `Croaster` (that prefix is the upstream author's). Renamed
-2026-10-26 at Shawn's request:
+class or macro starts with `Croaster` (that prefix is the upstream author's).
+The one exception is the control library folder, `croaster-control/` (lib
+`CroasterControl`), named by Shawn on 2026-10-27 (D1). Renamed 2026-10-26 at
+Shawn's request, then folded into one library on 2026-10-27:
 
 | Before | After | What it is |
 |:---|:---|:---|
-| `roaster-core/` (lib `RoasterCore`), `src/core/` | `control-core/` (lib `ControlCore`), `src/control/` | Pure, host-tested logic: PID, autotune, profiles, decoders, protocol |
-| `roaster-control/` (lib `RoasterControl`) | `control-esp32/` (lib `ControlEsp32`) | ESP32 side: control task, SSR, fan drivers, probes, NVS, plugin |
+| `roaster-core/` (lib `RoasterCore`), `src/core/` | `control-core/` (lib `ControlCore`), `src/control/`; since 2026-10-27 `croaster-control/src/core/` | Pure, host-tested logic: PID, autotune, profiles, decoders, protocol |
+| `roaster-control/` (lib `RoasterControl`) | `control-esp32/` (lib `ControlEsp32`); since 2026-10-27 `croaster-control/src/hw/` and `src/app/` | ESP32 side: control task, SSR, fan drivers, probes, NVS, plugin |
 | `roaster_protocol.*`, namespace `roasterproto` | `control_protocol.*`, `controlproto` | JSON commands and data fields |
 | `roaster_types.h` | `control_types.h` | `Command`, `Snapshot`, `Mode`, `SafetyTrip` |
 | `Roaster` (`app/roaster.*`) | `Controller` (`app/controller.*`) | The control task |
@@ -46,7 +48,7 @@ name starts with `Croaster` (that prefix is the upstream author's). Renamed
 | NVS namespace `"roaster"` | `"control"` | Nothing is deployed, so no settings are lost |
 | `RoasterProbe` | kept | See below |
 
-`RoasterProbe` (`control-esp32/src/RoasterProbe.h`) is a `Thermocouple`
+`RoasterProbe` (`croaster-control/src/app/RoasterProbe.h`) is a `Thermocouple`
 adapter for the two K-type probes, ET and BT, and nothing else. It does not
 touch the chips. The control task reads both MAX31855s (`hw/thermocouples`)
 and publishes filtered values; each `RoasterProbe` returns one channel of that
@@ -63,14 +65,18 @@ physical machine.
 boards/esp32s3-flex/          board: config.h, ConfigCheck.h, main.cpp
         |  constructs + injects
         v
-control-esp32/  (Arduino/ESP32)   ControlPlugin  --registers-->  CroasterApp commands / onJsonData
+croaster-control/src/app/  (Arduino/ESP32)  ControlPlugin  --registers-->  CroasterApp commands / onJsonData
                                     Controller (FreeRTOS task) <-- Command queue
-                                    HeaterOutput, FanDimmer|FanPwm, Thermocouples, ConfigStore(NVS)
+                                    ConfigStore (NVS settings)
                                     RoasterProbe : Thermocouple  --> CroasterCore (BT/ET)
         |
         v
-control-core/     (pure C++, host-tested)  PID, relay autotune, roast profile,
-                                    MAX31855/MAX6675 decode, probe filter,
+croaster-control/src/hw/   (ESP32 drivers)  Thermocouples (SPI), HeaterOutput (SSR),
+                                    FanDimmer | FanPwm behind FanOutput
+        |
+        v
+croaster-control/src/core/ (pure C++, host-tested)  PID, relay autotune, roast profile,
+                                    MAX31855/MAX6675 decode, probe filter, safety rules,
                                     time-proportional window, command protocol
 croaster/         (Croaster library) WiFi, WebSocket, BLE, OTA, RoR, display iface
 ```
@@ -84,12 +90,12 @@ config stays in the board; control logic is reusable by any future board
 | Feature | Lands in | Why |
 |:---|:---|:---|
 | MAX31855 support (monitor builds) | `croaster/src/CroasterMAX31855.*` + `CroasterThermocoupleType` | A converter chip is a library feature (pin-agnostic, any board). Same `Thermocouple` interface as MAX6675. |
-| MAX31855/MAX6675 decode for control | `control-core/control/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
-| Per-probe filter and fault count | `control-core/control/probe_channel.h` | Pure logic; both channels tested on the host. |
-| PID, autotune, profiles | `control-core` | Pure logic, unit-tested on the host. |
-| SSR, dimmer, PWM fan, probe reading, NVS | `control-esp32/hw`, `app/config_store` | ESP32 hardware, shared by any ESP32 control board. |
-| Control loop + safety | `control-esp32/app/controller` | Own FreeRTOS task (see Threading). |
-| Commands, data fields, watchdog | `control-esp32/ControlPlugin` | Uses only Croaster's public extension points. |
+| MAX31855/MAX6675 decode for control | `croaster-control/src/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
+| Per-probe filter and fault count | `croaster-control/src/core/probe_channel.h` | Pure logic; both channels tested on the host. |
+| PID, autotune, profiles, safety rules, command protocol | `croaster-control/src/core` | Pure logic, unit-tested on the host. |
+| SSR, dimmer, PWM fan, probe reading | `croaster-control/src/hw` | ESP32 hardware, shared by any ESP32 control board. |
+| Control loop + safety, NVS settings | `croaster-control/src/app/controller`, `app/config_store` | Own FreeRTOS task (see Threading). |
+| Commands, data fields, watchdog | `croaster-control/src/app/ControlPlugin` | Uses only Croaster's public extension points. |
 | Pins, chip/driver/display choice, limits | `boards/esp32s3-flex/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
 
@@ -109,20 +115,21 @@ Board folder `boards/esp32s3-flex/`:
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
 | `esp32s3-sdkconfig.defaults` | duplicates | Same content as `boards/esp32s3/`'s (line endings differ). Set as `board_build.sdkconfig_path`, as in Croaster's esp32s3 board. Sharing it is part of D10. |
 | `artisan/croaster-flex.aset` | new | Artisan settings for heater, fan, PID and the data request. |
-| `test/test_core/test_main.cpp` | new | Host tests for `control-core`. |
+| `test/test_core/test_main.cpp` | new | Host tests for `croaster-control/src/core`. |
 | `README.md`, `.gitignore` | new | Wiring, settings and generated-file ignores. |
 
-Libraries `control-core/` (pure C++) and `control-esp32/` (ESP32):
+Library `croaster-control/` (paths under `src/`; until 2026-10-27 these were
+two libraries, `control-core/` and `control-esp32/`):
 
 | File | Relation | Why it is here |
 |:---|:---|:---|
-| `control/max31855.h` | duplicates | Same decode as core's `CroasterMAX31855`. The control task needs the decode without core's bus code. D11. |
-| `control/max6675.h` | duplicates | Same decode as the `MAX6675_Thermocouple` library, which reads the bus itself and has no fault bit API. Used only if a control board picks MAX6675. |
-| `control/moving_average.h`, `probe_channel.h` | new | Per-probe filter and fault count for the control loop. Croaster's `SmoothThermocouple` wraps a sensor that reads the bus, and has no fault count, so it can't sit on the control task's readings. |
-| `control/pid.*`, `relay_autotune.*`, `roast_profile.*`, `time_proportional.h` | new | Control features Croaster doesn't have. |
-| `control/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands and yaeger's named commands); builds the extra data fields. |
-| `ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
-| `RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
+| `core/max31855.h` | duplicates | Same decode as core's `CroasterMAX31855`. The control task needs the decode without core's bus code. D11. |
+| `core/max6675.h` | duplicates | Same decode as the `MAX6675_Thermocouple` library, which reads the bus itself and has no fault bit API. Used only if a control board picks MAX6675. |
+| `core/moving_average.h`, `probe_channel.h` | new | Per-probe filter and fault count for the control loop. Croaster's `SmoothThermocouple` wraps a sensor that reads the bus, and has no fault count, so it can't sit on the control task's readings. |
+| `core/pid.*`, `relay_autotune.*`, `roast_profile.*`, `time_proportional.h` | new | Control features Croaster doesn't have. |
+| `core/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands and yaeger's named commands); builds the extra data fields. |
+| `app/ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
+| `app/RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
 | `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
 | `app/config_store.*` | new | NVS for PID gains, PID input, cooldown fan (stop and trip) and watchdog. Croaster core stores nothing. |
 | `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
@@ -247,9 +254,43 @@ Resolved by Shawn on 2026-10-26:
 | D21 | Fork `MAX6675_Thermocouple` and fix it there (option 3). |
 | D22 | Pass Croaster's correction offsets to the controller through core getters (option 1). |
 
-### D1. Where the control libraries live — **DECISION**
-AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
-1. **Top-level `control-core/` + `control-esp32/` libs (implemented).**
+Resolved by Shawn on 2026-10-27:
+
+| Decision | Choice |
+|:---|:---|
+| D1 | One library `croaster-control/` with `src/core`, `src/hw`, `src/app`; `control-core/` and `control-esp32/` are gone. |
+
+### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
+Shawn chose one top-level library next to `croaster/`, split by purpose into
+`src/core` (pure, host-tested), `src/hw` (ESP32 drivers) and `src/app`
+(control task, NVS settings, Croaster integration). `croaster/` stays the
+monitor library; board-only files stay in `boards/esp32s3-flex/`.
+
+Layout choice: the folders sit under `src/`, PlatformIO's default library
+source dir. PlatformIO then compiles all three and puts `src/` on the include
+path, so code includes `core/pid.h`, `hw/thermocouples.h`, `app/controller.h`
+with no `srcDir`/`includeDir` settings. Folders at the library root would need
+`build.srcDir` and an include path pointing at the root, where `library.json`
+and `build_filter.py` also sit.
+
+Host tests: `croaster-control/build_filter.py` (`library.json`
+`build.extraScript`) sets the library's source filter to `+<core/>` when the
+platform is `native`. PlatformIO provides this hook: its library builder
+clears `SRC_FILTER` and then runs the extra script so the script can set it.
+The native env compiles only `src/core`; `app/` and `hw/` never reach the host
+compiler.
+
+Placement rules: a file goes in `core/` when it compiles without Arduino or
+ESP-IDF headers, whatever it is about (the command protocol parser is pure,
+so it is in `core/` and host-tested; `app/ControlPlugin` registers it with
+Croaster). `hw/` holds drivers that touch pins, SPI or timers. `app/` holds
+what ties the parts together on the device: the FreeRTOS controller, NVS
+settings (`Preferences`, used only by the plugin and `main.cpp`), the plugin
+and the probe bridge into `CroasterCore`.
+
+Earlier options, kept for the record (AGENTS.md then listed only `croaster/`,
+`boards/`, `builds/`):
+1. Top-level `control-core/` + `control-esp32/` libs (implemented until 2026-10-27).
    Clear split: pure logic vs hardware; consumed like `boards/common` via
    `symlink://`. Bends the layout list (two new top-level folders).
 2. Put them in `boards/common-control/` (one lib). Matches the "shared board
@@ -260,7 +301,6 @@ AGENTS.md lists only `croaster/`, `boards/`, `builds/`.
    specifics" intent.
 4. Keep everything inside `boards/esp32s3-flex/src/`. Zero layout change,
    but nothing is reusable for a second control board and tests live with one board.
-Recommendation: 1; update AGENTS.md's layout section if accepted.
 
 ### D2. One master config vs `config.h` + `pins.h` — resolved
 Croaster boards use `config.h` (pins/dummy/LED) and sometimes `pins.h`.
@@ -424,7 +464,7 @@ board json, platform, framework, flash size, upload and monitor options, and com
 table (`default_16MB.csv`) and `board_build.sdkconfig_path = esp32s3-sdkconfig.defaults`.
 **What differs:** the board json (his is PlatformIO's stock `esp32-s3-devkitc-1` for the
 ES3C28P; ours is `esp32-s3-devkitm1-n16r8.json` for the Lonely Binary N16R8), lib_deps (his
-has ILI9341 + LVGL; ours has Adafruit SSD1306 + ControlCore/ControlEsp32), build_flags (his
+has ILI9341 + LVGL; ours has Adafruit SSD1306 + CroasterControl), build_flags (his
 `LV_CONF_PATH` points into his `src/ui`; ours does `-include src/config.h` and adds
 `ARDUINO_USB_MODE=1`), PSRAM mode (`dio_opi` vs `qio_opi`), and the platform (his is unpinned
 `espressif32` and needs Arduino-ESP32 2.x; ours is `@ 8.0.0`, Arduino 3.3.12).
@@ -470,20 +510,20 @@ option overridden, and it makes our build depend on edits to his file.
 ### D11. Two MAX31855 implementations — **DECISION (new 2026-10-26, open, no change made)**
 There are two: `croaster/src/CroasterMAX31855.*` (added by us, bit-banged,
 decodes inline, used only by flex's monitor build `FLEX_HEATER_NONE` and by
-any stock board that picks it) and `control-core/src/control/max31855.h`
-(pure, host-tested decoder) read by `control-esp32/src/hw/thermocouples.cpp`
+any stock board that picks it) and `croaster-control/src/core/max31855.h`
+(pure, host-tested decoder) read by `croaster-control/src/hw/thermocouples.cpp`
 on hardware SPI. They decode the same 32-bit frame twice.
 
 Adafruit_MAX31855 was weighed against the in-house decoder: keep ours. One
 32-bit read gives temperature, cold junction and fault bits together, where
 Adafruit's `readCelsius()` and `readInternal()` each read the chip again. Ours
 is host-tested and needs no Adafruit BusIO.
-1. Keep both (today). Core stays independent of `control-core`; the decode is
+1. Keep both (today). Core stays independent of `croaster-control`; the decode is
    written twice.
 2. One decoder in core: move `max31855::decode` into `croaster/src`
    (e.g. `CroasterMAX31855::decode(uint32_t)`), have `CroasterMAX31855` and
    `hw/thermocouples` both call it, and point the host tests at it. One copy;
-   `control-core` then includes a core header.
+   `croaster-control` then includes a core header.
 3. Drop `CroasterMAX31855` and flex's monitor build. Core goes back to
    MAX6675-only, removing one of our core changes; a temperature-only board
    then uses Croaster's stock MAX6675 boards.
@@ -592,7 +632,7 @@ The header line now says "Fan" ("H50 Fan60 PID") so the fan % isn't read as a
 Shawn chose option 3. The controller keeps an `AutotuneStatus` (idle,
 running, done, failed, aborted, need setpoint, need probe), a reason and a
 counter that bumps on every update, so a repeated refusal counts as a change.
-`control/autotune_status.h` writes the text in the display unit:
+`core/autotune_status.h` writes the text in the display unit:
 `autotune` in `getArtisanData` and `getControl` ("failed: timeout",
 "aborted: comms", "need setpoint >= 212 F"), and a 20-character OLED form
 ("AT: SV<212F", "AT fail: small swing") that replaces the header for 10 s;
@@ -761,7 +801,7 @@ Options (Shawn: the PID must never control on the wrong scale):
    about a controller, and the SPI bus would no longer belong to the control
    task alone (D7).
 
-Rules, in `control/probe_correction.h` (host-tested) and the controller:
+Rules, in `core/probe_correction.h` (host-tested) and the controller:
 - PID, autotune and the setpoint compare use corrected values.
 - The snapshot, and so `RoasterProbe`, stays uncorrected: CroasterCore adds
   the offset itself, and correcting both would count it twice.
@@ -818,7 +858,7 @@ Fixed (clear bugs, host-tested):
   about 2^64 µs: "no mains", a latched trip while heating with
   `FLEX_REQUIRE_MAINS 1`. It now reads the crossing first (until two reads
   agree, against a torn 64-bit read) and treats a crossing after "now" as
-  recent. `control/zero_cross.h`; `test_zero_cross_age`.
+  recent. `core/zero_cross.h`; `test_zero_cross_age`.
 
 Proposals, highest priority first (no code changed):
 1. **Profile end holds the last setpoint forever, unattended.** The

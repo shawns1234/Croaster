@@ -110,11 +110,11 @@ MISO (GPIO 13), one chip-select each (`FLEX_PIN_TC_CS_ET` 10,
 | Step | Where | What happens |
 |:---|:---|:---|
 | Read | `hw/thermocouples.cpp` | Every 250 ms the control task pulls CS_ET low and reads 32 bits, then the same for CS_BT (FSPI, 1 MHz). |
-| Decode | `control/max31855.h` | One frame gives the temperature, the cold junction and the fault bits (open, short to GND, short to VCC; all-0 or all-1 means no chip). |
-| Filter | `control/probe_channel.h` | One `ProbeChannel` per probe: 4-sample average; one or two bad reads hold the last value; the third in a row gives NaN; a reconnected probe starts fresh. The two channels never affect each other. |
+| Decode | `core/max31855.h` | One frame gives the temperature, the cold junction and the fault bits (open, short to GND, short to VCC; all-0 or all-1 means no chip). |
+| Filter | `core/probe_channel.h` | One `ProbeChannel` per probe: 4-sample average; one or two bad reads hold the last value; the third in a row gives NaN; a reconnected probe starts fresh. The two channels never affect each other. |
 | Control | `app/controller.cpp` | The snapshot carries `et`, `bt`, `etFault`, `btFault` and `ambient` (cold junction of the BT chip, or the ET chip when no BT chip answers). NaN on the PID input outside Manual, or on both probes while Manual heats, trips `sensor` after 2 s (`sensorFault()`). |
-| Correct | `control/probe_correction.h` | PID, autotune and the over-temperature check add Croaster's `correctionBt`/`correctionEt` (as °C, from `ControlPlugin`), so they work on the displayed scale. The snapshot stays uncorrected (D22). |
-| Croaster | `RoasterProbe.h` | Two adapters (`Channel::BT`, `Channel::ET`) hand the snapshot values to `CroasterCore`, which computes RoR. |
+| Correct | `core/probe_correction.h` | PID, autotune and the over-temperature check add Croaster's `correctionBt`/`correctionEt` (as °C, from `ControlPlugin`), so they work on the displayed scale. The snapshot stays uncorrected (D22). |
+| Croaster | `app/RoasterProbe.h` | Two adapters (`Channel::BT`, `Channel::ET`) hand the snapshot values to `CroasterCore`, which computes RoR. |
 | Telemetry | `CroasterCore::getJsonData` | `BT`/`ET` and `DBT`/`DET` (RoR); a faulted probe's keys are left out, which Artisan shows as a gap. |
 | Screen | `CroasterDisplaySSD1306` | BT and ET with RoR; a faulted probe shows `N/A`. |
 
@@ -142,10 +142,11 @@ settings; see the flex README, "Comms watchdog".
 | `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
 | `boards/esp32s3-flex/artisan/croaster-flex.aset` | Artisan settings (see `artisan-settings.md`) |
 | `boards/esp32s3-flex/test/` | Host unit tests (`pio test -e native`) |
-| `control-core/src/control/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding, probe fault filter |
-| `control-esp32/src/app/controller.*` | The control task |
-| `control-esp32/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
-| `control-esp32/src/ControlPlugin.*` | Commands, data fields, watchdog |
+| `croaster-control/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding, probe fault filter, safety rules. The only part the host tests compile |
+| `croaster-control/src/app/controller.*` | The control task |
+| `croaster-control/src/app/ControlPlugin.*` | Commands, data fields, watchdog |
+| `croaster-control/src/app/config_store.*` | NVS settings (gains, PID input, cooldown fan, watchdog) |
+| `croaster-control/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
 | `croaster/src/` | Croaster library (WiFi, WebSocket, BLE, OTA, RoR) |
 
 ## Gotchas

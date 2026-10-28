@@ -4,7 +4,7 @@
 // Interface: set() any time from the control task, tick() every <=10 ms.
 #include <cstdint>
 
-#include "control/time_proportional.h"
+#include "core/time_proportional.h"
 
 class HeaterOutput {
 public:

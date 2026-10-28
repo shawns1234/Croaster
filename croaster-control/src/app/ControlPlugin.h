@@ -3,7 +3,7 @@
 // points: onCommand()/onJsonCommand() for control, core().onJsonData() to add
 // heater/fan/setpoint/mode to every data payload. Also accepts yaeger's named
 // commands (setBurner, setFan, setPreferences, getPreferences). Croaster keeps
-// WiFi, WebSocket (port 81), BLE, OTA, display and RoR. Commands: see control/control_protocol.h.
+// WiFi, WebSocket (port 81), BLE, OTA, display and RoR. Commands: see core/control_protocol.h.
 //
 // Also owns two network-side safety/housekeeping jobs (loop task):
 //  - comms watchdog: heating and no message through Croaster's command handler
@@ -17,9 +17,9 @@
 // turns the heater off while one runs (Update.isRunning()).
 #include <Arduino.h>
 
-#include "app/config_store.h"
-#include "app/controller.h"
-#include "control/control_protocol.h"
+#include "config_store.h"
+#include "controller.h"
+#include "core/control_protocol.h"
 
 class CroasterApp;
 

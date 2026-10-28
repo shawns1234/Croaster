@@ -5,7 +5,7 @@
 // touching the chips. Values are the control task's filtered temperatures.
 #include <Thermocouple.h>
 
-#include "app/controller.h"
+#include "controller.h"
 
 class RoasterProbe : public Thermocouple {
 public:

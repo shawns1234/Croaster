@@ -86,6 +86,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **One control library, `croaster-control/` (D1).** `control-core/` and
+  `control-esp32/` are merged into `croaster-control/src/core` (pure logic,
+  host-tested), `src/hw` (ESP32 drivers) and `src/app` (control task, NVS,
+  `ControlPlugin`, `RoasterProbe`); the inner `control/` folder is gone.
+  Includes read `core/…`, `hw/…`, `app/…`. Flex `lib_deps` has one entry,
+  `CroasterControl=symlink://../../croaster-control`. The native test env
+  compiles only `src/core` (`build_filter.py`). No behaviour change.
+  `format.sh` covers `croaster-control/` and its messages name the real folders.
 - **Stock boards match upstream again.** `boards/esp32s3` (`platformio.ini`,
   `src/config.h`, `src/ui/LvglUi.cpp`, `src/ui/lv_conf.h`), `.gitignore` and
   the root and board `.vscode/` files are back to `IiemB/Croaster` `5445a4d`.

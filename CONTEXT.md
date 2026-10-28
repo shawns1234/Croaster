@@ -16,8 +16,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
 | `boards/esp32s3-flex/` | Flex **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
-| `control-core/` | Pure control logic lib (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol); host tests in `boards/esp32s3-flex/test` (`pio test -e native`) |
-| `control-esp32/` | ESP32 roaster lib: control task, SSR, fan drivers, probes, NVS, `ControlPlugin` (hooks into `CroasterApp`) |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-flex/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe`. `build_filter.py` limits native builds to `src/core` |
 | `docs/` | `design.md` (architecture + decisions D1–D23), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -55,7 +54,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   Data adds `BurnerVal`, `FanVal`, `SV`, `Mode`, `trip`, `autotune`, `Amb`,
   `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
 - Autotune status (D17): the controller records an `AutotuneStatus` and reason
-  in the snapshot; `control/autotune_status.h` turns it into text in the
+  in the snapshot; `core/autotune_status.h` turns it into text in the
   display unit. Data and `getControl` carry `autotune` ("running", "done",
   "failed: timeout", "aborted: comms", "need setpoint >= 212 F"); it holds
   until the next change. The OLED header shows a 20-character form ("AT:
@@ -106,8 +105,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   and a new pin. Host tests: see its README.
 - Board renamed `esp32s3-roaster` → `esp32s3-flex` (2026-10-26, D5 resolved
   by Shawn): folder, envs, board id, `.aset`.
-- Decisions pending (Shawn), all in design.md: D1 (top-level control libs),
-  D3 (force-included config), D6 (watchdog via core `lastCommandMillis()`),
+- D1 resolved 2026-10-27: `control-core/` + `control-esp32/` became one
+  library, `croaster-control/src/{core,hw,app}` (history kept via `git mv`).
+- Decisions pending (Shawn), all in design.md: D3 (force-included config), D6 (watchdog via core `lastCommandMillis()`),
   D9 (traffic watchdog,
   configurable, vs instant cut on disconnect), D10 (flex ini vs Croaster's
   `boards/esp32s3` ini), D11 (two MAX31855 decoders), D12 (Croaster display
@@ -163,8 +163,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   max(raw, corrected). Keep the snapshot uncorrected: core adds the offset when
   it reads `RoasterProbe`, so correcting it too counts the offset twice.
 - `Controller` (FreeRTOS) has no host build: put the logic a fix needs in a
-  pure `control-core` helper (`onPvStep`, `sensorFault`, `crossedWithin`)
-  and test that (design.md D23 item 11).
+  pure `croaster-control/src/core` helper (`onPvStep`, `sensorFault`,
+  `crossedWithin`) and test that (design.md D23 item 11, T37).
+- `croaster-control/src/core` must not include Arduino, ESP-IDF, `hw/` or
+  `app/` headers: the native env compiles only `core/` (`build_filter.py`), so
+  such an include breaks `pio test -e native`.
 - NVS (`Preferences`) is not usable from global constructors: load settings in
   `setup()`.
 - Unpinned `platform = espressif32` resolves to whatever espressif32 is
@@ -180,7 +183,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   Sources follow `.clang-format`.
 - PlatformIO not on PATH → `~/.platformio/penv/bin/pio` or `PIO=`.
 - Libs are **live-linked** via `symlink://` lib_deps
-  (`Croaster=symlink://../../croaster`, `CroasterDisplaySSD1306=symlink://../common`)
+  (`Croaster=symlink://../../croaster`, `CroasterDisplaySSD1306=symlink://../common`,
+  `CroasterControl=symlink://../../croaster-control`)
   — editing `croaster/src/` needs no `.pio/libdeps` cleanup.
 - ESP32-C3: WiFiManager AP can fail to broadcast under the PIO core (2.0.17) —
   fixed via DIO flash mode + `WiFi.setTxPower(WIFI_POWER_18_5dBm)` in the

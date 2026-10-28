@@ -1,0 +1,13 @@
+{
+  "name": "CroasterControl",
+  "version": "0.1.0",
+  "description": "Heater and fan control add-on for Croaster. src/core: pure logic (PID, relay autotune, roast profile, MAX31855/MAX6675 decode, command protocol, safety rules), host-tested. src/hw: ESP32 drivers (thermocouple SPI reader, SSR heater, AC dimmer or PWM fan). src/app: the FreeRTOS control task, NVS settings, ControlPlugin for CroasterApp, and the probe bridges into CroasterCore.",
+  "frameworks": "arduino",
+  "platforms": ["espressif32", "native"],
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^7.4.3"
+  },
+  "build": {
+    "extraScript": "build_filter.py"
+  }
+}

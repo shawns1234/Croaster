@@ -26,8 +26,8 @@ so it read nothing. yaeger users depended on the `id`-less 100 ms broadcast,
 which current Artisan ignores.
 
 This version was checked line by line against the Artisan source and our
-firmware (`control-core/src/control/control_protocol.cpp`,
-`control-esp32/src/ControlPlugin.cpp`).
+firmware (`croaster-control/src/core/control_protocol.cpp`,
+`croaster-control/src/app/ControlPlugin.cpp`).
 
 ## How Artisan talks to the roaster
 

@@ -1,4 +1,4 @@
-// Host tests for control-core. Run: pio test -e native
+// Host tests for croaster-control/src/core. Run: pio test -e native
 #include <unity.h>
 
 #include <cmath>
@@ -6,18 +6,18 @@
 
 #include <ArduinoJson.h>
 
-#include "control/autotune_status.h"
-#include "control/control_protocol.h"
-#include "control/max31855.h"
-#include "control/max6675.h"
-#include "control/moving_average.h"
-#include "control/pid.h"
-#include "control/probe_channel.h"
-#include "control/probe_correction.h"
-#include "control/relay_autotune.h"
-#include "control/roast_profile.h"
-#include "control/time_proportional.h"
-#include "control/zero_cross.h"
+#include "core/autotune_status.h"
+#include "core/control_protocol.h"
+#include "core/max31855.h"
+#include "core/max6675.h"
+#include "core/moving_average.h"
+#include "core/pid.h"
+#include "core/probe_channel.h"
+#include "core/probe_correction.h"
+#include "core/relay_autotune.h"
+#include "core/roast_profile.h"
+#include "core/time_proportional.h"
+#include "core/zero_cross.h"
 
 void setUp() {}
 void tearDown() {}

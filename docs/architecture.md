@@ -63,13 +63,13 @@ flowchart TB
         MAIN[main.cpp]
         OLED[CroasterDisplaySSD1306]
     end
-    subgraph rc["control-esp32 (ESP32)"]
+    subgraph rc["croaster-control/src/app + src/hw (ESP32)"]
         PLUG[ControlPlugin]
         R[Controller task]
         HW[hw: SSR, dimmer/PWM fan, thermocouples]
         NVS[ConfigStore NVS]
     end
-    subgraph core["control-core (pure C++, host-tested)"]
+    subgraph core["croaster-control/src/core (pure C++, host-tested)"]
         PID[Pid]
         AT[RelayAutotune]
         PROF[RoastProfile]
@@ -168,7 +168,8 @@ Taken from Croaster: everything about connectivity, display and boards.
   (ESP8266 too) would compile heater code (D1).
 
 ## Open questions (DECISIONs for Shawn)
-1. D1: top-level `control-core/` + `control-esp32/` folders. OK?
+1. D1: resolved 2026-10-27, one library `croaster-control/` with
+   `src/core`, `src/hw`, `src/app`.
 2. D3: force-include `config.h` into every unit. OK?
 3. D6/D9: is the comms watchdog (heater off, fan to cooldown; 10 s default,
    configurable, can be off) the behaviour you want, or yaeger's instant cut

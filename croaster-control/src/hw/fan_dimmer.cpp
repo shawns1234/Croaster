@@ -4,7 +4,7 @@
 #include <driver/gptimer.h>
 #include <soc/gpio_reg.h>
 
-#include "control/zero_cross.h"
+#include "core/zero_cross.h"
 
 namespace {
 gptimer_handle_t s_timer = nullptr;
