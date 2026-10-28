@@ -114,6 +114,9 @@ Artisan has no BLE path for this protocol; use WiFi.
   fail with the intended message; monitor config builds.
 - `main.cpp` only builds what is selected (`#if`), so unused drivers are not
   linked.
+- 2026-10-28: heater is SSR only and fan AC dimmer or PWM only; the monitor
+  config is now its own board, `boards/esp32s3-monitor`, and shared settings
+  are `CMON_` (D26).
 
 ## 8. Shawn's 7 questions
 

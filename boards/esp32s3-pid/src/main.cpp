@@ -6,8 +6,12 @@
 
 #include <CroasterApp.h>
 #include <CroasterDeviceIdentity.h>
-
-class Controller; // croaster-control; only defined in the control build
+#include <app/ControlPlugin.h>
+#include <app/RoasterProbe.h>
+#include <app/controller.h>
+#include <core/autotune_status.h>
+#include <hw/heater_output.h>
+#include <hw/thermocouples.h>
 
 // ---------------------------------------------------------------------------
 // Board wiring: build the parts selected in config.h and hand them to
@@ -16,20 +20,13 @@ class Controller; // croaster-control; only defined in the control build
 // knows about heaters or fans.
 // ---------------------------------------------------------------------------
 
-#if CPID_HEATER != CPID_HEATER_NONE // ===== control build =====
-#    include <app/ControlPlugin.h>
-#    include <app/RoasterProbe.h>
-#    include <app/controller.h>
-#    include <core/autotune_status.h>
-#    include <hw/heater_output.h>
-#    include <hw/thermocouples.h>
-#    if CPID_FAN == CPID_FAN_AC_DIMMER
-#        include <hw/fan_dimmer.h>
+#if CPID_FAN == CPID_FAN_AC_DIMMER
+#    include <hw/fan_dimmer.h>
 FanDimmer fan(CPID_PIN_ZERO_CROSS, CPID_PIN_FAN, CPID_MAINS_HZ);
-#    else
-#        include <hw/fan_pwm.h>
+#else
+#    include <hw/fan_pwm.h>
 FanPwm fan(CPID_PIN_FAN, CPID_FAN_PWM_HZ);
-#    endif
+#endif
 
 Thermocouples probes(CMON_THERMOCOUPLE == CMON_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CMON_PIN_TC_SCK,
                      CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT);
@@ -51,18 +48,6 @@ Controller controller(probes, heater, fan, limits());
 RoasterProbe btProbe(controller, RoasterProbe::Channel::BT);
 RoasterProbe etProbe(controller, RoasterProbe::Channel::ET);
 CroasterCore core(CMON_DUMMY_DATA, &btProbe, &etProbe);
-Controller* const controllerPtr = &controller;
-
-#else // ===== monitor build: Croaster with the selected converter, no control task =====
-#    include <app/MonitorProbes.h>
-#    include <hw/thermocouples.h>
-
-Thermocouples probes(CMON_THERMOCOUPLE == CMON_TC_MAX6675 ? TcChip::MAX6675 : TcChip::MAX31855, CMON_PIN_TC_SCK,
-                     CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT);
-MonitorProbes monitor(probes); // same reader and decoders as the control build
-CroasterCore core(CMON_DUMMY_DATA, monitor.bt(), monitor.et());
-Controller* const controllerPtr = nullptr;
-#endif
 
 #if CMON_DISPLAY == CMON_DISPLAY_SSD1306
 #    include <CroasterDisplaySSD1306.h>
@@ -74,7 +59,6 @@ CroasterDisplay* const displayPtr = nullptr;
 
 CroasterApp app(core, displayPtr, CMON_PIN_LED, CMON_LED_ON_LEVEL);
 
-#if CPID_HEATER != CPID_HEATER_NONE
 static_assert(CPID_PID_INPUT_ET == static_cast<int>(PidInput::ET) &&
                   CPID_PID_INPUT_BT == static_cast<int>(PidInput::BT) &&
                   CPID_PID_INPUT_MAX == static_cast<int>(PidInput::MAX),
@@ -112,14 +96,12 @@ String statusLine(const Snapshot& s) {
     }
     return String(line);
 }
-#endif
 
 void setup() {
     CroasterDeviceIdentity::setBoardName(CMON_BOARD_NAME);
     core.changeTemperatureUnit(CMON_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
     Wire.setPins(CMON_PIN_I2C_SDA, CMON_PIN_I2C_SCL); // later Wire.begin() calls use these
 
-#if CPID_HEATER != CPID_HEATER_NONE
     // Outputs safe before anything else: heater off, fan off.
     heater.begin();
     fan.begin();
@@ -128,25 +110,18 @@ void setup() {
     controller.begin(settings.gains, settings.gainsTuned, settings.pidInput, settings.cooldownFan.trip,
                      CPID_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
-#    if CMON_DISPLAY == CMON_DISPLAY_SSD1306
+#if CMON_DISPLAY == CMON_DISPLAY_SSD1306
     display.setHeaderText([]() {
         return statusLine(controller.snapshot());
     }); // heater/fan/mode or trip
-#    endif
-#else
-    monitor.begin();
 #endif
 
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display
 
-#if CPID_HEATER != CPID_HEATER_NONE
     plugin.begin();
-#endif
 }
 
 void loop() {
     app.loop();
-#if CPID_HEATER != CPID_HEATER_NONE
     plugin.loop();
-#endif
 }

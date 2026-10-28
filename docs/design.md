@@ -76,6 +76,7 @@ physical machine.
 
 ```
 boards/esp32s3-pid/          board: config.h, ConfigCheck.h, main.cpp
+boards/esp32s3-monitor/      board: probes only (MonitorProbes over hw/thermocouples, no control task)
         |  constructs + injects
         v
 croaster-control/src/app/  (Arduino/ESP32)  ControlPlugin  --registers-->  CroasterApp commands / onJsonData
@@ -102,14 +103,14 @@ config stays in the board; control logic is reusable by any future board
 
 | Feature | Lands in | Why |
 |:---|:---|:---|
-| MAX31855 or MAX6675 in the monitor build (no heater) | `croaster-control/src/app/MonitorProbes.h` over `hw/thermocouples` | One reader and one decoder per chip for both builds (control and monitor); `croaster/` keeps upstream's MAX6675 path (D11). |
+| MAX31855 or MAX6675 on Croaster monitor (`boards/esp32s3-monitor`) | `croaster-control/src/app/MonitorProbes.h` over `hw/thermocouples` | One reader and one decoder per chip for both boards; `croaster/` keeps upstream's MAX6675 path (D11, D26). |
 | MAX31855/MAX6675 decode for control | `croaster-control/src/core/max31855.h`, `max6675.h` | Pure bit decoding, host-tested; control task reads the bus itself. |
 | Per-probe filter and fault count | `croaster-control/src/core/probe_channel.h` | Pure logic; both channels tested on the host. |
 | PID, autotune, profiles, safety rules, command protocol | `croaster-control/src/core` | Pure logic, unit-tested on the host. |
 | SSR, dimmer, PWM fan, probe reading | `croaster-control/src/hw` | ESP32 hardware, shared by any ESP32 control board. |
 | Control loop + safety, NVS settings | `croaster-control/src/app/controller`, `app/config_store` | Own FreeRTOS task (see Threading). |
 | Commands, data fields, watchdog | `croaster-control/src/app/ControlPlugin` | Uses only Croaster's public extension points. |
-| Pins, chip/driver/display choice, limits | `boards/esp32s3-pid/src/config.h` | Board config never in a library (AGENTS.md). |
+| Pins, chip/driver/display choice, limits | `boards/esp32s3-pid/src/config.h`, `boards/esp32s3-monitor/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
 
 ### Every file we added, against Croaster (review point 9, 2026-10-26)
@@ -122,13 +123,23 @@ Board folder `boards/esp32s3-pid/`:
 
 | File | Relation | Why it is here |
 |:---|:---|:---|
-| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Has two builds: control (`CPID_HEATER_*`) and monitor (`CPID_HEATER_NONE`: no control task; Croaster reads the probes through `app/MonitorProbes`). |
+| `src/main.cpp` | extends | Same shape as Croaster's board `main.cpp`: builds `CroasterApp`, adds the control plugin, the probe adapters and the screen header. Always builds heater and fan; probes only is `boards/esp32s3-monitor` (D26). |
 | `src/config.h` | new | The one master file for pins, chips, drivers and limits (D2). Croaster boards set pins in `main.cpp`. |
 | `src/ConfigCheck.h` | new | Compile-time checks on `config.h` (reserved pins, duplicates, ranges). |
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`), plus one pioarduino env for Kconfig. |
 | `artisan/croaster-pid.aset` | new | Artisan settings for heater, fan, PID and the data request. |
 | `test/test_core/test_main.cpp` | new | Host tests for `croaster-control/src/core`. |
 | `README.md`, `.gitignore` | new | Wiring, settings and generated-file ignores. |
+
+Board folder `boards/esp32s3-monitor/` (2026-10-28, D26):
+
+| File | Relation | Why it is here |
+|:---|:---|:---|
+| `src/main.cpp` | extends | Croaster's board `main.cpp` shape with `app/MonitorProbes` as the two sensors; no control task. |
+| `src/config.h` | new | Probe chip, pins, display, unit, BLE; `CMON_` settings only. |
+| `src/ConfigCheck.h` | duplicates | The checks of Croaster PID's `ConfigCheck.h` that apply to it, including a copy of the N16R8 pin rules. |
+| `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`); same platform, board json, partitions, memory type and sdkconfig path as Croaster PID. |
+| `README.md` | new | Wiring, settings, build. |
 
 Library `croaster-control/` (paths under `src/`; until 2026-10-27 these were
 two libraries, `control-core/` and `control-esp32/`):
@@ -143,7 +154,7 @@ two libraries, `control-core/` and `control-esp32/`):
 | `core/control_protocol.*`, `control_types.h` | extends | Parses the payloads Croaster's handler hands over (nested commands and yaeger's named commands); builds the extra data fields. |
 | `app/ControlPlugin.*` | extends | Registers commands and data fields through `CroasterApp`'s public hooks; runs the comms watchdog off core's `lastCommandMillis()`. |
 | `app/RoasterProbe.h` | extends | A Croaster `Thermocouple` that reads the control task's snapshot, so `CroasterCore` never touches the bus the control task owns. |
-| `app/MonitorProbes.h` | extends | Monitor build only: two Croaster `Thermocouple`s over `hw/thermocouples`, read on the loop task (no control task). Same chip choice, decoders and fault filter as the control build (D11). |
+| `app/MonitorProbes.h` | extends | Croaster monitor only: two Croaster `Thermocouple`s over `hw/thermocouples`, read on the loop task (no control task). Same chip choice, decoders and fault filter as the control build (D11). |
 | `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
 | `app/config_store.*` | new | NVS for PID gains, PID input, cooldown fan (stop and trip) and watchdog. Croaster core stores nothing. |
 | `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
@@ -281,14 +292,14 @@ Resolved by Shawn on 2026-10-27:
 | D23 (mains) | `nomains` trips after 2 s of missing mains while heating (`CPID_MAINS_GRACE_MS`). |
 | D24 | Autotune required before PID and profiles (`CPID_REQUIRE_AUTOTUNE 1`); gains set with the `pid` command count as tuned. |
 | D23 item 4 | Fan and heater commands during autotune abort it, heater off (`aborted: fan changed` / `aborted: heater changed`). |
-| D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The monitor build (no heater) reads the chips through `app/MonitorProbes`. |
+| D11 | One MAX31855 decoder, `croaster-control/src/core/max31855.h`. `CroasterMAX31855`, `CroasterThermocoupleType` and the type argument are removed; `croaster/` builds its thermocouples exactly as upstream. The monitor build (no heater) reads the chips through `app/MonitorProbes` (since 2026-10-28 `boards/esp32s3-monitor`, D26). |
 
 Resolved by Shawn on 2026-10-28:
 
 | Decision | Choice |
 |:---|:---|
 | D25 | Board renamed `esp32s3-flex` → `esp32s3-pid` ("Croaster PID"), `FLEX_*` → `CPID_*`, `croaster-pid.aset`. |
-| D26 | Prefix split: settings every Croaster board has are `CMON_`, control settings stay `CPID_`. |
+| D26 | Croaster monitor board `esp32s3-monitor` replaces the `CPID_HEATER_NONE` build; Croaster PID always has heater + fan. Prefix split: settings every Croaster board has are `CMON_`, control settings stay `CPID_`. |
 
 ### D1. Where the control libraries live — resolved 2026-10-27: one library, `croaster-control/`
 Shawn chose one top-level library next to `croaster/`, split by purpose into
@@ -359,6 +370,8 @@ separate board folders per variant (monitor / control; duplicates main.cpp),
 runtime selection (all drivers linked, invalid configs only caught at boot),
 or templates (more C++ than the codebase uses). Kept `#if` + `ConfigCheck.h`
 because Shawn asked for compile-time selection with static checks.
+2026-10-28: the monitor variant is its own folder, `boards/esp32s3-monitor`
+(D26). Croaster PID's `#if`s now select only the fan driver and the display.
 
 ### D5. Board id — resolved: `esp32s3-flex`, chosen by Shawn 2026-10-26
 Ids must be lowercase and match ICRM's `CroasterBoardTypes`
@@ -376,6 +389,7 @@ were considered:
 4. Add `esp32s3Flex` to ICRM's enum (needs the app author). Still worth doing later.
 
 2026-10-28: renamed to Croaster PID (`esp32s3-pid`, `CPID_`). The ICRM enum entry would now be `esp32s3Pid` (D25).
+The Croaster monitor's id is `"esp32s3-monitor"`; its enum entry would be `esp32s3Monitor` (D26).
 
 ### D6. How the watchdog sees client traffic — **DECISION** (changed 2026-10-26)
 The heater must stop when the client disappears, so the watchdog needs to see
@@ -561,6 +575,9 @@ Shawn: the MAX31855 code is ours, written for this project, and belongs in
 - Behaviour change in the monitor build: readings go through `ProbeChannel`
   (4-sample average, NaN after 3 bad reads) instead of Croaster's
   `SmoothThermocouple`, the same filter the control build uses.
+- 2026-10-28: the monitor build is now its own board, `boards/esp32s3-monitor`
+  (`CMON_TC_MAX31855` or `CMON_TC_MAX6675`); the no-heater option is gone
+  from Croaster PID (D26).
 
 Analysis before the decision (2026-10-26). There were two: `croaster/src/CroasterMAX31855.*` (added by us, bit-banged,
 decodes inline, used only by the monitor build (no heater, `CPID_HEATER_NONE`) and by
@@ -1027,9 +1044,39 @@ mandatory, behind a switch.
   with a dated note.
 - Open: the name of the monitor build (`CPID_HEATER_NONE`, no heater or fan).
   It is not a PID board, so docs call it "monitor build (no heater)" until
-  Shawn decides.
+  Shawn decides. Resolved 2026-10-28: its own board, `esp32s3-monitor`
+  ("Croaster monitor", D26).
 
-### D26. `CMON_`/`CPID_` prefix split — resolved 2026-10-28 (Shawn)
+### D26. Croaster monitor board and the `CMON_`/`CPID_` prefix split — resolved 2026-10-28 (Shawn)
+The monitor build (`CPID_HEATER_NONE` + `CPID_FAN_NONE` in Croaster PID) was
+not a PID board, and D25 left its name open. Shawn's decisions:
+
+- New board `boards/esp32s3-monitor` ("Croaster monitor"): envs
+  `esp32s3-monitor` and `esp32s3-monitor-debug` (the pair `build_all.sh` and
+  `upload_monitor.sh` expect), board id `"esp32s3-monitor"`, ICRM enum entry
+  `esp32s3Monitor` if one is added. Same hardware and build settings as
+  Croaster PID: N16R8 board json, `platformio/espressif32 @ 8.0.0`,
+  `default_16MB.csv`, `qio_opi`,
+  `sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`, SSD1306, MAX31855
+  or MAX6675.
+- Monitor only: no heater, fan, mains input or control task. It reuses
+  `croaster-control` `hw/thermocouples` and `app/MonitorProbes` (moved from
+  the `CPID_HEATER_NONE` branch of Croaster PID's `main.cpp`). The rest of
+  the library compiles but is not linked: no `Controller`, `ControlPlugin`,
+  `HeaterOutput` or fan symbols in the ELF.
+- Files: `platformio.ini`, `src/main.cpp`, `src/config.h`,
+  `src/ConfigCheck.h`, `README.md`. `ConfigCheck.h` copies the N16R8 pin
+  rules from Croaster PID's (about 20 lines); sharing them would need a
+  header both board folders include, which no folder owns today.
+- Croaster PID always has a heater and a fan: `CPID_HEATER_NONE`,
+  `CPID_FAN_NONE` and the monitor branch of `main.cpp` are gone.
+  `ConfigCheck.h` requires `CPID_HEATER_SSR` and `CPID_FAN_AC_DIMMER` or
+  `CPID_FAN_PWM`.
+- Host tests stay in `boards/esp32s3-pid/test`: they test
+  `croaster-control/src/core`, mostly control logic.
+- Kept as is, not decided: the monitor's OLED header is Croaster's standard
+  header (no header text set); no mDNS name (as on every board, D13).
+
 Our config macros say which part of the firmware they belong to (rule in
 "Names"). Applies to names we created only.
 

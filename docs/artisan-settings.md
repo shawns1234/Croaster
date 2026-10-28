@@ -1,5 +1,8 @@
 # Artisan settings — `boards/esp32s3-pid/artisan/croaster-pid.aset`
 
+For Croaster PID only. Croaster monitor (`boards/esp32s3-monitor`) has no
+heater or fan; use Croaster's standard Artisan setup for it.
+
 What each setting in the `.aset` does, why it has that value, and where that was
 checked. Artisan sources are cited at commit `5be39f6` of
 `github.com/artisan-roaster-scope/artisan` (`src/artisanlib/...`), plus the

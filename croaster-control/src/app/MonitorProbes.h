@@ -1,7 +1,7 @@
 #pragma once
-// Monitor build (no heater, no control task): reads both converters through
-// hw/Thermocouples (MAX31855 or MAX6675, decoded by core/) and hands the
-// filtered values to CroasterCore, built with
+// Croaster monitor (boards/esp32s3-monitor: no heater, no control task):
+// reads both converters through hw/Thermocouples (MAX31855 or MAX6675,
+// decoded by core/) and hands the filtered values to CroasterCore, built with
 // CroasterCore(dummy, monitor.bt(), monitor.et()). The loop task owns the SPI
 // bus here. CroasterCore reads BT, then ET, every 250 ms; the first call reads
 // both chips and the second returns the cached sample.

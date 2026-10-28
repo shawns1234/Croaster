@@ -8,6 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — Croaster PID control board (branch rework/roaster)
 
 ### Added
+- **`boards/esp32s3-monitor` ("Croaster monitor", D26).** The Croaster PID
+  hardware without heater and fan: 2 × MAX31855 or MAX6675, SSD1306,
+  Croaster's RoR, WebSocket, BLE and OTA. Probes are read by
+  `croaster-control` (`hw/thermocouples`, `app/MonitorProbes`); no control
+  task. Envs `esp32s3-monitor`, `esp32s3-monitor-debug`; board id
+  `esp32s3-monitor`.
 - **Croaster PID: autotune required before PID and profiles (D24).** New
   `CPID_REQUIRE_AUTOTUNE` (default 1): until the board has tuned gains (a
   completed autotune or the `pid` command; NVS key `tuned`), `mode: "pid"` and
@@ -89,6 +95,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Croaster PID always has a heater and a fan (D26).** `CPID_HEATER_NONE`,
+  `CPID_FAN_NONE` and the monitor branch of `main.cpp` are removed; the heater
+  must be `CPID_HEATER_SSR`, the fan `CPID_FAN_AC_DIMMER` or `CPID_FAN_PWM`.
+  The monitor build is now `boards/esp32s3-monitor`.
 - **Config prefixes split (D26).** Settings every Croaster board has are now
   `CMON_*`: `CMON_BOARD_NAME`, `CMON_DUMMY_DATA`, `CMON_TEMP_UNIT`,
   `CMON_THERMOCOUPLE` (`CMON_TC_MAX31855`/`CMON_TC_MAX6675`),
@@ -120,7 +130,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   project moves out of `croaster/`: `CroasterMAX31855`,
   `CroasterThermocoupleType` and the third `CroasterCore` constructor argument
   are gone, so `croaster/` reads MAX6675 exactly as upstream. The monitor
-  build (no heater, `CPID_HEATER_NONE`) reads MAX31855 or MAX6675 through
+  build (no heater; since D26 `boards/esp32s3-monitor`) reads MAX31855 or MAX6675 through
   `croaster-control` (`hw/thermocouples`, `app/MonitorProbes`) and the sensor
   injection constructor, with the control build's 4-sample filter.
 - **One control library, `croaster-control/` (D1).** `control-core/` and

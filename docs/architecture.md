@@ -186,7 +186,10 @@ Taken from Croaster: everything about connectivity, display and boards.
 9. D14: config wizard as a Python script (recommended) or another option?
 
 Resolved: D5, board id `esp32s3-flex` (Shawn, 2026-10-26); D25, renamed to
-`esp32s3-pid` ("Croaster PID", Shawn, 2026-10-28).
+`esp32s3-pid` ("Croaster PID", Shawn, 2026-10-28); D26, the no-heater build
+became its own board `boards/esp32s3-monitor` ("Croaster monitor"), and
+config macros split into `CMON_` (every board) and `CPID_` (control),
+Shawn, 2026-10-28.
 
 ## Next implementation step
 Bench bring-up (T2): flash, confirm the OLED, both probes and `getArtisanData` in

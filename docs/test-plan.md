@@ -30,8 +30,8 @@ Status tags:
 
 ## MAX6675 library fork (D21)
 Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
-`SmoothThermocouple`; neither the control build nor the monitor build (no heater) does (since 2026-10-27 the monitor
-build uses `app/MonitorProbes`, D11).
+`SmoothThermocouple`; neither Croaster PID nor Croaster monitor does (both read through
+`croaster-control` `hw/thermocouples`; the monitor through `app/MonitorProbes`, D11, D26).
 - First reading seeds the average; 0 °C keeps the average. **host (fork)** `testFirstSampleSeedsAverage`, `testZeroKeepsAverage`, `testZeroSeed`
 - 100, 100, NAN, 100 → 100, 100, NAN, 100 (recovers). **host (fork)** `testRecoversAfterNan`
 - MAX6675 frames decode as before, with a wait before every pin change; 33 us of waits per read. **host (fork)** `testMax6675Decode`, `testMax6675ReadTime`
@@ -42,12 +42,12 @@ build uses `app/MonitorProbes`, D11).
 - `esp32s3-debug` (stock) links without `SmoothThermocoupleFix.cpp`. **build 2026-10-26** (upstream board files, in a copy pinned to `espressif32 @ 6.13.0`; see T13)
 - Croaster PID after the library change: ET at room temperature as before; unplug ET → `N/A`, replug → reading returns. **untested**
 
-## Monitor build (no heater) (`CPID_HEATER_NONE`, D11)
-- Builds with `CPID_TC_MAX31855` and with `CPID_TC_MAX6675` (`CPID_FAN_NONE`). **build 2026-10-27** (temporary config copies)
+## Croaster monitor (`boards/esp32s3-monitor`, D11, D26)
+- Builds with `CMON_TC_MAX31855` and with `CMON_TC_MAX6675`. **build 2026-10-28** (MAX6675 in a temporary config copy; RAM 54 652 B, flash 1 658 691 B for both)
 - MAX31855 monitor: BT and ET at room temperature on the OLED and in `getArtisanData`; boiling water ≈ 100 °C / 212 °F. **untested**
 - MAX6675 monitor: same checks on MAX6675 modules. **untested**
 - Unplug one probe → that probe `N/A` after the third bad read (under 1 s), the other unaffected; plug back → reading returns. **untested**
-- Heater and fan pins stay idle; control commands such as `getControl` get no control reply (the plugin is not built). **untested**
+- No control code: `getControl` gets no control reply; no heater, fan or control symbols in the ELF. **build 2026-10-28** (ELF symbols); reply untested
 
 ## OLED
 - Temperatures shown in °F. **bench 2026-10-26**

@@ -31,7 +31,8 @@ describes.
   non-LVGL boards.
 - `croaster-control/` — heater and fan control add-on (`src/core` pure and
   host-tested, `src/hw` ESP32 drivers, `src/app` control task and
-  `ControlPlugin`). Used by `boards/esp32s3-pid` via
+  `ControlPlugin`). Used by `boards/esp32s3-pid` (Croaster PID) and
+  `boards/esp32s3-monitor` (Croaster monitor, probe path only) via
   `CroasterControl=symlink://../../croaster-control`. Board config never goes
   here either.
 - `builds/` — gitignored; firmware output of `build_all.sh`.

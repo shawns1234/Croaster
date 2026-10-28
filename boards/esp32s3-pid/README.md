@@ -73,13 +73,10 @@ src/ConfigCheck.h: error: #error "config.h: CPID_REQUIRE_MAINS needs CPID_FAN_AC
 ```
 
 Setting names: `CMON_` for what every Croaster board has (probes, screen,
-identity, BLE), `CPID_` for what the control add-on adds (heater, fan, mains,
-PID, safety).
-
-`CPID_HEATER_NONE` + `CPID_FAN_NONE` builds a temperature monitor with either
-converter: Croaster's screen, RoR, WebSocket and BLE, with no heater, fan or
-control task. The probes are read by the same code as the control build
-(`croaster-control` `hw/thermocouples` and `app/MonitorProbes`).
+identity, BLE; the same names as `boards/esp32s3-monitor`), `CPID_` for what
+the control add-on adds (heater, fan, mains, PID, safety). This board always
+has a heater (SSR) and a fan (AC dimmer or PWM). For probes only, with no
+heater or fan, build [`boards/esp32s3-monitor`](../esp32s3-monitor/README.md).
 
 ---
 

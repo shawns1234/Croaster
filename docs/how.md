@@ -143,6 +143,7 @@ settings; see the board README, "Comms watchdog".
 | `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
 | `boards/esp32s3-pid/artisan/croaster-pid.aset` | Artisan settings (see `artisan-settings.md`) |
 | `boards/esp32s3-pid/test/` | Host unit tests (`pio test -e native`) |
+| `boards/esp32s3-monitor/` | Croaster monitor: the same probes and screen with no heater, fan or control task (`app/MonitorProbes`) |
 | `croaster-control/src/core/` | Pure logic: PID, autotune, profiles, protocol, MAX31855 decoding, probe fault filter, safety rules. The only part the host tests compile |
 | `croaster-control/src/app/controller.*` | The control task |
 | `croaster-control/src/app/ControlPlugin.*` | Commands, data fields, watchdog |

@@ -5,22 +5,16 @@
 #if !defined(CMON_THERMOCOUPLE) || (CMON_THERMOCOUPLE != CMON_TC_MAX31855 && CMON_THERMOCOUPLE != CMON_TC_MAX6675)
 #    error "config.h: CMON_THERMOCOUPLE must be CMON_TC_MAX31855 or CMON_TC_MAX6675"
 #endif
-#if CPID_HEATER != CPID_HEATER_NONE && CPID_HEATER != CPID_HEATER_SSR
-#    error "config.h: CPID_HEATER must be CPID_HEATER_NONE or CPID_HEATER_SSR"
+#if CPID_HEATER != CPID_HEATER_SSR
+#    error "config.h: CPID_HEATER must be CPID_HEATER_SSR"
 #endif
-#if CPID_FAN != CPID_FAN_NONE && CPID_FAN != CPID_FAN_AC_DIMMER && CPID_FAN != CPID_FAN_PWM
-#    error "config.h: CPID_FAN must be CPID_FAN_NONE, CPID_FAN_AC_DIMMER or CPID_FAN_PWM"
+#if CPID_FAN != CPID_FAN_AC_DIMMER && CPID_FAN != CPID_FAN_PWM
+#    error "config.h: CPID_FAN must be CPID_FAN_AC_DIMMER or CPID_FAN_PWM"
 #endif
 #if CMON_DISPLAY != CMON_DISPLAY_NONE && CMON_DISPLAY != CMON_DISPLAY_SSD1306
 #    error "config.h: CMON_DISPLAY must be CMON_DISPLAY_NONE or CMON_DISPLAY_SSD1306"
 #endif
-#if CPID_HEATER != CPID_HEATER_NONE && CPID_FAN == CPID_FAN_NONE
-#    error "config.h: a heater needs a fan the firmware controls (airflow interlock). Set CPID_FAN."
-#endif
-#if CPID_HEATER == CPID_HEATER_NONE && CPID_FAN != CPID_FAN_NONE
-#    error "config.h: fan without heater is not supported; set CPID_FAN_NONE for a monitor build"
-#endif
-#if CPID_REQUIRE_MAINS && CPID_FAN != CPID_FAN_AC_DIMMER && CPID_HEATER != CPID_HEATER_NONE
+#if CPID_REQUIRE_MAINS && CPID_FAN != CPID_FAN_AC_DIMMER
 #    error "config.h: CPID_REQUIRE_MAINS needs CPID_FAN_AC_DIMMER (only it can see mains); set it to 0"
 #endif
 #if CPID_FAN == CPID_FAN_AC_DIMMER && CPID_MAINS_HZ != 50 && CPID_MAINS_HZ != 60
@@ -53,13 +47,7 @@ constexpr bool validGpio(int p) {
 }
 
 constexpr int kPins[] = {
-    CMON_PIN_TC_SCK,     CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT,
-#if CPID_HEATER != CPID_HEATER_NONE
-    CPID_PIN_HEATER,
-#endif
-#if CPID_FAN != CPID_FAN_NONE
-    CPID_PIN_FAN,
-#endif
+    CMON_PIN_TC_SCK,     CMON_PIN_TC_MISO, CMON_PIN_TC_CS_ET, CMON_PIN_TC_CS_BT, CPID_PIN_HEATER, CPID_PIN_FAN,
 #if CPID_FAN == CPID_FAN_AC_DIMMER
     CPID_PIN_ZERO_CROSS,
 #endif

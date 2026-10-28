@@ -11,7 +11,9 @@
 // BLE. Keep it to #defines: no includes, no code.
 //
 // CMON_ settings are the ones every Croaster board has (probes, screen,
-// identity, radio). CPID_ settings are what the control add-on adds.
+// identity, radio; same names as boards/esp32s3-monitor). CPID_ settings are
+// what the control add-on adds. Probes only, no heater or fan: use
+// boards/esp32s3-monitor.
 //
 // Defaults below: Lonely Binary ESP32-S3 Gold Edition N16R8 (IPEX antenna),
 // MAX31855 x2, RobotDyn AC dimmer (fan), SSR-40DA (heater), 0.96" SSD1306 OLED
@@ -45,8 +47,7 @@
 #define CMON_PIN_TC_CS_BT 11
 
 // ---- Heater output ----------------------------------------------------------
-#define CPID_HEATER_NONE 0 // temperature monitor only (plain Croaster + your probes)
-#define CPID_HEATER_SSR 1  // SSR, time-proportional window
+#define CPID_HEATER_SSR 1 // SSR, time-proportional window
 #define CPID_HEATER CPID_HEATER_SSR
 
 #define CPID_PIN_HEATER 4          // SSR-40DA input + (3-32 VDC, on > 2.4 V)
@@ -55,7 +56,6 @@
 #define CPID_HEATER_MAX_PERCENT 90 // hard ceiling, applied after PID/manual (yaeger: 90)
 
 // ---- Fan output -------------------------------------------------------------
-#define CPID_FAN_NONE 0
 #define CPID_FAN_AC_DIMMER 1 // RobotDyn-style zero-cross + triac (AC universal/shaded-pole fan)
 #define CPID_FAN_PWM 2       // DC fan or DC motor driver on an LEDC PWM pin
 #define CPID_FAN CPID_FAN_AC_DIMMER

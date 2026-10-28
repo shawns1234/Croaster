@@ -15,9 +15,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32c3/` | ESP32-C3 Super Mini — SSD1306 OLED; custom OTA partition (`custom32c3sm.csv` lives in this folder) |
 | `boards/esp8266/` | NodeMCU / ESP-12E — SSD1306 OLED |
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
-| `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan, 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
-| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (control build) and `MonitorProbes` (monitor build, `CPID_HEATER_NONE`). `build_filter.py` limits native builds to `src/core` |
-| `docs/` | `design.md` (architecture + decisions D1–D24), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan (always both), 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
+| `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
+| `docs/` | `design.md` (architecture + decisions D1–D26), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
 ## Boards
@@ -26,7 +27,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 26.3% (1 724 947 B), RAM 56 844 B (2026-10-27) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 26.3% (1 724 947 B), RAM 56 844 B (2026-10-28) |
+| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 25.3% (1 658 691 B), RAM 54 652 B (2026-10-28) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -111,6 +113,11 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   board has (probes, screen, identity, BLE); `CPID_` = control add-on. Only
   names we created; the upstream author's (`CROASTER_HAS_BLE`, `croaster/`,
   stock boards) are never renamed.
+- Croaster monitor (D26, 2026-10-28): `boards/esp32s3-monitor` replaces the
+  old `CPID_HEATER_NONE` build; Croaster PID always has heater + fan. The
+  monitor links only `hw/thermocouples` + `app/MonitorProbes` from
+  `croaster-control` (no control symbols in its ELF). Host tests stay in
+  `boards/esp32s3-pid/test`.
 - D10 sdkconfig part resolved 2026-10-27: Croaster PID has no sdkconfig file of its
   own; `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`.
   The ini-sharing question stays open.
