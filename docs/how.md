@@ -139,6 +139,7 @@ settings; see the board README, "Comms watchdog".
 |:---|:---|
 | `boards/esp32s3-pid/src/config.h` | **The one file to edit**: pins, parts, limits, PID defaults |
 | `boards/esp32s3-pid/src/ConfigCheck.h` | Compile-time checks on config.h (bad pins, conflicts) |
+| `croaster-control/src/hw/esp32s3_opi_pins.h` | ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use; board wiring (UART0, RGB LED) stays in each `ConfigCheck.h` |
 | `boards/esp32s3-pid/src/main.cpp` | Wires everything together |
 | `boards/common` `CroasterDisplaySSD1306` | The OLED screen: Croaster's shared SSD1306 display; `main.cpp` sets its header text to heater/fan/mode |
 | `boards/esp32s3-pid/artisan/croaster-pid.aset` | Artisan settings (see `artisan-settings.md`) |

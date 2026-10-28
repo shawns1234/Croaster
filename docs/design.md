@@ -137,7 +137,7 @@ Board folder `boards/esp32s3-monitor/` (2026-10-28, D26):
 |:---|:---|:---|
 | `src/main.cpp` | extends | Croaster's board `main.cpp` shape with `app/MonitorProbes` as the two sensors; no control task. |
 | `src/config.h` | new | Probe chip, pins, display, unit, BLE; `CMON_` settings only. |
-| `src/ConfigCheck.h` | duplicates | The checks of Croaster PID's `ConfigCheck.h` that apply to it, including a copy of the N16R8 pin rules. |
+| `src/ConfigCheck.h` | duplicates | The checks of Croaster PID's `ConfigCheck.h` that apply to it; pin rules from `hw/esp32s3_opi_pins.h` plus the dev-board wiring (T46). |
 | `platformio.ini` | extends | Croaster's board ini pattern (`<board>`, `<board>-debug`); same platform, board json, partitions, memory type and sdkconfig path as Croaster PID. |
 | `README.md` | new | Wiring, settings, build. |
 
@@ -158,6 +158,7 @@ two libraries, `control-core/` and `control-esp32/`):
 | `app/controller.*` | new | Control task: sampling, safety, modes, outputs. |
 | `app/config_store.*` | new | NVS for PID gains, PID input, cooldown fan (stop and trip) and watchdog. Croaster core stores nothing. |
 | `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
+| `hw/esp32s3_opi_pins.h` | new | `constexpr` GPIO rules for ESP32-S3 modules with octal PSRAM (missing pins, flash/PSRAM, USB, strapping), shared by both boards' `ConfigCheck.h` (T46). Dev-board wiring stays in each board. |
 
 Clear wins done this round: the board's own SSD1306 class (now Croaster's
 display plus a hook, D12), `partitions.csv` (identical to `default_16MB.csv`),
@@ -1065,9 +1066,11 @@ not a PID board, and D25 left its name open. Shawn's decisions:
   the library compiles but is not linked: no `Controller`, `ControlPlugin`,
   `HeaterOutput` or fan symbols in the ELF.
 - Files: `platformio.ini`, `src/main.cpp`, `src/config.h`,
-  `src/ConfigCheck.h`, `README.md`. `ConfigCheck.h` copies the N16R8 pin
-  rules from Croaster PID's (about 20 lines); sharing them would need a
-  header both board folders include, which no folder owns today.
+  `src/ConfigCheck.h`, `README.md`. `ConfigCheck.h` copied the N16R8 pin
+  rules from Croaster PID's. 2026-10-28 (T46): the chip and module rules
+  moved to `croaster-control/src/hw/esp32s3_opi_pins.h`, which both boards
+  already link; UART0 (43, 44) and the RGB LED (48) stay in each board's
+  `ConfigCheck.h` as dev-board wiring.
 - Croaster PID always has a heater and a fan: `CPID_HEATER_NONE`,
   `CPID_FAN_NONE` and the monitor branch of `main.cpp` are gone.
   `ConfigCheck.h` requires `CPID_HEATER_SSR` and `CPID_FAN_AC_DIMMER` or

@@ -17,7 +17,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
 | `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan (always both), 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
-| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
 | `docs/` | `design.md` (architecture + decisions D1–D26), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -121,6 +121,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - D10 sdkconfig part resolved 2026-10-27: Croaster PID has no sdkconfig file of its
   own; `board_build.sdkconfig_path = ../esp32s3/esp32s3-sdkconfig.defaults`.
   The ini-sharing question stays open.
+- Pin rules (T46, 2026-10-28): chip and octal-PSRAM module rules live once in
+  `croaster-control/src/hw/esp32s3_opi_pins.h`; each board's `ConfigCheck.h`
+  adds its dev-board wiring (UART0 43/44, RGB LED 48). Accepted pins unchanged.
 - `nomains` trip: only after `CPID_MAINS_GRACE_MS` (2000) of missing mains
   while heating (`core/mains_watch.h`, Shawn 2026-10-27).
 - D24 (2026-10-27): `CPID_REQUIRE_AUTOTUNE 1` refuses PID and Profile until

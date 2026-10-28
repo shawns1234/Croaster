@@ -49,6 +49,10 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Unplug one probe → that probe `N/A` after the third bad read (under 1 s), the other unaffected; plug back → reading returns. **untested**
 - No control code: `getControl` gets no control reply; no heater, fan or control symbols in the ELF. **build 2026-10-28** (ELF symbols); reply untested
 
+## Config checks (pins)
+- Accepted GPIOs on both boards: 1, 2, 4-18, 21, 38-42, 47 (shared `hw/esp32s3_opi_pins.h` plus board wiring, T46). **build 2026-10-28** (host check of 0..48 against the old rules; same sizes)
+- A probe pin on GPIO 35 (PSRAM) or 43 (UART0) fails the pin `static_assert` on Croaster PID and Croaster monitor. **build 2026-10-28**
+
 ## OLED
 - Temperatures shown in °F. **bench 2026-10-26**
 - Mode changes (Manual, PID, Tuning) show in the header. **bench 2026-10-26**

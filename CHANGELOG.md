@@ -95,6 +95,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Shared ESP32-S3 pin rules (T46).** The chip and octal-PSRAM module pin
+  rules move from both boards' `ConfigCheck.h` to
+  `croaster-control/src/hw/esp32s3_opi_pins.h`; UART0 and RGB LED pins stay
+  per board. Accepted pins are unchanged.
 - **Croaster PID always has a heater and a fan (D26).** `CPID_HEATER_NONE`,
   `CPID_FAN_NONE` and the monitor branch of `main.cpp` are removed; the heater
   must be `CPID_HEATER_SSR`, the fan `CPID_FAN_AC_DIMMER` or `CPID_FAN_PWM`.

@@ -2,6 +2,8 @@
 // Compile-time validation of config.h. Each message names the setting to fix.
 #include <cstdint>
 
+#include <hw/esp32s3_opi_pins.h>
+
 #if !defined(CMON_THERMOCOUPLE) || (CMON_THERMOCOUPLE != CMON_TC_MAX31855 && CMON_THERMOCOUPLE != CMON_TC_MAX6675)
 #    error "config.h: CMON_THERMOCOUPLE must be CMON_TC_MAX31855 or CMON_TC_MAX6675"
 #endif
@@ -27,23 +29,14 @@ constexpr bool validTempUnit(const char* u) {
     return (u[0] == 'C' || u[0] == 'F' || u[0] == 'K') && u[1] == '\0';
 }
 static_assert(validTempUnit(CMON_TEMP_UNIT), "config.h: CMON_TEMP_UNIT must be \"C\", \"F\" or \"K\"");
-// N16R8: GPIO26-32 quad SPI flash, GPIO33-37 octal PSRAM (35-37 are on the header).
-constexpr bool isFlashOrPsramPin(int p) {
-    return p >= 26 && p <= 37;
-}
 
-// Native USB (Serial over USB-CDC).
-constexpr bool isUsbPin(int p) {
-    return p == 19 || p == 20;
-}
-
-// Strapping pins (0, 3, 45, 46), UART0 to the USB-UART bridge (43, 44), RGB LED (48).
-constexpr bool isReserved(int p) {
-    return p == 0 || p == 3 || p == 45 || p == 46 || p == 43 || p == 44 || p == 48;
+// Dev-board wiring: UART0 to the USB-UART bridge (43, 44), RGB LED (48; some DevKitC revisions use 38).
+constexpr bool isBoardReserved(int p) {
+    return p == 43 || p == 44 || p == 48;
 }
 
 constexpr bool validGpio(int p) {
-    return p >= 1 && p <= 47 && !(p >= 22 && p <= 25) && !isFlashOrPsramPin(p) && !isUsbPin(p) && !isReserved(p);
+    return esp32s3_opi::isUsableGpio(p) && !isBoardReserved(p);
 }
 
 constexpr int kPins[] = {
