@@ -212,5 +212,11 @@ settings; see the board README, "Comms watchdog".
 - **Probe faults in Manual don't trip.** As in yaeger, Manual keeps your
   heater %. PID, Profile and Autotune trip after 2 s of bad readings.
 - **`.local` names** don't always resolve on Windows. Use the IP on the OLED.
+- **Line endings.** `.gitattributes` checks text files out with LF on every
+  platform, whatever `core.autocrlf` says, and keeps any `.bat`, `.cmd` or
+  `.ps1` as CRLF. `embed_assets.py` also folds CRLF to LF before hashing, so
+  a CRLF copy of `web/` still matches the committed `webui_assets.h`. A clone
+  made before `.gitattributes` existed may still hold CRLF files: commit or
+  stash, then refresh it (see CHANGELOG, "Line endings").
 - **Nothing is hardware-tested yet.** It builds and the host tests pass.
   Bench tickets T2–T9 are next.

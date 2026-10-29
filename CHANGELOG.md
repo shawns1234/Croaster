@@ -84,6 +84,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Line endings.** A root `.gitattributes` stores and checks out text files
+  with LF on every platform, whatever `core.autocrlf` is set to: C/C++,
+  `.ino`, Python, JavaScript, JSON, HTML, CSS, SVG, Markdown, `.ini`, shell
+  scripts, YAML, text, CSV, the Artisan `.aset` and the generated
+  `webui_assets.h`. Windows scripts (`.bat`, `.cmd`, `.ps1`) use CRLF; images,
+  firmware images, archives, PDFs, fonts and FreeCAD files are binary. No
+  committed file changed on renormalisation. `embed_assets.py` reads `web/`
+  with CRLF folded to LF, so a CRLF checkout no longer rewrites
+  `webui_assets.h` or fails `--check`. To refresh a clone made with
+  `core.autocrlf true`: commit or stash your work, then run
+  `git rm --cached -r .` and `git reset --hard` (this discards uncommitted
+  changes), or clone again.
 - **Browser UI: opening the page started a roast (T51).** Every reading the
   page polled went into the session from the moment it connected, so the
   clock ran and samples were saved before anyone asked for a roast, and a

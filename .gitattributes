@@ -1,0 +1,50 @@
+# Line endings: the repository stores LF. Text files are checked out with LF
+# on every platform, whatever core.autocrlf is set to.
+* text=auto eol=lf
+
+# Source, scripts, web assets, config and docs
+*.c      text eol=lf
+*.cpp    text eol=lf
+*.h      text eol=lf
+*.ino    text eol=lf
+*.py     text eol=lf
+*.js     text eol=lf
+*.mjs    text eol=lf
+*.json   text eol=lf
+*.html   text eol=lf
+*.css    text eol=lf
+*.svg    text eol=lf
+*.md     text eol=lf
+*.ini    text eol=lf
+*.sh     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.txt    text eol=lf
+*.csv    text eol=lf
+*.aset   text eol=lf
+*.defaults text eol=lf
+.clang-format text eol=lf
+.gitignore    text eol=lf
+.gitattributes text eol=lf
+
+# Generated from croaster-webui/web/ by embed_assets.py; keep it byte-identical
+# on every platform so the source hash check stays valid.
+croaster-webui/src/webui_assets.h text eol=lf
+
+# Windows-only scripts
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf
+
+# Binaries
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.gz     binary
+*.bin    binary
+*.pdf    binary
+*.woff   binary
+*.woff2  binary
+*.FCStd  binary

@@ -242,6 +242,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `MBEDTLS_ASYMMETRIC_CONTENT_LEN=y` to take effect.
 - `.clang-format` is LLVM-based with attached braces; AGENTS.md says Allman.
   Sources follow `.clang-format`.
+- `.gitattributes`: `* text=auto eol=lf`, LF forced for sources, scripts,
+  web assets, config and docs, CRLF for `.bat`/`.cmd`/`.ps1`, images and
+  `.bin`/`.gz`/`.pdf`/fonts/`.FCStd` binary. `embed_assets.py` hashes and
+  embeds `web/` with CRLF folded to LF.
 - PlatformIO not on PATH → `~/.platformio/penv/bin/pio` or `PIO=`.
 - Libs are **live-linked** via `symlink://` lib_deps
   (`Croaster=symlink://../../croaster`, `CroasterDisplaySSD1306=symlink://../common`,

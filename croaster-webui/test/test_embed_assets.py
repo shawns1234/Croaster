@@ -3,6 +3,7 @@
 import gzip
 import importlib.util
 import os
+import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,16 @@ class EmbedAssetsTest(unittest.TestCase):
         a = embed.source_hash([("a.js", b"1")])
         self.assertNotEqual(a, embed.source_hash([("a.js", b"2")]))
         self.assertNotEqual(a, embed.source_hash([("b.js", b"1")]))
+
+    def test_crlf_checkout_gives_the_same_output(self):
+        lf = embed.sources(WEB)
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, data in lf:
+                with open(os.path.join(tmp, name), "wb") as f:
+                    f.write(data.replace(b"\n", b"\r\n"))
+            crlf = embed.sources(tmp)
+        self.assertEqual(crlf, lf)
+        self.assertEqual(embed.source_hash(crlf), embed.source_hash(lf))
 
     def test_committed_header_is_current(self):
         self.assertEqual(embed.run(check=True), 0, "run python3 croaster-webui/embed_assets.py")

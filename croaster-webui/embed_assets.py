@@ -9,7 +9,9 @@ Writes src/webui_assets.h. Runs as the library's PlatformIO extra script
 The header records a SHA-256 of the sources and is only rewritten when that
 changes, so builds on machines with a different zlib do not touch a committed,
 up-to-date header. Gzip output is deterministic for one zlib: mtime 0, no file
-name, level 9. Each asset's ETag is a hash of its gzipped bytes.
+name, level 9. Each asset's ETag is a hash of its gzipped bytes. Sources are
+read with CRLF folded to LF, so the result does not depend on the checkout's
+line endings.
 """
 
 import gzip
@@ -37,8 +39,10 @@ def lib_dir():
 
 
 def sources(web):
+    # CRLF is folded to LF so a Windows checkout embeds and hashes the same
+    # bytes as the committed header (all page sources are text).
     names = sorted(n for n in os.listdir(web) if os.path.splitext(n)[1] in MIME)
-    return [(n, open(os.path.join(web, n), "rb").read()) for n in names]
+    return [(n, open(os.path.join(web, n), "rb").read().replace(b"\r\n", b"\n")) for n in names]
 
 
 def source_hash(files):
