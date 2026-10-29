@@ -1,10 +1,12 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0b0c0a">
 <title>Croaster</title>
+<script src="theme.js"></script>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -25,7 +27,7 @@
     <span class="clock-value num" id="roast-clock">--:--</span>
   </div>
   <div class="top-actions">
-    <button type="button" class="ghost" id="theme-toggle" title="Switch light or dark theme">Theme</button>
+    <button type="button" class="ghost" id="appearance-open" title="Colours and style" aria-haspopup="dialog">Appearance</button>
     <button type="button" class="stop" id="stop" data-needs="controls" hidden title="Heater off, Manual, cooldown fan">STOP</button>
   </div>
 </header>
@@ -73,6 +75,7 @@
         <div class="chart-head">
           <div class="legend">
             <span class="key bt">BT</span><span class="key et">ET</span><span class="key ror">RoR</span>
+            <span class="key ror-et" id="key-ror-et">ET RoR</span><span class="key sv" data-field="SV">SV</span>
             <span class="key heat" data-field="BurnerVal">Heater</span><span class="key fan" data-field="FanVal">Fan</span>
           </div>
           <label class="toggle" title="Least-squares slope of BT over the last 30 s, times 60">
@@ -233,6 +236,43 @@
       <button value="ok" class="danger-btn">Confirm</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="appearance" class="sheet" aria-labelledby="appearance-title">
+  <div class="sheet-head">
+    <h2 id="appearance-title">Appearance</h2>
+    <button type="button" class="ghost" id="ap-close">Close</button>
+  </div>
+  <div class="sheet-body">
+    <section>
+      <h3>Presets</h3>
+      <div class="presets" id="ap-presets"></div>
+    </section>
+    <section>
+      <h3>Colours</h3>
+      <div id="ap-colors"></div>
+    </section>
+    <section>
+      <h3>Style</h3>
+      <div id="ap-style"></div>
+    </section>
+    <ul class="contrast-warn" id="ap-warnings" hidden></ul>
+    <section class="share">
+      <h3>Share</h3>
+      <p class="small muted">Download the scheme as a file, or copy the text below, to use it in another browser.</p>
+      <div class="row-buttons">
+        <button type="button" id="ap-export">Download JSON</button>
+        <button type="button" id="ap-copy">Copy JSON</button>
+        <label class="small">Load file <input type="file" id="ap-import-file" accept="application/json,.json"></label>
+      </div>
+      <textarea id="ap-json" spellcheck="false" aria-label="Theme JSON"></textarea>
+      <div class="row-buttons">
+        <button type="button" id="ap-import">Apply pasted JSON</button>
+        <button type="button" class="ghost" id="ap-reset">Reset to default</button>
+      </div>
+      <p class="ap-status" id="ap-status" role="status"></p>
+    </section>
+  </div>
 </dialog>
 
 <script src="roast.js"></script>

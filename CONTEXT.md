@@ -18,7 +18,7 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan (always both), 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
 | `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
-| `croaster-webui/` | Browser UI lib `CroasterWebUi` (D27): `web/` page sources, `embed_assets.py` (library extra script, gzips `web/` into the committed `src/webui_assets.h`), `src/WebUiServer` (ESP-IDF `esp_http_server` on `CMON_WEBUI_PORT`), host tests in `test/` (node + python) |
+| `croaster-webui/` | Browser UI lib `CroasterWebUi` (D27): `web/` page sources (`theme.js` colour schemes, T50), `embed_assets.py` (library extra script, gzips `web/` into the committed `src/webui_assets.h`), `src/WebUiServer` (ESP-IDF `esp_http_server` on `CMON_WEBUI_PORT`), host tests in `test/` (node + python) |
 | `docs/` | `design.md` (architecture + decisions D1–D27), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `tools/` | Build helpers: `force_include_deps.py` (pre: extra script; force-included `config.h` as a rebuild dependency, T47) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
@@ -29,8 +29,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.2% (1 782 163 B), RAM 56 908 B (2026-10-29, with the browser UI) |
-| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.3% (1 721 779 B), RAM 54 708 B (2026-10-29, with the browser UI) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.3% (1 790 371 B), RAM 56 908 B (2026-10-29, with the browser UI and appearance settings) |
+| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.4% (1 729 987 B), RAM 54 708 B (2026-10-29, with the browser UI and appearance settings) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -92,6 +92,14 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   events live in the browser. No password. `tempUnit` is saved to NVS
   (`app/unit_store`, namespace `croaster`, key `unit`) and applied at boot;
   `CMON_TEMP_UNIT` is the default when nothing is saved.
+  Appearance (T50): `web/theme.js` holds the colour tokens, presets (default
+  `neon`), validation, migration and contrast; it loads in `<head>` and
+  applies the saved scheme before first paint. `croaster.theme` in
+  `localStorage` is JSON (`{format, v, preset, colors, style}`); the old
+  `"dark"` maps to `neon`, `"light"` to `light`. The chart's colours and line
+  width are CSS custom properties, so a change restyles it without a redraw.
+  `app.css` `:root` repeats the neon values as fallbacks; `web_check.test.js`
+  fails if they drift from `theme.js`.
 - Library features added in 0.52: roast timer (`CroasterCore::roastTimerStart/
   Pause/Reset`), `getDeviceInfo` now reports `board`/`darkMode`/`brightness`
   (display state via `CroasterDisplay::isDarkMode()/getBrightness()`), and a

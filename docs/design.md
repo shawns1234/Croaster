@@ -1204,6 +1204,57 @@ About 20 KB of that is the page; the rest is `esp_http_server` (and, on the
 monitor, the `Preferences` code for the saved unit). The server's
 task stack and sockets are allocated at run time, after WiFi connects.
 
+Appearance (2026-10-29, Shawn, T50). The page gets colour schemes and style
+options, set in the browser:
+
+- **`web/theme.js`** (a UMD module like `roast.js`, host-tested) defines the
+  colour tokens, the presets, the style options with their ranges, and the
+  parse, validate, migrate, contrast and CSS functions. It loads in `<head>`
+  and applies the saved scheme before first paint, so a light scheme never
+  flashes dark.
+- **Tokens** are CSS custom properties on `<html>`: `bg`, `panel`,
+  `panel-2`, `line`, `grid`, `text`, `muted`, `accent`, `on-accent`, `stop`,
+  `on-danger`, `ok`, `warn`, `bt`, `et`, `ror`, `ror-et`, `heat`, `fan`,
+  `sv`, `event`. `on-accent` and `on-danger` replace the fixed white text on
+  accent and danger buttons; `ok`, `ror-et`, `sv` and `event` are new so
+  that the link dot, the ET RoR line, the setpoint line (now drawn) and the
+  event markers no longer borrow another series' colour.
+- **Style options** become custom properties or attributes on `<html>`:
+  radius, text scale (rem sizes against a scaled root size), density
+  (`data-density`), chart line width, numeral font, card opacity, glow, and
+  reduced motion (`data-motion`, plus `prefers-reduced-motion`).
+- **Presets:** `neon` (default), `copper` (the v1 dark theme), `light` (v1
+  light), `contrast`, `graphite`. The default is a neon green dark theme:
+  near-black background, translucent cards with a backdrop blur, a soft
+  accent glow on active controls and on the large numerals, faint grid.
+  BT and the accent are green; ET is sky blue, BT RoR amber, ET RoR pink,
+  heater red-orange, fan violet, so no series reads as a second green. Each
+  preset passes 4.5:1 on its text pairs; the host tests enforce that. In
+  `copper` and `light`, text on the accent is dark instead of white, the only
+  change from v1, because white on those accents was below 4.5:1.
+- **Storage:** `croaster.theme` holds
+  `{"format":"croaster-theme","v":1,"preset","colors","style"}`. The v1
+  values migrate: `"dark"` (the v1 default) to `neon`, `"light"` to `light`,
+  anything unreadable to `neon`. Missing values fill from the named preset,
+  numbers clamp to their range, unknown keys drop; import uses the same
+  rules and names what it skipped.
+- **Contrast** follows WCAG 2 relative luminance. Pairs checked: text on
+  background, cards and buttons; secondary text on cards; text on accent;
+  text on danger. Cards are compared as drawn, blended over the background
+  at the card opacity. Warnings never block a change.
+- **Live:** the chart's strokes and line width are CSS properties, so a
+  change restyles it without a redraw or a reload.
+- **Cost:** the gzipped page grows from 20 121 B to 28 270 B (+8 149 B,
+  budget 100 KB); flash grows by 8 204 to 8 208 B per env; RAM is unchanged.
+
+| Env | RAM | Flash |
+|:---|---:|---:|
+| `esp32s3-pid` | 56 908 B (+0) | 1 790 371 B (+8 208) |
+| `esp32s3-pid-debug` | 56 676 B (+0) | 1 497 759 B (+8 204) |
+| `esp32s3-pid-pioarduino` | 59 336 B (+0) | 1 475 251 B (+8 204) |
+| `esp32s3-monitor` | 54 708 B (+0) | 1 729 987 B (+8 208) |
+| `esp32s3-monitor-debug` | 54 484 B (+0) | 1 463 051 B (+8 204) |
+
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
   Arduino builds ignore `board_build.sdkconfig_path`; stock libs already have

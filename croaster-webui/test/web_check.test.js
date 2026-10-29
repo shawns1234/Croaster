@@ -59,3 +59,24 @@ test('risky commands sit behind a confirm step', () => {
   }
   assert.match(html, /data-send="wifiConnect" data-confirm="/);
 });
+
+test('theme.js loads in <head>, before first paint and before app.js', () => {
+  const head = html.slice(0, html.indexOf('</head>'));
+  assert.match(head, /<script src="theme\.js"><\/script>/);
+  assert.ok(html.indexOf('theme.js') < html.indexOf('app.js'));
+});
+
+test('app.css fallbacks match the default scheme, and every colour token is used', () => {
+  const T = require(path.join(WEB, 'theme.js'));
+  const css = read('app.css');
+  const rootBlock = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
+  const def = T.fromPreset(T.DEFAULT_PRESET);
+  const vars = T.cssVars(def).vars;
+  for (const k of Object.keys(vars)) {
+    const m = rootBlock.match(new RegExp('\\s' + k.replace(/[-]/g, '\\-') + ':\\s*([^;]+);'));
+    assert.ok(m, k + ' has no fallback in :root');
+    assert.equal(m[1].trim(), vars[k], k);
+  }
+  const body = css.slice(css.indexOf('}', css.indexOf(':root {')));
+  for (const t of T.TOKENS) assert.match(body, new RegExp('var\\(--' + t.key + '\\)'), '--' + t.key + ' is never used');
+});

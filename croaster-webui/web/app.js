@@ -3,6 +3,7 @@
 (function () {
   'use strict';
   const R = window.Roast;
+  const TH = window.Theme;
   const $ = (sel, el) => (el || document).querySelector(sel);
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
   const SVGNS = 'http://www.w3.org/2000/svg';
@@ -383,7 +384,7 @@
     let tLo = base[0], tHi = base[1], rLo = 0, rHi = u === 'F' ? 30 : 18;
     const vis = ss.filter((s) => s.t - t0 >= xMin);
     for (const s of vis) {
-      for (const v of [s.bt, s.et]) if (isNum(v)) { tLo = Math.min(tLo, v); tHi = Math.max(tHi, v); }
+      for (const v of [s.bt, s.et, s.sv]) if (isNum(v)) { tLo = Math.min(tLo, v); tHi = Math.max(tHi, v); }
     }
     const first = ss.length - vis.length;
     for (let i = first; i < ss.length; i++) {
@@ -430,10 +431,12 @@
       }
       if (d) svg.append(svgEl('path', { class: cls, d }));
     };
+    line('sv', (i) => ss[i].sv, yt);
     line('et', (i) => ss[i].et, yt);
     line('bt', (i) => ss[i].bt, yt);
     line('ror', rorAt, yr);
     if (!S.rorSmooth) line('ror-et', (i) => ss[i].det, yr);
+    $('#key-ror-et').hidden = S.rorSmooth;
 
     // Labels of events close together go on the next row down instead of overlapping.
     const rowEnd = [];
@@ -655,9 +658,184 @@
     render();
   }
 
-  function applyTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem(KEY_THEME, theme);
+  // ---------- appearance ----------
+  // The scheme lives in croaster.theme as JSON (theme.js documents the format).
+  // Every change is applied to <html> at once and saved, so the chart and the
+  // rest of the page restyle without a reload.
+  const AP = { theme: null, inputs: {} };
+
+  function saveTheme() {
+    try { localStorage.setItem(KEY_THEME, TH.serialize(AP.theme)); } catch (_) { /* storage full or blocked */ }
+  }
+
+  function setTheme(theme) {
+    AP.theme = theme;
+    TH.apply(theme, document.documentElement);
+    saveTheme();
+    syncAppearance();
+  }
+
+  function apStatus(text, isError) {
+    const p = $('#ap-status');
+    p.textContent = text;
+    p.classList.toggle('err', !!isError);
+  }
+
+  function syncAppearance() {
+    const t = AP.theme;
+    for (const k in AP.inputs) {
+      const i = AP.inputs[k];
+      if (i.hex) {
+        i.color.value = t.colors[k];
+        if (document.activeElement !== i.hex) { i.hex.value = t.colors[k]; i.hex.removeAttribute('aria-invalid'); }
+      } else if (i.type === 'bool') i.input.checked = t.style[k];
+      else {
+        i.input.value = t.style[k];
+        if (i.out) i.out.textContent = t.style[k] + (i.unit || '');
+      }
+    }
+    const current = TH.serialize(t);
+    for (const b of $$('#ap-presets button')) {
+      b.setAttribute('aria-pressed', String(TH.serialize(TH.fromPreset(b.dataset.preset)) === current));
+    }
+    const warn = TH.contrastWarnings(t);
+    const ul = $('#ap-warnings');
+    ul.hidden = !warn.length;
+    ul.textContent = '';
+    for (const w of warn) {
+      ul.append(el('li', {}, w.label + ': contrast ' + w.ratio.toFixed(2) + ':1, below the ' + TH.AA_MIN +
+        ':1 WCAG AA minimum for text.'));
+    }
+  }
+
+  function buildAppearance() {
+    const presets = $('#ap-presets');
+    for (const name of Object.keys(TH.PRESETS)) {
+      const b = el('button', { type: 'button', 'data-preset': name }, TH.PRESETS[name].label);
+      b.addEventListener('click', () => { setTheme(TH.fromPreset(name)); apStatus(''); });
+      presets.append(b);
+    }
+
+    const colors = $('#ap-colors');
+    let group = null;
+    for (const tok of TH.TOKENS) {
+      if (tok.group !== group) {
+        group = tok.group;
+        colors.append(el('h4', { class: 'small muted' }, group));
+      }
+      const id = 'ap-c-' + tok.key;
+      const row = el('div', { class: 'swatch-row' });
+      const color = el('input', { type: 'color', id, 'aria-label': tok.label + ' colour picker' });
+      const hex = el('input', { type: 'text', maxlength: '7', spellcheck: 'false', autocomplete: 'off',
+        'aria-label': tok.label + ' hex value' });
+      row.append(el('label', { for: id }, tok.label), color, hex);
+      colors.append(row);
+      color.addEventListener('input', () => {
+        AP.theme.colors[tok.key] = color.value.toLowerCase();
+        setTheme(AP.theme);
+      });
+      hex.addEventListener('input', () => {
+        const v = TH.normalizeHex(hex.value);
+        hex.setAttribute('aria-invalid', String(!v));
+        if (v) { AP.theme.colors[tok.key] = v; setTheme(AP.theme); }
+      });
+      hex.addEventListener('change', () => { hex.value = AP.theme.colors[tok.key]; hex.removeAttribute('aria-invalid'); });
+      AP.inputs[tok.key] = { color, hex };
+    }
+
+    const style = $('#ap-style');
+    for (const key of Object.keys(TH.STYLE_FIELDS)) {
+      const f = TH.STYLE_FIELDS[key];
+      const id = 'ap-s-' + key;
+      const row = el('div', { class: 'style-row' });
+      const label = el('label', { for: id }, f.label);
+      let input, out = null;
+      if (f.type === 'number') {
+        input = el('input', { type: 'range', id, min: f.min, max: f.max, step: f.step });
+        out = el('output', { for: id });
+        const wrap = el('span');
+        wrap.append(input, ' ', out);
+        row.append(label, wrap);
+      } else if (f.type === 'choice') {
+        input = el('select', { id });
+        for (const o of f.options) input.append(el('option', { value: o }, o[0].toUpperCase() + o.slice(1)));
+        row.append(label, input);
+      } else {
+        input = el('input', { type: 'checkbox', id });
+        row.append(label, input);
+      }
+      style.append(row);
+      input.addEventListener(f.type === 'number' ? 'input' : 'change', () => {
+        const raw = f.type === 'bool' ? input.checked : f.type === 'number' ? Number(input.value) : input.value;
+        const r = TH.normalize(Object.assign({}, AP.theme, { style: Object.assign({}, AP.theme.style, { [key]: raw }) }));
+        setTheme(r.theme);
+      });
+      AP.inputs[key] = { input, out, type: f.type, unit: f.unit === '%' ? '%' : f.unit ? ' ' + f.unit : '' };
+    }
+
+    const dlg = $('#appearance');
+    $('#appearance-open').addEventListener('click', () => {
+      $('#ap-json').value = TH.serialize(AP.theme, true);
+      apStatus('');
+      syncAppearance();
+      dlg.showModal();
+    });
+    $('#ap-close').addEventListener('click', () => dlg.close());
+    $('#ap-reset').addEventListener('click', () =>
+      confirmThen('Reset all colours and style options to the default scheme?', () => {
+        setTheme(TH.fromPreset(TH.DEFAULT_PRESET));
+        $('#ap-json').value = TH.serialize(AP.theme, true);
+        apStatus('Reset to the default scheme.');
+      }));
+    $('#ap-export').addEventListener('click', () => {
+      const json = TH.serialize(AP.theme, true);
+      $('#ap-json').value = json;
+      const a = el('a', { download: 'croaster-theme.json' });
+      a.href = URL.createObjectURL(new Blob([json + '\n'], { type: 'application/json' }));
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    $('#ap-copy').addEventListener('click', () => {
+      const ta = $('#ap-json');
+      ta.value = TH.serialize(AP.theme, true);
+      const done = () => apStatus('Copied.');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(ta.value).then(done, () => apStatus('Copy failed. Select the text and copy it.', true));
+      } else {
+        // The board serves plain http, where the async clipboard API is not available.
+        ta.select();
+        if (document.execCommand('copy')) done();
+        else apStatus('Select the text and copy it.', true);
+      }
+    });
+    const importText = (text) => {
+      const r = TH.parseImport(text);
+      if (!r.theme) { apStatus('Not loaded: ' + r.errors.join('; ') + '.', true); return; }
+      setTheme(r.theme);
+      $('#ap-json').value = TH.serialize(AP.theme, true);
+      apStatus(r.errors.length ? 'Loaded. Skipped: ' + r.errors.join('; ') + '.' : 'Loaded.', r.errors.length > 0);
+    };
+    $('#ap-import').addEventListener('click', () => importText($('#ap-json').value));
+    $('#ap-import-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 64 * 1024) { apStatus('Not loaded: file is larger than 64 KB.', true); return; }
+      file.text().then(importText, () => apStatus('Could not read the file.', true));
+      e.target.value = '';
+    });
+  }
+
+  function initAppearance() {
+    let raw = null;
+    try { raw = localStorage.getItem(KEY_THEME); } catch (_) { /* blocked: defaults */ }
+    const m = TH.migrate(raw);
+    AP.theme = m.theme;
+    buildAppearance();
+    TH.apply(AP.theme, document.documentElement);
+    if (m.migrated || m.errors.length) saveTheme();
+    syncAppearance();
   }
 
   function downloadCsv() {
@@ -675,9 +853,7 @@
   }
 
   function wire() {
-    applyTheme(localStorage.getItem(KEY_THEME) || 'dark');
-    $('#theme-toggle').addEventListener('click', () =>
-      applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+    initAppearance();
     window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
     $('#stop').addEventListener('click', () => send({ command: 'stop' }));
 

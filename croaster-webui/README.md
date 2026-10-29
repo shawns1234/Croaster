@@ -14,6 +14,35 @@ The page has three sections:
   reply or error shown inline. STOP stays in the top bar on every section.
   `restartesp`, `erase`, `dummyToggle` and `wifiConnect` ask for confirmation.
 
+## Appearance
+
+The **Appearance** button in the top bar opens the colour and style settings
+(a side panel on a computer, full screen on a phone). Changes apply as you
+make them, the chart included, and are saved in this browser.
+
+- **Presets:** Neon (default: a neon green dark theme with translucent cards
+  and a soft glow), Copper dark, Light, High contrast and Graphite. "Reset to
+  default" returns to Neon.
+- **Colours:** a picker and a hex field (`#rgb` or `#rrggbb`) for each of
+  background, cards, elevated surfaces (buttons, inputs), border, grid
+  lines, text, secondary text, accent, text on accent, danger (STOP and trip
+  banner), text on danger, success, warning, and the chart's BT, ET, RoR
+  (BT), RoR (ET), heater, fan, setpoint and event markers. An invalid hex
+  is outlined and ignored.
+- **Style:** corner radius, text size (80 to 140 %), density (comfortable or
+  compact), chart line width, numerals (monospace or the system font), card
+  opacity, glow, and reduce motion (also on when the system asks for it).
+- **Contrast:** text pairs below the WCAG AA minimum of 4.5:1 are listed
+  under the settings. It is a warning; the scheme still applies.
+- **Share:** "Download JSON" saves `croaster-theme.json`; "Load file" or
+  "Apply pasted JSON" reads one back. Missing values come from the preset
+  named in the file; unknown keys are dropped and invalid values are named.
+
+The scheme is stored under `croaster.theme` as
+`{"format":"croaster-theme","v":1,"preset":...,"colors":{...},"style":{...}}`.
+Pages from before this setting stored `"dark"` or `"light"`; `"dark"` moves
+to Neon and `"light"` to Light.
+
 The roast clock, events and samples live in the browser (`localStorage`), not
 on the board. A reload keeps them; another browser does not see them.
 
@@ -28,7 +57,7 @@ network you trust, or build with `CMON_ENABLE_WEBUI 0`.
 
 | Path | What |
 |:---|:---|
-| `web/` | Page sources: `index.html`, `app.css`, `app.js` (UI), `roast.js` (pure roast math, also loaded by the tests), `link.worker.js` (WebSocket and polling) |
+| `web/` | Page sources: `index.html`, `app.css`, `app.js` (UI), `theme.js` (colour schemes, validation and contrast; also loaded by the tests), `roast.js` (pure roast math, also loaded by the tests), `link.worker.js` (WebSocket and polling) |
 | `embed_assets.py` | Library extra script: gzips `web/` into `src/webui_assets.h`. Runs on every build and rewrites the header only when a source changes. Output is reproducible (gzip level 9, no timestamp, sorted files). Fails the build above 100 KB gzipped |
 | `src/webui_assets.h` | Generated, committed. Its first lines carry the SHA-256 of the sources |
 | `src/WebUiServer.*` | ESP-IDF `esp_http_server` serving the assets and `/info.json` |
@@ -77,12 +106,14 @@ Open `web/index.html` from any static server and point it at a board:
 ## Tests
 
 ```bash
-node --test croaster-webui/test/*.test.js          # roast math, CSV, page checks
+node --test croaster-webui/test/*.test.js          # roast math, CSV, themes, page checks
 python3 -m unittest discover -s croaster-webui/test # asset pipeline
 ```
 
 `roast.test.js` covers the least-squares RoR, turning-point detection, unit
-conversion, axis ticks, clock format and CSV. `web_check.test.js` parses every
+conversion, axis ticks, clock format and CSV. `theme.test.js` covers colour
+parsing, presets, validation, migration of saved values, import and export,
+and WCAG contrast. `web_check.test.js` parses every
 script and checks that the page loads nothing from outside the board, that
 every element id the script uses exists, that every form has a command, and
 that risky commands ask first. `test_embed_assets.py` checks the output is

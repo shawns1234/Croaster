@@ -15,7 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   fan strips, event buttons, roast clock and CSV export (device RoR or an
   optional 30 s least-squares RoR); Monitoring with every value the board
   reports; Controls on Croaster PID with every command, inline replies and
-  an always-visible STOP. Dark theme with a light option. The page talks to
+  an always-visible STOP. Colour schemes and style options (next item). The page talks to
   Croaster's WebSocket on port 81; its polling runs in a Web Worker so a
   hidden tab keeps feeding the comms watchdog. Served by ESP-IDF
   `esp_http_server` in its own task, only after WiFi connects and the setup
@@ -23,6 +23,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`embed_assets.py`, about 20 KB, 100 KB budget). No password: anyone on the
   network can use it. `CMON_ENABLE_WEBUI` (default 1) and `CMON_WEBUI_PORT`
   (default 80). Host tests for the page (node) and the asset step (python).
+- **Appearance settings for the browser UI (D27, T50).** An Appearance
+  button in the top bar opens a panel (full screen on a phone) with five
+  schemes: Neon (the new default, a neon green dark theme with translucent
+  cards and a soft glow), Copper dark (the previous dark theme), Light, High
+  contrast and Graphite. Every colour has a picker and a hex field: background,
+  cards, elevated surfaces, border, grid, text, secondary text, accent, danger,
+  success, warning, and the chart's BT, ET, BT and ET RoR, heater, fan,
+  setpoint and event markers. Style options: corner radius, text size,
+  density, chart line width, numeral font, card opacity, glow and reduced
+  motion. Changes apply at once, including the chart, and are saved in the
+  browser (`croaster.theme`, now JSON; a saved "dark" moves to Neon, "light"
+  stays Light). Export to and import from a JSON file or pasted text. A
+  warning, not a block, lists text that falls below WCAG AA contrast (4.5:1).
+  The chart now also draws the setpoint. Page size about 28 KB gzipped.
 - **Temperature unit survives a reboot (D16, D27).** A `tempUnit` command is
   saved in NVS (`app/unit_store`) and applied at boot; `CMON_TEMP_UNIT` is the
   unit until one is saved. Two host tests (38 in total).
