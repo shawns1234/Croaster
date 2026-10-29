@@ -27,8 +27,8 @@
     <span class="clock-value num" id="roast-clock">--:--</span>
   </div>
   <div class="top-actions">
-    <button type="button" class="ghost" id="appearance-open" title="Colours and style" aria-haspopup="dialog">Appearance</button>
-    <button type="button" class="stop" id="stop" data-needs="controls" hidden title="Heater off, Manual, cooldown fan">STOP</button>
+    <button type="button" class="ghost appearance-open" id="appearance-open" title="Colours and style" aria-label="Appearance" aria-haspopup="dialog"><span class="ap-icon" aria-hidden="true"></span><span class="ap-text">Appearance</span></button>
+    <button type="button" class="stop" id="stop" data-needs="controls" hidden disabled title="Available while a roast is recording">STOP</button>
   </div>
 </header>
 
@@ -49,7 +49,8 @@
       <h3>Session</h3>
       <div class="row-buttons">
         <button type="button" id="csv">Download CSV</button>
-        <button type="button" class="ghost" id="new-roast">New roast</button>
+        <button type="button" class="ghost" id="new-roast">Start roast</button>
+        <button type="button" class="ghost" id="end-roast" hidden>End roast</button>
       </div>
       <p class="muted small" id="session-info"></p>
     </div>
@@ -150,7 +151,7 @@
         <div class="card">
           <h2>Safety</h2>
           <div class="row-buttons">
-            <button type="button" class="stop-inline" data-cmd='{"command":"stop"}'>Stop</button>
+            <button type="button" class="stop-inline" data-cmd='{"command":"stop"}' data-confirm="Turn the heater off? The board switches to Manual and sets the fan to the cooldown speed. A recording in this page keeps running until STOP.">Heater off</button>
             <button type="button" data-cmd='{"command":"clearTrip"}'>Clear trip</button>
             <button type="button" data-cmd='{"command":"autotune"}'>Autotune</button>
           </div>

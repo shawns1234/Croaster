@@ -103,3 +103,59 @@ test('buildCsv writes one row per sample with events and CHARGE-relative time', 
   assert.equal(lines[2], '0:00,0.0,380.12,449.00,1.50,50,60,,Manual,CHARGE');
   assert.equal(lines[3], '0:01,1.0,360.00,448.00,-2.00,55,60,400.0,PID trip:comms,TP');
 });
+
+test('a session records only while active; saved sessions without the field count as ended', () => {
+  assert.equal(R.isRecording({ samples: [], events: [] }), false);
+  assert.equal(R.isRecording({ samples: [], events: [], active: false }), false);
+  assert.equal(R.isRecording({ samples: [], events: [], active: true }), true);
+  assert.equal(R.isRecording(null), false);
+});
+
+test('endSession stops recording once and records the end time', () => {
+  const s = { startedAt: 0, samples: [], events: [], active: true, endedAt: null };
+  assert.equal(R.endSession(s, 5000), true);
+  assert.equal(s.active, false);
+  assert.equal(s.endedAt, 5000);
+  assert.equal(R.endSession(s, 9000), false); // already ended: end time kept
+  assert.equal(s.endedAt, 5000);
+});
+
+test('resumeSession keeps a recent roast and ends a stale one at its last sample', () => {
+  const recent = { startedAt: 1000, samples: [{ t: 60 }], events: [], active: true, endedAt: null };
+  R.resumeSession(recent, 1000 + 60000 + 30000, 600000);
+  assert.equal(recent.active, true);
+  const stale = { startedAt: 1000, samples: [{ t: 60 }], events: [], active: true, endedAt: null };
+  R.resumeSession(stale, 1000 + 60000 + 700000, 600000);
+  assert.equal(stale.active, false);
+  assert.equal(stale.endedAt, 61000);
+  const empty = { startedAt: 1000, samples: [], events: [], active: true, endedAt: null };
+  R.resumeSession(empty, 1000 + 700000, 600000); // started, never sampled
+  assert.equal(empty.active, false);
+  const old = { startedAt: 1000, samples: [{ t: 1 }], events: [] }; // no active field: untouched
+  R.resumeSession(old, 1e12, 600000);
+  assert.equal(old.active, undefined);
+});
+
+test('sessionState: idle until started, then preheat, roasting, cooling, ended', () => {
+  const s = { startedAt: 0, samples: [], events: [], active: false, endedAt: null };
+  assert.equal(R.sessionState(s), 'idle');
+  s.samples.push({ t: 0 }); // samples alone (an old saved session) do not mean a roast
+  assert.equal(R.sessionState(s), 'ended');
+  s.samples = [];
+  s.active = true;
+  assert.equal(R.sessionState(s), 'preheat');
+  s.events.push({ code: 'CHARGE', t: 10 });
+  assert.equal(R.sessionState(s), 'roasting');
+  s.events.push({ code: 'DROP', t: 600 });
+  assert.equal(R.sessionState(s), 'cooling');
+  R.endSession(s, 700000);
+  assert.equal(R.sessionState(s), 'ended');
+});
+
+test('stopConfirmed: Manual with the heater at 0 %', () => {
+  assert.equal(R.stopConfirmed({ Mode: 'Manual', BurnerVal: 0, FanVal: 65 }), true);
+  assert.equal(R.stopConfirmed({ Mode: 'PID', BurnerVal: 0 }), false);
+  assert.equal(R.stopConfirmed({ Mode: 'Manual', BurnerVal: 20 }), false);
+  assert.equal(R.stopConfirmed({ Mode: 'Manual' }), false); // a board without controls never confirms
+  assert.equal(R.stopConfirmed(null), false);
+});

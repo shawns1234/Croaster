@@ -93,6 +93,47 @@
     return 'idle';
   }
 
+  // A session records samples only while it is active: from Start roast or Charge
+  // until STOP (or End roast on a board without controls). Sessions saved before
+  // this field existed have no `active` and count as ended.
+  function isRecording(session) {
+    return !!session && session.active === true;
+  }
+
+  // Marks an active session ended at nowMs. Returns true when it was recording.
+  function endSession(session, nowMs) {
+    if (!isRecording(session)) return false;
+    session.active = false;
+    session.endedAt = nowMs;
+    return true;
+  }
+
+  // On page load: a saved active session keeps recording only if its last sample
+  // (or its start, with no samples) is at most maxGapMs old. An older one is ended
+  // at that last sample, so a stale session never resumes when the page connects.
+  function resumeSession(session, nowMs, maxGapMs) {
+    if (!isRecording(session)) return session;
+    const ss = session.samples || [];
+    const lastMs = session.startedAt + (ss.length ? ss[ss.length - 1].t * 1000 : 0);
+    if (nowMs - lastMs > (maxGapMs === undefined ? 600000 : maxGapMs)) endSession(session, lastMs);
+    return session;
+  }
+
+  // State shown by the clock: idle (nothing recorded), preheat (recording, no
+  // CHARGE), roasting, cooling (after DROP), or ended (recording stopped).
+  function sessionState(session) {
+    if (!isRecording(session)) {
+      return session && (session.samples.length || session.events.length) ? 'ended' : 'idle';
+    }
+    const ph = phase(session.events);
+    return ph === 'idle' ? 'preheat' : ph;
+  }
+
+  // The board has acted on "stop": Manual mode with the heater at 0 %.
+  function stopConfirmed(data) {
+    return !!data && data.Mode === 'Manual' && data.BurnerVal === 0;
+  }
+
   // Round axis ticks: about `count` steps of 1, 2 or 5 x 10^n covering [min, max].
   function niceTicks(min, max, count) {
     if (!(max > min)) max = min + 1;
@@ -164,5 +205,5 @@
   }
 
   return { EVENTS, lsSlope, smoothedRor, detectTurningPoint, formatClock, phase, niceTicks, convertTemp,
-    convertSession, buildCsv };
+    convertSession, buildCsv, isRecording, endSession, resumeSession, sessionState, stopConfirmed };
 });

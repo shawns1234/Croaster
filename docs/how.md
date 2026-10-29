@@ -134,15 +134,21 @@ checked on the bench (tickets T2, T3).
 The HTTP server only hands out the page files; everything else goes through
 Croaster's WebSocket on port 81, exactly like Artisan:
 
-1. The browser loads `/` (HTML, CSS, scripts: about 28 KB gzipped, built
+1. The browser loads `/` (HTML, CSS, scripts: about 30 KB gzipped, built
    into the firmware) and `/info.json` (board id, WebSocket port, whether to
    show Controls).
 2. A Web Worker opens `ws://<ip>:81/` and sends `getArtisanData` every
    second, `getControl` every 5 s and `getDeviceInfo` every 30 s.
-3. Each `getArtisanData` reply becomes a chart sample. RoR is the board's
-   `DBT`, or a 30 s least-squares slope worked out in the browser.
+3. The tiles always show the latest reply. Replies become chart samples only
+   while a roast is recording: Start roast or Charge begins one, STOP (End
+   roast on the monitor) ends it. RoR is the board's `DBT`, or a 30 s
+   least-squares slope worked out in the browser.
 4. Event buttons (Charge ... Drop), the roast clock and the samples stay in
    the browser's storage. CSV export writes them out.
+   STOP asks first, sends `{"command":"stop"}` (heater 0, Manual, cooldown
+   fan; no reply), ends the recording and then watches the readings for
+   Manual with heater 0. Controls > Safety has Heater off for the same
+   command when nothing is recording.
 5. Controls send the same JSON commands as in the board README and show the
    reply or error next to the log.
 

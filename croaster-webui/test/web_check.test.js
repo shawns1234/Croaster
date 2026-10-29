@@ -58,6 +58,25 @@ test('risky commands sit behind a confirm step', () => {
     assert.match(html, re, name);
   }
   assert.match(html, /data-send="wifiConnect" data-confirm="/);
+  assert.match(html, /data-cmd='\{"command":"stop"\}' data-confirm="[^"]+">Heater off</);
+});
+
+test('STOP starts disabled and acts only through a confirm while a roast records', () => {
+  const app = read('app.js');
+  assert.match(html, /<button [^>]*id="stop"[^>]* disabled[ >]/);
+  assert.match(app, /\$\('#stop'\)\.addEventListener\('click', stopRoast\)/);
+  const body = app.slice(app.indexOf('function stopRoast()'), app.indexOf('function eventAllowed('));
+  assert.match(body, /if \(!recording\(\)\) return;/);
+  assert.ok(body.indexOf('confirmThen(') >= 0 && body.indexOf('confirmThen(') < body.indexOf("send({ command: 'stop' })"),
+    'stop is sent from inside the confirm callback');
+  assert.match(app, /stop\.disabled = !recording\(\);/);
+});
+
+test('samples are recorded only after an explicit start', () => {
+  const app = read('app.js');
+  const add = app.slice(app.indexOf('function addSample('), app.indexOf('function addEvent('));
+  assert.match(add, /^function addSample\(d, at\) \{\s+if \(!recording\(\)\) return;/);
+  assert.match(read('app.js'), /active: false/); // a new or reset session does not record
 });
 
 test('theme.js loads in <head>, before first paint and before app.js', () => {

@@ -91,6 +91,8 @@ input[type="checkbox"] { padding: 0; }
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand > div { min-width: 0; }
+.brand-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .logo { flex: none; width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--accent), color-mix(in srgb, var(--accent) 35%, #000)); box-shadow: var(--glow-accent); }
 .brand-name { font-weight: 700; }
 .brand-sub { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28ch; }
@@ -111,6 +113,14 @@ input[type="checkbox"] { padding: 0; }
   padding: 10px 22px; font-size: 1.067rem;
 }
 .stop:hover { filter: brightness(1.1); border-color: var(--on-danger); }
+.stop:disabled { filter: grayscale(1); box-shadow: none; }
+.stop:disabled:hover { filter: grayscale(1); border-color: var(--stop); }
+.top-actions button { white-space: nowrap; }
+/* Half-filled circle: the Appearance button's icon on narrow screens. */
+.ap-icon {
+  display: none; width: 1.1em; height: 1.1em; border-radius: 50%; border: 2px solid currentColor;
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%); vertical-align: -0.2em;
+}
 .stop-inline { background: var(--stop); border-color: var(--stop); color: var(--on-danger); font-weight: 700; }
 .banner { background: var(--stop); color: var(--on-danger); padding: 8px 16px; font-weight: 600; }
 
@@ -244,11 +254,20 @@ dialog.sheet {
   /* The sidebar's blocks join the page flow: tabs first, then the section, then events and session. */
   .shell { display: flex; flex-direction: column; padding: 8px; }
   .sidebar { display: contents; }
-  .tabs { order: 0; flex-direction: row; position: sticky; top: 58px; z-index: 5; background: var(--bg); padding: 4px 0; }
+  .tabs { order: 0; flex-direction: row; position: sticky; top: var(--topbar-h, 58px); z-index: 5; background: var(--bg); padding: 4px 0; }
   main { order: 1; }
   .side-block { order: 2; }
-  .topbar { gap: 10px; padding: 8px 10px; }
-  .brand-sub { max-width: 14ch; }
+  /* Two rows: name and buttons, then link state and the roast clock. */
+  .topbar {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 10px; padding: 8px 10px;
+    grid-template-areas: "brand brand actions" "link clock clock";
+  }
+  .brand { grid-area: brand; }
+  .brand-sub { max-width: none; }
+  .top-actions { grid-area: actions; }
+  .link { grid-area: link; }
+  .clock { grid-area: clock; margin-left: 0; justify-self: end; flex-direction: row; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; }
+  .clock-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .link #link-text { display: none; }
   .ghost#appearance-open { padding: 6px 8px; }
   .legend .key { white-space: nowrap; }
@@ -260,4 +279,9 @@ dialog.sheet {
   .chart { height: 280px; }
   .events { grid-template-columns: repeat(2, 1fr); }
   .cards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .ap-icon { display: inline-block; }
+  .ap-text { display: none; }
 }

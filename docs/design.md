@@ -1155,10 +1155,32 @@ Decisions:
 - **Sections:** Live (tiles, chart, heater and fan strips, event buttons,
   roast clock, CSV), Monitoring (every value the board reports, nothing
   else), Controls (Croaster PID only: every command, replies and errors
-  inline, STOP always visible). Device RoR by default; an optional 30 s
+  inline, STOP always visible, usable while a roast records). Device RoR by default; an optional 30 s
   least-squares RoR computed in the browser.
 - **Roast timer and events live in the browser** (`localStorage`), not on the
   board. Croaster's own roast timer is not used.
+- **Recording starts only on a user action** (fix, 2026-10-29). v1 added
+  every polled sample to the session from the moment the page connected, so
+  opening Live started a preheat clock and a recording. The session now has
+  `active` (and `endedAt`): Start roast or Charge sets it, STOP (or End roast
+  on the monitor) clears it, and only an active session takes samples or
+  events. Connecting, reconnecting, reloading and switching views change
+  nothing. On load, a saved active session whose last sample is more than
+  10 min old is ended at that sample; sessions saved before this change have
+  no `active` and load as ended.
+- **STOP** (fix, 2026-10-29) is enabled only while a roast is recording and
+  always asks first. It sends `{"command":"stop"}`, which `ControlPlugin`
+  registers through `onCommand`: the controller sets the heater to 0 and the
+  mode to Manual (ending PID, Profile or Autotune), and the plugin then sets
+  the fan to `cooldownFan.stop` (65 % by default). The command has no reply,
+  so the page checks the next readings for `Mode` Manual and `BurnerVal` 0
+  and logs the result, or a warning after 5 s. It is not sent, and the roast
+  is not ended, while the link is down. A heater-off action is still needed
+  when no roast is recording (heater set from Controls or Artisan), so
+  Controls > Safety keeps it as Heater off: the same command behind a
+  confirm, not tied to the recording. The firmware has no temperature-based
+  cooldown rule (fan until ET is low, minimum or maximum time): the fan stays
+  at the cooldown speed until it is changed.
 - **Confirm step** for `erase`, `restartesp`, `dummyToggle` and `wifiConnect`.
 - **No password.** Same exposure as the WebSocket on port 81, which already
   accepts any command from the network. Documented in both READMEs and the

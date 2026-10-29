@@ -29,8 +29,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.3% (1 790 371 B), RAM 56 908 B (2026-10-29, with the browser UI and appearance settings) |
-| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.4% (1 729 987 B), RAM 54 708 B (2026-10-29, with the browser UI and appearance settings) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.4% (1 792 611 B), RAM 56 908 B (2026-10-29, with the browser UI fixes of T51) |
+| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.4% (1 732 227 B), RAM 54 708 B (2026-10-29, with the browser UI fixes of T51) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -89,7 +89,15 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   page is a WebSocket client on :81 like Artisan (1 s `getArtisanData`, 5 s
   `getControl` on Croaster PID, 30 s `getDeviceInfo`), from a Web Worker so
   hidden tabs keep polling. `/info.json` gates Controls. Roast clock and
-  events live in the browser. No password. `tempUnit` is saved to NVS
+  events live in the browser. A roast records only after Start roast or
+  Charge (session field `active`); connecting, reconnecting, reloading or
+  switching views never starts one, and a saved roast with no sample for
+  10 min is ended on load. STOP (top bar, Croaster PID) is greyed out unless a
+  roast is recording, asks first, sends `{"command":"stop"}` (heater 0,
+  Manual, fan to `cooldownFan.stop`), ends the recording and logs whether the
+  next readings show Manual with heater 0. Controls > Safety keeps a separate
+  Heater off button (same command, with a confirm) for when no roast is
+  recording; the monitor gets End roast instead of STOP. No password. `tempUnit` is saved to NVS
   (`app/unit_store`, namespace `croaster`, key `unit`) and applied at boot;
   `CMON_TEMP_UNIT` is the default when nothing is saved.
   Appearance (T50): `web/theme.js` holds the colour tokens, presets (default

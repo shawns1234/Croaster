@@ -16,6 +16,8 @@
   const MAX_SAMPLES = 4 * 3600; // 4 h at 1 Hz
   const PENDING_STALE_MS = 4000;
   const PENDING_DROP_MS = 10000;
+  const STOP_CONFIRM_MS = 5000; // the board should report Manual and heater 0 within this after "stop"
+  const RESUME_GAP_MS = 10 * 60 * 1000; // a saved roast older than this is not resumed on load
   const INTERPOLATIONS = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
   const EVENT_SHORT = { CHARGE: 'CH', TP: 'TP', DRY_END: 'DE', FC_START: 'FCs', FC_END: 'FCe',
     SC_START: 'SCs', SC_END: 'SCe', DROP: 'DR' };
@@ -54,6 +56,7 @@
     lastSaveMs: 0,
     lastAutotune: null,
     lastTrip: null,
+    stopCheck: null, // {at, warned} while waiting for the board to report the stop
     profile: loadJson(KEY_PROFILE) || [{ duration: 60, setpoint: '', interpolation: 'linear', fanValue: '' }],
   };
   let worker = null;
@@ -66,7 +69,7 @@
     try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; }
   }
   function newSession() {
-    return { startedAt: Date.now(), unit: null, samples: [], events: [] };
+    return { startedAt: Date.now(), unit: null, samples: [], events: [], active: false, endedAt: null };
   }
   function saveSession(force) {
     const now = Date.now();
@@ -92,6 +95,10 @@
   function nowT() {
     return (Date.now() - S.session.startedAt) / 1000;
   }
+  function endT() {
+    return S.session.endedAt ? (S.session.endedAt - S.session.startedAt) / 1000 : nowT();
+  }
+  const recording = () => R.isRecording(S.session);
   function lastSample() {
     const ss = S.session.samples;
     return ss.length ? ss[ss.length - 1] : null;
@@ -143,6 +150,7 @@
       S.data = msg.data;
       S.dataAt = at;
       watchStatus(msg.data);
+      checkStop(msg.data);
       if (polled) addSample(msg.data, at);
       S.dirty = true;
       return;
@@ -172,6 +180,24 @@
     }
   }
 
+  // "stop" has no reply of its own: report what the next readings show.
+  function expectStop() {
+    S.stopCheck = { at: Date.now(), warned: false };
+  }
+  function checkStop(d) {
+    const c = S.stopCheck;
+    if (!c) return;
+    if (R.stopConfirmed(d)) {
+      logReply('in', 'stop: board reports heater 0 %, Manual' + (isNum(d.FanVal) ? ', fan ' + d.FanVal + ' %' : ''));
+      S.stopCheck = null;
+    } else if (!c.warned && Date.now() - c.at > STOP_CONFIRM_MS) {
+      c.warned = true;
+      logReply('err', 'stop: not confirmed, board reports heater ' + fmt(d.BurnerVal, 0) + ' %, mode ' +
+        (d.Mode || '?') + '. Use Heater off in Controls, or cut power.');
+      S.dirty = true;
+    }
+  }
+
   function logReply(kind, text) {
     const log = $('#reply-log');
     const li = el('li', { class: kind }, new Date().toLocaleTimeString() + ' ' + text);
@@ -181,6 +207,7 @@
 
   // ---------- session ----------
   function addSample(d, at) {
+    if (!recording()) return; // readings still update the tiles; only a started roast is recorded
     const ses = S.session;
     if (d.temp && ses.unit && d.temp !== ses.unit) {
       R.convertSession(ses, d.temp);
@@ -214,12 +241,56 @@
   }
 
   function markEvent(code) {
+    if (!recording()) {
+      if (code === 'CHARGE') startRoast(() => markEvent('CHARGE')); // Charge also starts the recording
+      return;
+    }
     if (eventOf(code)) return;
     const last = lastSample();
-    addEvent({ code, t: last ? last.t : nowT(), bt: last ? last.bt : null });
+    const live = S.data && isNum(S.data.BT) ? S.data.BT : null;
+    addEvent({ code, t: last ? last.t : nowT(), bt: last ? last.bt : live });
+  }
+
+  // Starts a new recording; asks first when it would clear an earlier roast.
+  function startRoast(then) {
+    const go = () => {
+      S.session = newSession();
+      S.session.active = true;
+      saveSession(true);
+      if (then) then();
+      render();
+    };
+    if (recording()) return;
+    if (S.session.samples.length || S.session.events.length) {
+      confirmThen('Start a new roast? The previous samples and events are cleared (download the CSV first to keep them).', go);
+    } else {
+      go();
+    }
+  }
+
+  function endRoast() {
+    if (R.endSession(S.session, Date.now())) saveSession(true);
+    render();
+  }
+
+  function stopRoast() {
+    if (!recording()) return;
+    const c = S.control && S.control.cooldownFan;
+    const fan = c && isNum(c.stop) ? ' (' + c.stop + ' %)' : '';
+    confirmThen('Stop the roast? The heater turns off, the board switches to Manual (ending PID, profile or autotune), ' +
+      'the fan runs at the cooldown speed' + fan + ', and recording ends.', () => {
+      if (S.link !== 'open') {
+        logReply('err', 'STOP not sent: not connected. The board keeps its current heater and mode.');
+        return;
+      }
+      send({ command: 'stop' });
+      expectStop();
+      endRoast();
+    });
   }
 
   function eventAllowed(code) {
+    if (!recording()) return code === 'CHARGE';
     const ph = R.phase(S.session.events);
     if (eventOf(code)) return false;
     if (code === 'CHARGE') return ph === 'idle';
@@ -277,6 +348,11 @@
     $('#t-fan').textContent = fmt(d.FanVal, 0);
     $('#t-sv').textContent = fmt(d.SV);
     $('#t-mode').textContent = d.Mode || '—';
+    const stop = $('#stop');
+    stop.disabled = !recording();
+    stop.title = recording() ? 'End the roast: heater off, Manual, cooldown fan' : 'Available while a roast is recording';
+    $('#new-roast').disabled = recording();
+    $('#end-roast').hidden = S.info.controls || !recording();
     $('#t-trip').textContent = d.trip ? 'TRIP ' + d.trip : (d.Target ? 'input ' + d.Target : '');
     $('.tile.mode').classList.toggle('tripped', !!d.trip);
     for (const e of $$('[data-field]')) {
@@ -293,24 +369,33 @@
     if (S.tab === 'live') { renderChart(); }
     if (S.tab === 'monitoring') renderMonitoring();
     if (S.tab === 'controls') renderControls();
-    $('#session-info').textContent = ss.length ? ss.length + ' samples since ' +
-      new Date(S.session.startedAt).toLocaleTimeString() + (S.session.unit ? ' (' + unitLabel() + ')' : '') : 'No samples yet';
+    let info;
+    if (ss.length) {
+      info = ss.length + ' samples since ' + new Date(S.session.startedAt).toLocaleTimeString() +
+        (S.session.unit ? ' (' + unitLabel() + ')' : '') + (recording() ? '' : ', recording ended');
+    } else {
+      info = recording() ? 'Recording, waiting for the first sample' : 'Not recording. Start roast or Charge begins a recording.';
+    }
+    $('#session-info').textContent = info;
   }
 
   function renderClock() {
-    const ph = R.phase(S.session.events);
+    const st = R.sessionState(S.session);
     const charge = chargeT();
+    const drop = eventOf('DROP');
     let label = 'Idle', value = '--:--';
-    if (ph === 'roasting') {
+    if (st === 'roasting') {
       label = 'Roast';
       value = R.formatClock(nowT() - charge);
-    } else if (ph === 'cooling') {
-      const drop = eventOf('DROP');
+    } else if (st === 'cooling') {
       label = 'Cooling · roast ' + R.formatClock(drop.t - charge);
       value = R.formatClock(nowT() - drop.t);
-    } else if (S.session.samples.length) {
+    } else if (st === 'preheat') {
       label = 'Preheat';
-      value = R.formatClock(nowT() - S.session.samples[0].t);
+      value = R.formatClock(nowT());
+    } else if (st === 'ended') {
+      label = 'Ended';
+      if (charge !== null) value = R.formatClock((drop ? drop.t : endT()) - charge);
     }
     $('#phase').textContent = label;
     $('#roast-clock').textContent = value;
@@ -855,7 +940,10 @@
   function wire() {
     initAppearance();
     window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
-    $('#stop').addEventListener('click', () => send({ command: 'stop' }));
+    $('#stop').addEventListener('click', stopRoast);
+    $('#end-roast').addEventListener('click', () => {
+      if (recording()) confirmThen('End the roast? Recording stops; the samples stay until the next roast starts.', endRoast);
+    });
 
     $('#ror-smooth').checked = S.rorSmooth;
     $('#ror-smooth').addEventListener('change', (e) => {
@@ -873,11 +961,7 @@
       saveSession(true);
       render();
     });
-    $('#new-roast').addEventListener('click', () => {
-      const start = () => { S.session = newSession(); saveSession(true); render(); };
-      if (S.session.samples.length) confirmThen('Start a new roast? The current samples and events are cleared (download the CSV first to keep them).', start);
-      else start();
-    });
+    $('#new-roast').addEventListener('click', () => startRoast());
     $('#csv').addEventListener('click', downloadCsv);
 
     const chart = $('#chart');
@@ -885,7 +969,11 @@
     chart.addEventListener('pointerleave', () => { S.cursorT = null; $('#readout').textContent = ''; renderChart(); });
 
     for (const b of $$('button[data-cmd]')) {
-      b.addEventListener('click', () => confirmThen(b.dataset.confirm, () => send(JSON.parse(b.dataset.cmd))));
+      b.addEventListener('click', () => confirmThen(b.dataset.confirm, () => {
+        const cmd = JSON.parse(b.dataset.cmd);
+        send(cmd);
+        if (cmd.command === 'stop') expectStop();
+      }));
     }
     for (const st of $$('.stepper')) {
       for (const b of $$('button[data-step]', st)) b.addEventListener('click', () => stepperClick(st, Number(b.dataset.step)));
@@ -918,6 +1006,11 @@
     });
     window.addEventListener('pagehide', () => saveSession(true));
     window.addEventListener('resize', () => { S.dirty = true; });
+    // The top bar wraps to two rows on narrow screens; the sticky tabs sit below it.
+    const bar = $('.topbar');
+    const barHeight = () => document.documentElement.style.setProperty('--topbar-h', bar.offsetHeight + 'px');
+    if (window.ResizeObserver) new ResizeObserver(barHeight).observe(bar);
+    barHeight();
 
     // Redraw at most once per frame when something changed, and tick the clocks once a second.
     const frame = () => { if (S.dirty && !document.hidden) render(); requestAnimationFrame(frame); };
@@ -928,6 +1021,9 @@
   async function start() {
     S.session = loadJson(KEY_SESSION) || newSession();
     if (!Array.isArray(S.session.samples) || !Array.isArray(S.session.events)) S.session = newSession();
+    const wasRecording = R.isRecording(S.session);
+    R.resumeSession(S.session, Date.now(), RESUME_GAP_MS);
+    if (wasRecording && !R.isRecording(S.session)) saveSession(true);
     try {
       const r = await fetch('info.json', { cache: 'no-store' });
       if (r.ok) Object.assign(S.info, await r.json());

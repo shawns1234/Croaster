@@ -36,7 +36,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   browser (`croaster.theme`, now JSON; a saved "dark" moves to Neon, "light"
   stays Light). Export to and import from a JSON file or pasted text. A
   warning, not a block, lists text that falls below WCAG AA contrast (4.5:1).
-  The chart now also draws the setpoint. Page size about 28 KB gzipped.
+  The chart now also draws the setpoint. Page size about 28 KB gzipped
+  (about 30 KB after the T51 fixes).
 - **Temperature unit survives a reboot (D16, D27).** A `tempUnit` command is
   saved in NVS (`app/unit_store`) and applied at boot; `CMON_TEMP_UNIT` is the
   unit until one is saved. Two host tests (38 in total).
@@ -83,6 +84,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Browser UI: opening the page started a roast (T51).** Every reading the
+  page polled went into the session from the moment it connected, so the
+  clock ran and samples were saved before anyone asked for a roast, and a
+  reload carried on. A roast now records only after Start roast or Charge;
+  connecting, reconnecting, reloading and switching views never start one.
+  A saved roast with no reading for 10 min loads as ended.
+- **Browser UI: STOP gave no sign it worked and could be hit by accident
+  (T51).** The page did send `{"command":"stop"}`, which the board handles
+  (heater 0, Manual, fan to the cooldown speed), but the command has no reply
+  and the page left its clock and recording running. STOP is now greyed out
+  unless a roast is recording, always asks first, ends the recording, and
+  logs whether the board then reports Manual with heater 0 (a warning after
+  5 s if not). It is not sent while the link is down. Controls > Safety has
+  Heater off, the same command with a confirm, for when no roast is
+  recording. The monitor board, which has no STOP, gets End roast.
+- **Browser UI: top bar overlapped on a phone (T51).** Below 769 px the bar
+  uses two rows (name and device line with Appearance and STOP; link and
+  clock), names that do not fit are cut with an ellipsis, Appearance shows an
+  icon only below 481 px, and the sticky tabs follow the bar's real height.
+  Checked at 320, 375, 412 and 1280 px, text size 100 % and 140 %, both
+  densities.
 - **`config.h` edits rebuild (T47).** SCons does not track headers given with
   `-include`, so a change to `config.h` alone could reuse stale objects.
   `tools/force_include_deps.py` (a pre: extra script in both S3 boards'
