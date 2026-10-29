@@ -1,0 +1,10 @@
+{
+  "name": "CroasterWebUi",
+  "version": "0.1.0",
+  "description": "Browser UI served by the board for Croaster: monitoring, live roast chart and (on boards with the control add-on) controls. web/ holds the readable page sources; embed_assets.py gzips them into src/webui_assets.h at build time. src/WebUiServer serves them with ESP-IDF esp_http_server; the page talks to Croaster's existing WebSocket on port 81.",
+  "frameworks": "arduino",
+  "platforms": ["espressif32"],
+  "build": {
+    "extraScript": "embed_assets.py"
+  }
+}

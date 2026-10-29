@@ -24,8 +24,9 @@
 // the ES3C28P LCD image, and an app OTA would replace this firmware.
 #define CMON_BOARD_NAME "esp32s3-monitor"
 #define CMON_DUMMY_DATA 0 // 1 = report fake temperatures (no probes needed)
-// Unit for the screen and telemetry: "C", "F" or "K". Applied at every boot;
-// Croaster's {"command":{"tempUnit":"C"}} changes it until the next reboot.
+// Unit for the screen and telemetry: "C", "F" or "K". Croaster's
+// {"command":{"tempUnit":"C"}} changes it and the board saves the change (NVS);
+// this default applies until a unit has been saved.
 #define CMON_TEMP_UNIT "F"
 
 // ---- Thermocouple converters (ET + BT share SCK/MISO, one CS each) --------
@@ -54,6 +55,10 @@
 
 // ---- Features ---------------------------------------------------------------
 #define CMON_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
+// Browser UI at http://<board ip>/ once WiFi is connected: live chart, monitoring.
+// No password: anyone on the network can open it. 0 removes it from the build.
+#define CMON_ENABLE_WEBUI 1
+#define CMON_WEBUI_PORT 80 // HTTP port of the page (it talks to Croaster's WebSocket on 81)
 
 // ---- Derived settings (do not edit) -----------------------------------------
 #define CROASTER_HAS_BLE CMON_ENABLE_BLE // read by croaster/src/CroasterConstants.h

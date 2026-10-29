@@ -31,8 +31,9 @@
 #define CMON_BOARD_NAME "esp32s3-pid"
 #define CMON_DUMMY_DATA 0 // 1 = report fake temperatures (no probes needed)
 // Unit for the screen, telemetry ("temp" field) and incoming setpoints: "C",
-// "F" or "K". Applied at every boot; Croaster's {"command":{"tempUnit":"C"}}
-// changes it until the next reboot. Control limits below stay in Celsius.
+// "F" or "K". Croaster's {"command":{"tempUnit":"C"}} changes it and the board
+// saves the change (NVS); this default applies until a unit has been saved.
+// Control limits below stay in Celsius.
 // Artisan's .aset must match: artisan/croaster-pid.aset is set up for "F".
 #define CMON_TEMP_UNIT "F"
 
@@ -84,6 +85,10 @@
 
 // ---- Features ---------------------------------------------------------------
 #define CMON_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
+// Browser UI at http://<board ip>/ once WiFi is connected: live chart, monitoring and controls.
+// No password: anyone on the network can open it. 0 removes it from the build.
+#define CMON_ENABLE_WEBUI 1
+#define CMON_WEBUI_PORT 80 // HTTP port of the page (it talks to Croaster's WebSocket on 81)
 
 // ---- Control and safety (always Celsius, whatever CMON_TEMP_UNIT is) --------
 // PID input: the probe the firmware PID and autotune regulate. First-boot

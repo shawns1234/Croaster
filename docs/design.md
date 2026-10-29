@@ -112,6 +112,8 @@ config stays in the board; control logic is reusable by any future board
 | Commands, data fields, watchdog | `croaster-control/src/app/ControlPlugin` | Uses only Croaster's public extension points. |
 | Pins, chip/driver/display choice, limits | `boards/esp32s3-pid/src/config.h`, `boards/esp32s3-monitor/src/config.h` | Board config never in a library (AGENTS.md). |
 | OLED screen | `boards/common` `CroasterDisplaySSD1306` + `setHeaderText()` | Croaster's shared screen; the board supplies the header text (heater/fan/mode or trip). |
+| Browser UI (D27) | `croaster-webui/` | Served by the board; talks to Croaster's WebSocket like any client, so no core change. |
+| Saved temperature unit (D16, D27) | `croaster-control/src/app/unit_store`, `core/temp_unit.h` | NVS outside core; applied through core's own `changeTemperatureUnit()`. |
 
 ### Every file we added, against Croaster (review point 9, 2026-10-26)
 
@@ -159,6 +161,16 @@ two libraries, `control-core/` and `control-esp32/`):
 | `app/config_store.*` | new | NVS for PID gains, PID input, cooldown fan (stop and trip) and watchdog. Croaster core stores nothing. |
 | `hw/heater_output.*`, `fan_dimmer.*`, `fan_pwm.*`, `fan_output.h`, `thermocouples.*` | new | SSR, triac dimmer, PWM fan and SPI probe reading. |
 | `hw/esp32s3_opi_pins.h` | new | `constexpr` GPIO rules for ESP32-S3 modules with octal PSRAM (missing pins, flash/PSRAM, USB, strapping), shared by both boards' `ConfigCheck.h` (T46). Dev-board wiring stays in each board. |
+| `core/temp_unit.h`, `app/unit_store.*` | extends | Saves Croaster's `tempUnit` in NVS and applies it at boot through `changeTemperatureUnit()` (D16, D27). Croaster core stores nothing. |
+
+Library `croaster-webui/` (2026-10-29, D27):
+
+| File | Relation | Why it is here |
+|:---|:---|:---|
+| `web/*` | new | The browser page: HTML, CSS, UI script, roast math, WebSocket worker. Croaster has no web page. |
+| `embed_assets.py`, `src/webui_assets.h` | new | Build step that gzips `web/` into a header (generated, committed, reproducible). |
+| `src/WebUiServer.*` | new | ESP-IDF HTTP server for the page. Croaster's only HTTP server is WiFiManager's portal. |
+| `test/*` | new | Node tests for the roast math and page, Python tests for the asset step. |
 
 Clear wins done this round: the board's own SSD1306 class (now Croaster's
 display plus a hook, D12), `partitions.csv` (identical to `default_16MB.csv`),
@@ -176,12 +188,15 @@ and one sdkconfig file (D10).
    reads BT/ET through `RoasterProbe` (snapshot, NaN on fault), computes RoR,
    and broadcasts JSON; `onJsonData` adds `BurnerVal`, `FanVal`, `SV`, `Mode`,
    `trip`.
-3. Clients (Artisan, ICRM, BLE) send JSON → `CroasterCommandHandler` →
+3. Clients (Artisan, ICRM, BLE, the browser page of D27) send JSON → `CroasterCommandHandler` →
    `ControlPlugin` callbacks → `controlproto` parse → `Command` queue → control
    task. Gains / PID input / cooldown fan are persisted to NVS by the plugin.
 
 ## Threading
 - WiFi, LwIP and BLE (NimBLE) run on core 0 (IDF defaults).
+- The browser UI's HTTP server (D27) is its own task at priority 3 on the
+  core opposite the control task (core 0 by default). It serves constant data
+  and shares nothing with the other tasks.
 - Croaster's board json pins Arduino loop + events to core 1; the control task
   also runs on core 1 at `configMAX_PRIORITIES - 3`, so it preempts the loop
   (WebSocket handling, display, JSON) and never waits for it.
@@ -693,12 +708,14 @@ plugin already converts setpoints in and SV/ambient out with
 1. **Boot in a configured unit (implemented).** `CMON_TEMP_UNIT` in `config.h`
    (default "F"); `main.cpp` calls `core.changeTemperatureUnit()` in `setup()`.
    No core change. The `.aset` ships in °F mode with `channel_modes` 2 (°F).
-   The runtime `tempUnit` command still works until the next reboot.
+   Since 2026-10-29 (D27) a `tempUnit` command is saved in NVS and applied at
+   the next boot; `CMON_TEMP_UNIT` is the unit until one has been saved.
 2. Keep the firmware in °C and let Artisan convert (`channel_modes` 1, Artisan
    in °F). Artisan shows °F, but the OLED stays in °C, and Artisan sends
    setpoints in °F, which a °C firmware reads as °C.
-3. Persist `tempUnit` in NVS from core. Affects every board; not needed while
-   `config.h` sets the default.
+3. Persist `tempUnit` in NVS from core. Affects every board. Done instead
+   outside core (D27): `app/unit_store` saves it from an `onJsonCommand`
+   callback, on our two boards only.
 Artisan's mode and the firmware unit must match: Artisan sends slider and
 button temperatures in its own mode, and the firmware reads them in its unit.
 The header line now says "Fan" ("H50 Fan60 PID") so the fan % isn't read as a
@@ -1105,6 +1122,87 @@ Our config macros say which part of the firmware they belong to (rule in
   `#define CROASTER_HAS_BLE CMON_ENABLE_BLE`.
 - Firmware unchanged: the Croaster PID build is the same size
   (RAM 56 844 B, flash 1 724 947 B).
+
+### D27. Browser UI served by the board — resolved 2026-10-29 (Shawn)
+Artisan needs a computer with Artisan installed. Shawn wants a page any
+phone or laptop on the network can open, hosted on the board itself. A
+history database, recipes and sync come later as a separate app on a
+computer; they are not part of this.
+
+Decisions:
+
+- **Library `croaster-webui/` (`CroasterWebUi`)**, linked by both boards.
+  `CMON_ENABLE_WEBUI` (default 1) and `CMON_WEBUI_PORT` (default 80) in each
+  `config.h`; `ConfigCheck.h` rejects port 81 (Croaster's WebSocket) and
+  ports above 32767 (the server's control socket uses port + 32768).
+- **Server:** ESP-IDF `esp_http_server` in its own task, started from
+  `WebUiServer::loop()` once the station is connected and WiFiManager's
+  portal is closed (the portal uses port 80; it counts as open while the
+  radio is in AP mode). It stops if the portal opens again. Croaster's core
+  and command handler are untouched.
+- **The page is a WebSocket client** of Croaster on port 81, like Artisan: it
+  polls `getArtisanData` every second, `getControl` every 5 s and
+  `getDeviceInfo` every 30 s, and sends the same JSON commands. Croaster's
+  limit of 5 WebSocket clients applies.
+- **Assets:** readable sources in `web/`, gzipped at build time by
+  `embed_assets.py` into `src/webui_assets.h` (committed; regenerated only
+  when the source hash changes; gzip level 9, no timestamp). Budget 100 KB
+  gzipped, enforced by the build; v1 is about 20 KB. No CDN, no web fonts,
+  plain JavaScript, a hand-drawn SVG chart.
+- **One page for both boards.** `/info.json` reports the board id, the
+  WebSocket port and whether to show Controls; the monitor ships the controls
+  script too (a few KB) but hides it.
+- **Sections:** Live (tiles, chart, heater and fan strips, event buttons,
+  roast clock, CSV), Monitoring (every value the board reports, nothing
+  else), Controls (Croaster PID only: every command, replies and errors
+  inline, STOP always visible). Device RoR by default; an optional 30 s
+  least-squares RoR computed in the browser.
+- **Roast timer and events live in the browser** (`localStorage`), not on the
+  board. Croaster's own roast timer is not used.
+- **Confirm step** for `erase`, `restartesp`, `dummyToggle` and `wifiConnect`.
+- **No password.** Same exposure as the WebSocket on port 81, which already
+  accepts any command from the network. Documented in both READMEs and the
+  library README.
+- **Not in v1:** OTA upload from the page (use Croaster's OTA), a password,
+  a roast timer on the board.
+- **Temperature unit saved (D16 option 3, outside core).** The page changes
+  the unit with `tempUnit`; it now survives a reboot. `app/unit_store`
+  reads NVS namespace `croaster`, key `unit`, at boot (falls back to
+  `CMON_TEMP_UNIT`) and saves from an `onJsonCommand("tempUnit")` callback
+  only when the board applied the request and the unit changed.
+  `core/temp_unit.h` holds the decision and has host tests.
+- **Hidden tabs and the comms watchdog.** The WebSocket and poll timer run
+  in a dedicated Web Worker, whose timers browsers do not slow down in
+  hidden tabs; the page polls at once when it becomes visible. Remaining
+  cases where polls stop and the watchdog trips, as intended: tab or browser
+  closed, computer asleep or lid closed, WiFi lost, iOS/iPadOS Safari in the
+  background.
+
+Loop timing. The HTTP task runs on core 0 at priority 3 on Croaster PID
+(core opposite `CPID_CONTROL_CORE`), so it never competes with the control
+task (core 1, `configMAX_PRIORITIES - 3`) or the Arduino loop (core 1,
+priority 1). It only copies constant flash data to a socket; a full page load
+is about 20 KB once, then `304` replies. The cost on the loop task is
+Croaster's WebSocket handling of one more client: one `getArtisanData` per
+second, one `getControl` every 5 s, one `getDeviceInfo` every 30 s, the same
+traffic as a second Artisan. NVS is written only when the unit changes.
+Sockets: the HTTP server uses at most 4 client sockets plus its listen and
+control sockets; with the WebSocket server's 5 clients that stays under
+LwIP's 16.
+
+Cost (2026-10-29, against the build before D27):
+
+| Env | RAM | Flash |
+|:---|---:|---:|
+| `esp32s3-pid` | 56 908 B (+64) | 1 782 163 B (+57 216) |
+| `esp32s3-pid-debug` | 56 676 B (+56) | 1 489 555 B (+52 996) |
+| `esp32s3-pid-pioarduino` | 59 336 B (+64) | 1 467 047 B (+52 712) |
+| `esp32s3-monitor` | 54 708 B (+56) | 1 721 779 B (+63 088) |
+| `esp32s3-monitor-debug` | 54 484 B (+56) | 1 454 847 B (+55 416) |
+
+About 20 KB of that is the page; the rest is `esp_http_server` (and, on the
+monitor, the `Preferences` code for the saved unit). The server's
+task stack and sockets are allocated at run time, after WiFi connects.
 
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Croaster</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <div class="brand-name">Croaster</div>
+      <div class="brand-sub" id="device-name">connecting…</div>
+    </div>
+  </div>
+  <div class="link" id="link" data-state="connecting" title="WebSocket link">
+    <span class="dot"></span><span id="link-text">connecting</span>
+  </div>
+  <div class="clock">
+    <span class="clock-label" id="phase">Idle</span>
+    <span class="clock-value num" id="roast-clock">--:--</span>
+  </div>
+  <div class="top-actions">
+    <button type="button" class="ghost" id="theme-toggle" title="Switch light or dark theme">Theme</button>
+    <button type="button" class="stop" id="stop" data-needs="controls" hidden title="Heater off, Manual, cooldown fan">STOP</button>
+  </div>
+</header>
+
+<div class="banner" id="trip-banner" hidden></div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <nav class="tabs" aria-label="Sections">
+      <a href="#live" data-tab="live">Live</a>
+      <a href="#monitoring" data-tab="monitoring">Monitoring</a>
+      <a href="#controls" data-tab="controls" data-needs="controls" hidden>Controls</a>
+    </nav>
+    <div class="side-block">
+      <h3>Events</h3>
+      <ol class="event-list" id="event-list"><li class="muted">No events yet</li></ol>
+    </div>
+    <div class="side-block">
+      <h3>Session</h3>
+      <div class="row-buttons">
+        <button type="button" id="csv">Download CSV</button>
+        <button type="button" class="ghost" id="new-roast">New roast</button>
+      </div>
+      <p class="muted small" id="session-info"></p>
+    </div>
+    <div class="side-block">
+      <h3>Replies</h3>
+      <ol class="reply-log" id="reply-log"></ol>
+    </div>
+  </aside>
+
+  <main>
+    <section id="tab-live" data-panel="live">
+      <div class="tiles">
+        <div class="tile bt"><span class="tile-label">BT</span><span class="tile-value num" id="t-bt">—</span><span class="tile-unit" data-unit></span></div>
+        <div class="tile et"><span class="tile-label">ET</span><span class="tile-value num" id="t-et">—</span><span class="tile-unit" data-unit></span></div>
+        <div class="tile ror"><span class="tile-label">RoR <small id="ror-src">device</small></span><span class="tile-value num" id="t-ror">—</span><span class="tile-unit" id="t-ror-et"></span></div>
+        <div class="tile heat" data-field="BurnerVal"><span class="tile-label">Heater</span><span class="tile-value num" id="t-heat">—</span><span class="tile-unit">%</span></div>
+        <div class="tile fan" data-field="FanVal"><span class="tile-label">Fan</span><span class="tile-value num" id="t-fan">—</span><span class="tile-unit">%</span></div>
+        <div class="tile sv" data-field="SV"><span class="tile-label">Setpoint</span><span class="tile-value num" id="t-sv">—</span><span class="tile-unit" data-unit></span></div>
+        <div class="tile mode" data-field="Mode"><span class="tile-label">Mode</span><span class="tile-value" id="t-mode">—</span><span class="tile-unit" id="t-trip"></span></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <div class="legend">
+            <span class="key bt">BT</span><span class="key et">ET</span><span class="key ror">RoR</span>
+            <span class="key heat" data-field="BurnerVal">Heater</span><span class="key fan" data-field="FanVal">Fan</span>
+          </div>
+          <label class="toggle" title="Least-squares slope of BT over the last 30 s, times 60">
+            <input type="checkbox" id="ror-smooth"> Smoothed RoR (30 s)
+          </label>
+        </div>
+        <svg id="chart" class="chart" role="img" aria-label="BT, ET and RoR over time"></svg>
+        <svg id="strips" class="strips" data-field="BurnerVal" role="img" aria-label="Heater and fan over time"></svg>
+        <div class="readout num" id="readout"></div>
+      </div>
+
+      <div class="events" id="event-buttons"></div>
+      <div class="row-buttons">
+        <button type="button" class="ghost" id="undo-event">Undo last event</button>
+        <label class="toggle"><input type="checkbox" id="auto-tp" checked> Find TP automatically</label>
+      </div>
+    </section>
+
+    <section id="tab-monitoring" data-panel="monitoring" hidden>
+      <div class="cards">
+        <div class="card"><h2>Live readings <small class="muted" id="age-data"></small></h2><table class="kv" id="mon-data"></table></div>
+        <div class="card" data-needs="controls" hidden><h2>Control state <small class="muted" id="age-control"></small></h2><table class="kv" id="mon-control"></table></div>
+        <div class="card"><h2>Device <small class="muted" id="age-info"></small></h2><table class="kv" id="mon-info"></table></div>
+      </div>
+    </section>
+
+    <section id="tab-controls" data-panel="controls" hidden>
+      <div class="cards">
+        <div class="card">
+          <h2>Outputs and setpoint</h2>
+          <div class="field">
+            <span>Heater %</span>
+            <div class="stepper" data-key="burner" data-field="BurnerVal" data-min="0" data-max="100">
+              <button type="button" data-step="-5">−5</button><button type="button" data-step="-1">−1</button>
+              <output class="num">—</output>
+              <button type="button" data-step="1">+1</button><button type="button" data-step="5">+5</button>
+            </div>
+          </div>
+          <div class="field">
+            <span>Fan %</span>
+            <div class="stepper" data-key="fan" data-field="FanVal" data-min="0" data-max="100">
+              <button type="button" data-step="-5">−5</button><button type="button" data-step="-1">−1</button>
+              <output class="num">—</output>
+              <button type="button" data-step="1">+1</button><button type="button" data-step="5">+5</button>
+            </div>
+          </div>
+          <form class="field" data-send="setpoint">
+            <span>Setpoint <span data-unit></span></span>
+            <input type="number" name="value" step="1" min="0" required><button type="submit">Set</button>
+          </form>
+          <div class="field">
+            <span>Mode</span>
+            <div class="row-buttons">
+              <button type="button" data-cmd='{"command":{"mode":"manual"}}'>Manual</button>
+              <button type="button" data-cmd='{"command":{"mode":"pid"}}'>PID</button>
+            </div>
+          </div>
+          <form class="field" data-send="pidInput">
+            <span>PID input</span>
+            <select name="value"><option>BT</option><option>ET</option><option>MAX</option></select><button type="submit">Set</button>
+          </form>
+          <form class="field wide" data-send="pid">
+            <span>PID gains</span>
+            <label>Kp <input type="number" name="kp" step="any" required></label>
+            <label>Ki <input type="number" name="ki" step="any" required></label>
+            <label>Kd <input type="number" name="kd" step="any" required></label>
+            <button type="submit">Save gains</button>
+          </form>
+          <p class="muted small">The board caps the heater and setpoint at its configured limits and keeps the fan up while heating.</p>
+        </div>
+
+        <div class="card">
+          <h2>Safety</h2>
+          <div class="row-buttons">
+            <button type="button" class="stop-inline" data-cmd='{"command":"stop"}'>Stop</button>
+            <button type="button" data-cmd='{"command":"clearTrip"}'>Clear trip</button>
+            <button type="button" data-cmd='{"command":"autotune"}'>Autotune</button>
+          </div>
+          <p class="small">Autotune: <span class="num" id="autotune-status">—</span></p>
+          <form class="field wide" data-send="cooldownFan">
+            <span>Cooldown fan %</span>
+            <label>after stop <input type="number" name="stop" min="0" max="100" step="1" required></label>
+            <label>after trip <input type="number" name="trip" min="0" max="100" step="1" required></label>
+            <button type="submit">Save</button>
+          </form>
+          <form class="field wide" data-send="watchdog">
+            <span>Comms watchdog</span>
+            <label><input type="checkbox" name="enabled"> enabled</label>
+            <label>timeout s <input type="number" name="timeout" min="2" max="600" step="1" required></label>
+            <button type="submit">Save</button>
+          </form>
+        </div>
+
+        <div class="card span2">
+          <h2>Profile</h2>
+          <table class="profile" id="profile">
+            <thead><tr><th>#</th><th>Duration s</th><th>Setpoint <span data-unit></span></th><th>Curve</th><th>Fan %</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="row-buttons">
+            <button type="button" class="ghost" id="profile-add">Add step</button>
+            <button type="button" id="profile-load">Load to device</button>
+            <button type="button" data-cmd='{"command":"startProfile"}'>Start profile</button>
+          </div>
+          <p class="small" id="profile-status"></p>
+        </div>
+
+        <div class="card">
+          <h2>Device settings</h2>
+          <form class="field" data-send="tempUnit">
+            <span>Unit</span>
+            <select name="value"><option>F</option><option>C</option><option>K</option></select><button type="submit">Set</button>
+          </form>
+          <form class="field" data-send="interval">
+            <span>Broadcast interval s</span>
+            <input type="number" name="value" min="1" step="1" required><button type="submit">Set</button>
+          </form>
+          <form class="field" data-send="correctionBt">
+            <span>BT correction <span data-unit></span></span>
+            <input type="number" name="value" step="any" required><button type="submit">Set</button>
+          </form>
+          <form class="field" data-send="correctionEt">
+            <span>ET correction <span data-unit></span></span>
+            <input type="number" name="value" step="any" required><button type="submit">Set</button>
+          </form>
+          <div class="row-buttons">
+            <button type="button" data-cmd='{"command":"rotateScreen"}'>Rotate screen</button>
+            <button type="button" data-cmd='{"command":"displayToggle"}'>Screen on/off</button>
+            <button type="button" data-cmd='{"command":"blink"}'>Blink LED</button>
+            <button type="button" data-cmd='{"command":"getDeviceInfo"}'>Refresh device info</button>
+          </div>
+        </div>
+
+        <div class="card danger">
+          <h2>Maintenance</h2>
+          <div class="row-buttons">
+            <button type="button" data-cmd='{"command":"restartesp"}' data-confirm="Restart the board? The heater turns off and this page reconnects.">Restart</button>
+            <button type="button" data-cmd='{"command":"dummyToggle"}' data-confirm="Switch fake readings on or off? Charts and Artisan show the fake values while it is on.">Fake readings</button>
+            <button type="button" data-cmd='{"command":"erase"}' data-confirm="Erase the saved WiFi network and reboot? The board opens its setup access point afterwards.">Erase WiFi</button>
+          </div>
+          <form class="field wide" data-send="wifiConnect" data-confirm="Join this network now? The board drops the current connection, and this page loses it too if the network differs.">
+            <span>Join WiFi</span>
+            <label>SSID <input type="text" name="ssid" autocomplete="off" required></label>
+            <label>Password <input type="password" name="pass" autocomplete="off"></label>
+            <button type="submit">Connect</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<dialog id="confirm">
+  <form method="dialog">
+    <p id="confirm-text"></p>
+    <div class="row-buttons">
+      <button value="cancel" class="ghost">Cancel</button>
+      <button value="ok" class="danger-btn">Confirm</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="roast.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

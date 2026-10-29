@@ -46,8 +46,12 @@ thermometer library, and the control logic sits next to it.
 1. Heater and fan outputs start **off** before anything else.
 2. Saved settings (PID gains, PID input, cooldown fan) load from NVS.
 3. The control task starts on core 1.
-4. `plugin.attach()` registers the commands, then `app.begin()` brings up
+4. `UnitStore::attach()` applies the saved temperature unit (or
+   `CMON_TEMP_UNIT` when none is saved) and saves later `tempUnit` changes.
+5. `plugin.attach()` registers the commands, then `app.begin()` brings up
    WiFi (captive portal on first boot), WebSocket :81, BLE and the display.
+6. Once WiFi is connected and the portal is closed, `webUi.loop()` starts
+   the browser page's HTTP server (see "The browser page").
 
 ### One control tick
 
@@ -125,6 +129,28 @@ Host tests cover the decode and filter steps (`test_max31855_*`,
 `test_snapshot_stays_uncorrected`). Wiring and the real chips are
 checked on the bench (tickets T2, T3).
 
+### The browser page
+`http://<board ip>/` serves a page from the firmware (`croaster-webui/`).
+The HTTP server only hands out the page files; everything else goes through
+Croaster's WebSocket on port 81, exactly like Artisan:
+
+1. The browser loads `/` (HTML, CSS, scripts: about 20 KB gzipped, built
+   into the firmware) and `/info.json` (board id, WebSocket port, whether to
+   show Controls).
+2. A Web Worker opens `ws://<ip>:81/` and sends `getArtisanData` every
+   second, `getControl` every 5 s and `getDeviceInfo` every 30 s.
+3. Each `getArtisanData` reply becomes a chart sample. RoR is the board's
+   `DBT`, or a 30 s least-squares slope worked out in the browser.
+4. Event buttons (Charge ... Drop), the roast clock and the samples stay in
+   the browser's storage. CSV export writes them out.
+5. Controls send the same JSON commands as in the board README and show the
+   reply or error next to the log.
+
+The worker exists because browsers slow timers in a hidden tab, and a slow
+poll would trip the comms watchdog mid-roast. Closing the tab, a sleeping
+laptop or iOS Safari in the background still stops the polls, and the
+watchdog trips as it should.
+
 ### Watchdog
 Croaster's command handler records when it last accepted a message
 (`lastCommandMillis()`, WebSocket or BLE). If the heater is on (Manual, PID or
@@ -150,11 +176,17 @@ settings; see the board README, "Comms watchdog".
 | `croaster-control/src/app/ControlPlugin.*` | Commands, data fields, watchdog |
 | `croaster-control/src/app/config_store.*` | NVS settings (gains, PID input, cooldown fan, watchdog) |
 | `croaster-control/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
+| `croaster-control/src/app/unit_store.*`, `core/temp_unit.h` | Saved temperature unit (NVS `croaster`/`unit`) |
+| `croaster-webui/` | The browser page: `web/` sources, `embed_assets.py` (gzips them into the firmware), `WebUiServer` (HTTP), tests |
 | `croaster/src/` | Croaster library (WiFi, WebSocket, BLE, OTA, RoR) |
 
 ## Gotchas
-- **Units.** Temperatures in commands use Croaster's unit setting. Keep
-  Croaster and Artisan both in °C.
+- **Units.** Temperatures in commands use Croaster's unit setting (°F by
+  default; a `tempUnit` change is saved and survives a reboot). Keep Artisan
+  in the same unit as the board.
+- **The browser page has no password.** Anyone on the network can open it
+  and, on Croaster PID, run the heater, the same as with the WebSocket on
+  port 81. An open page also keeps the comms watchdog fed.
 - **Two PIDs exist in the world.** Artisan has its own software PID ("Control"
   button). It is turned off in our `.aset`. Ours runs on the ESP32. See
   `control-parity.md`.

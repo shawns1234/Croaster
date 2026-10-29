@@ -29,6 +29,10 @@ constexpr bool validTempUnit(const char* u) {
     return (u[0] == 'C' || u[0] == 'F' || u[0] == 'K') && u[1] == '\0';
 }
 static_assert(validTempUnit(CMON_TEMP_UNIT), "config.h: CMON_TEMP_UNIT must be \"C\", \"F\" or \"K\"");
+#if CMON_ENABLE_WEBUI
+static_assert(CMON_WEBUI_PORT > 0 && CMON_WEBUI_PORT < 32768 && CMON_WEBUI_PORT != 81,
+              "config.h: CMON_WEBUI_PORT must be 1..32767 and not 81 (Croaster's WebSocket)");
+#endif
 
 // Dev-board wiring: UART0 to the USB-UART bridge (43, 44), RGB LED (48; some DevKitC revisions use 38).
 constexpr bool isBoardReserved(int p) {

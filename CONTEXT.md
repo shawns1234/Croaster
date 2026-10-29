@@ -18,7 +18,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan (always both), 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
 | `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
-| `docs/` | `design.md` (architecture + decisions D1–D26), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `croaster-webui/` | Browser UI lib `CroasterWebUi` (D27): `web/` page sources, `embed_assets.py` (library extra script, gzips `web/` into the committed `src/webui_assets.h`), `src/WebUiServer` (ESP-IDF `esp_http_server` on `CMON_WEBUI_PORT`), host tests in `test/` (node + python) |
+| `docs/` | `design.md` (architecture + decisions D1–D27), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `tools/` | Build helpers: `force_include_deps.py` (pre: extra script; force-included `config.h` as a rebuild dependency, T47) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -28,8 +29,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 26.3% (1 724 947 B), RAM 56 844 B (2026-10-28) |
-| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 25.3% (1 658 691 B), RAM 54 652 B (2026-10-28) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.2% (1 782 163 B), RAM 56 908 B (2026-10-29, with the browser UI) |
+| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.3% (1 721 779 B), RAM 54 708 B (2026-10-29, with the browser UI) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -82,6 +83,15 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Leaving Autotune by any command starts the next mode with the heater at 0;
   a setpoint change during Autotune aborts it. `Amb` is the cold-junction
   temperature of whichever MAX31855 answers (BT first).
+- Browser UI (D27, 2026-10-29): `WebUiServer` (both boards,
+  `CMON_ENABLE_WEBUI`) serves `http://<ip>/` once STA is connected and the
+  WiFiManager portal is closed (AP mode = portal open; both use port 80). The
+  page is a WebSocket client on :81 like Artisan (1 s `getArtisanData`, 5 s
+  `getControl` on Croaster PID, 30 s `getDeviceInfo`), from a Web Worker so
+  hidden tabs keep polling. `/info.json` gates Controls. Roast clock and
+  events live in the browser. No password. `tempUnit` is saved to NVS
+  (`app/unit_store`, namespace `croaster`, key `unit`) and applied at boot;
+  `CMON_TEMP_UNIT` is the default when nothing is saved.
 - Library features added in 0.52: roast timer (`CroasterCore::roastTimerStart/
   Pause/Reset`), `getDeviceInfo` now reports `board`/`darkMode`/`brightness`
   (display state via `CroasterDisplay::isDarkMode()/getBrightness()`), and a
@@ -182,8 +192,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - Artisan WebSocket: replies must echo the request `id`. Command strings in the
   `.aset` go through Python `str.format`, so literal braces are doubled.
   Artisan's "Control" button is its own PC-side PID; keep it off.
-- Units: control math and limits are °C. Croaster's `tempUnit` (Croaster PID boots in
-  `CMON_TEMP_UNIT`, default "F") sets the screen, telemetry and command
+- Units: control math and limits are °C. Croaster's `tempUnit` (boots in the
+  saved unit, else `CMON_TEMP_UNIT`, default "F") sets the screen, telemetry and command
   temperatures; convert at the edges (`toCelsius`/`fromCelsius`). Artisan's
   mode and `channel_modes` must match the firmware unit.
 - Corrections (D22): `correctionBt`/`correctionEt` live in core, in the display
@@ -219,8 +229,19 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 - PlatformIO not on PATH → `~/.platformio/penv/bin/pio` or `PIO=`.
 - Libs are **live-linked** via `symlink://` lib_deps
   (`Croaster=symlink://../../croaster`, `CroasterDisplaySSD1306=symlink://../common`,
-  `CroasterControl=symlink://../../croaster-control`)
+  `CroasterControl=symlink://../../croaster-control`,
+  `CroasterWebUi=symlink://../../croaster-webui`)
   — editing `croaster/src/` needs no `.pio/libdeps` cleanup.
+- `croaster-webui/src/webui_assets.h` is generated from `web/` by
+  `embed_assets.py` on every build (only rewritten when the source hash
+  changes). Commit it with the `web/` change; `python3
+  croaster-webui/embed_assets.py --check` fails when it is stale. Bump
+  `FORMAT` in the script when the generated layout changes.
+- Web UI tests: `node --test croaster-webui/test/*.test.js` and
+  `python3 -m unittest discover -s croaster-webui/test`.
+- Host tests (`pio test -e native`) call `g++`. On a machine without it, a
+  `g++` wrapper script running `python3 -m ziglang c++ "$@"` (pip package
+  `ziglang`) on `PATH` works.
 - ESP32-C3: WiFiManager AP can fail to broadcast under the PIO core (2.0.17) —
   fixed via DIO flash mode + `WiFi.setTxPower(WIFI_POWER_18_5dBm)` in the
   configMode callback (see `boards/esp32c3/` notes).

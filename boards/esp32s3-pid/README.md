@@ -108,12 +108,34 @@ Serial logs: native USB-C port (`ARDUINO_USB_CDC_ON_BOOT=1`). Using the other
 
 ---
 
+## 🌐 Browser UI
+
+Once the board is on WiFi, open `http://<board ip>/` (the IP is on the OLED)
+on any phone or computer on the same network. Live shows the readings, a
+BT/ET/RoR chart with heater and fan, event buttons, a roast clock and CSV
+export; Monitoring lists every value the board reports; Controls has every
+command below, with the board's reply shown, and STOP is always in the top
+bar. Details: [`croaster-webui/README.md`](../../croaster-webui/README.md).
+
+- **No password.** Anyone on the network can open the page and run the
+  heater, just as anyone can send commands to the WebSocket on port 81. Use
+  a network you trust, or set `CMON_ENABLE_WEBUI 0` in `config.h`.
+- An open page polls every second, so it keeps the comms watchdog fed even
+  with Artisan closed. Closing the tab, a sleeping laptop or iOS Safari in
+  the background stops the polls, and the watchdog trips after its timeout.
+- The roast clock and events are kept in that browser only.
+- Not on the page yet: firmware upload (use Croaster's OTA).
+- Settings: `CMON_ENABLE_WEBUI` (1), `CMON_WEBUI_PORT` (80; the page needs
+  the setup portal closed, which also uses port 80).
+
+---
+
 ## 📡 Commands (WebSocket :81 and BLE, Croaster JSON)
 
 Croaster's own commands work unchanged (`getArtisanData`, `getDeviceInfo`,
-`tempUnit`, OTA...). Temperatures are in Croaster's current unit: °F at boot
-(`CMON_TEMP_UNIT` in `config.h`); `{"command":{"tempUnit":"C"}}` switches until
-the next reboot. Limits and the PID still work in °C. The Croaster PID board adds:
+`tempUnit`, OTA...). Temperatures are in Croaster's current unit: °F
+(`CMON_TEMP_UNIT` in `config.h`) until `{"command":{"tempUnit":"C"}}` switches
+it. The change is saved, so the board boots in that unit from then on. Limits and the PID still work in °C. The Croaster PID board adds:
 
 | JSON | Effect |
 |:---|:---|

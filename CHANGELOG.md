@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — Croaster PID control board (branch rework/roaster)
 
 ### Added
+- **Browser UI served by the board (D27, T48).** New library
+  `croaster-webui/` (`CroasterWebUi`) on both boards: open
+  `http://<board ip>/` once the board is on WiFi. Live section with BT, ET,
+  RoR, heater, fan, setpoint and mode tiles, a BT/ET/RoR chart with heater and
+  fan strips, event buttons, roast clock and CSV export (device RoR or an
+  optional 30 s least-squares RoR); Monitoring with every value the board
+  reports; Controls on Croaster PID with every command, inline replies and
+  an always-visible STOP. Dark theme with a light option. The page talks to
+  Croaster's WebSocket on port 81; its polling runs in a Web Worker so a
+  hidden tab keeps feeding the comms watchdog. Served by ESP-IDF
+  `esp_http_server` in its own task, only after WiFi connects and the setup
+  portal is closed. Assets are gzipped into the firmware at build time
+  (`embed_assets.py`, about 20 KB, 100 KB budget). No password: anyone on the
+  network can use it. `CMON_ENABLE_WEBUI` (default 1) and `CMON_WEBUI_PORT`
+  (default 80). Host tests for the page (node) and the asset step (python).
+- **Temperature unit survives a reboot (D16, D27).** A `tempUnit` command is
+  saved in NVS (`app/unit_store`) and applied at boot; `CMON_TEMP_UNIT` is the
+  unit until one is saved. Two host tests (38 in total).
 - **`boards/esp32s3-monitor` ("Croaster monitor", D26).** The Croaster PID
   hardware without heater and fan: 2 × MAX31855 or MAX6675, SSD1306,
   Croaster's RoR, WebSocket, BLE and OTA. Probes are read by

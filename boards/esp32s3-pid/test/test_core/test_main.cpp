@@ -17,6 +17,7 @@
 #include "core/probe_correction.h"
 #include "core/relay_autotune.h"
 #include "core/roast_profile.h"
+#include "core/temp_unit.h"
 #include "core/time_proportional.h"
 #include "core/zero_cross.h"
 
@@ -724,6 +725,24 @@ void test_mains_heater_off_resets_grace() {
     TEST_ASSERT_FALSE(w.update(false, false, 9000, 2000)); // never trips with the heater off
 }
 
+// ---------- Temperature unit kept across reboots ----------
+void test_temp_unit_boot_uses_saved_or_default() {
+    TEST_ASSERT_EQUAL_STRING("C", tempunit::atBoot("C", "F"));
+    TEST_ASSERT_EQUAL_STRING("K", tempunit::atBoot("K", "F"));
+    TEST_ASSERT_EQUAL_STRING("F", tempunit::atBoot("", "F"));      // nothing saved yet
+    TEST_ASSERT_EQUAL_STRING("F", tempunit::atBoot(nullptr, "F")); // namespace missing
+    TEST_ASSERT_EQUAL_STRING("F", tempunit::atBoot("c", "F"));     // only C, F, K are units
+    TEST_ASSERT_EQUAL_STRING("F", tempunit::atBoot("CF", "F"));
+}
+
+void test_temp_unit_saves_only_changes() {
+    TEST_ASSERT_TRUE(tempunit::needsSave("", "C")); // first change
+    TEST_ASSERT_TRUE(tempunit::needsSave("F", "C"));
+    TEST_ASSERT_FALSE(tempunit::needsSave("C", "C")); // same unit: no flash write
+    TEST_ASSERT_FALSE(tempunit::needsSave("C", "X")); // never store an invalid unit
+    TEST_ASSERT_FALSE(tempunit::needsSave("", ""));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_moving_average_seeds_with_first_sample);
@@ -762,5 +781,7 @@ int main() {
     RUN_TEST(test_mains_dropout_under_grace_does_not_trip);
     RUN_TEST(test_mains_absent_past_grace_trips);
     RUN_TEST(test_mains_heater_off_resets_grace);
+    RUN_TEST(test_temp_unit_boot_uses_saved_or_default);
+    RUN_TEST(test_temp_unit_saves_only_changes);
     return UNITY_END();
 }

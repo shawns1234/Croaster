@@ -49,6 +49,23 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Unplug one probe → that probe `N/A` after the third bad read (under 1 s), the other unaffected; plug back → reading returns. **untested**
 - No control code: `getControl` gets no control reply; no heater, fan or control symbols in the ELF. **build 2026-10-28** (ELF symbols); reply untested
 
+## Browser UI (`croaster-webui`, D27)
+- Roast math in the page: least-squares RoR, turning point, unit conversion, axis ticks, clock, CSV. **host** `node --test croaster-webui/test/*.test.js` (`roast.test.js`)
+- Page checks: every script parses, nothing loaded from outside the board, every element id the script uses exists, every form has a command, `restartesp`/`erase`/`dummyToggle`/`wifiConnect` ask first. **host** `web_check.test.js`
+- Asset step: same output twice, gzip without timestamp, committed header current, under 100 KB. **host** `python3 -m unittest discover -s croaster-webui/test`
+- Page against a mock board (Chrome headless, WebSocket on another port): tiles, chart, auto turning point, Monitoring and Controls render, phone width stacks the layout, no script errors. **build 2026-10-29**
+- First boot with no WiFi saved → portal on port 80 works as before; the page is not served until the board joins WiFi and the portal closes. **untested**
+- Open `http://<board ip>/` → BT, ET, RoR, heater, fan, SV and mode match the OLED within one second; Monitoring lists the same values as `getArtisanData`, `getControl` and `getDeviceInfo`. **untested**
+- Croaster monitor → no Controls tab and no STOP button. **untested**
+- Each control on Croaster PID (heater/fan steppers, setpoint, mode, PID input, gains, cooldown fan, watchdog, unit, interval, corrections, autotune, profile load and start, screen buttons, `getDeviceInfo`) → the board's reply or error shows inline and the OLED or `getControl` agrees. **untested**
+- STOP from every section → heater 0, cooldown fan. **untested**
+- `restartesp`, `erase`, `dummyToggle`, `wifiConnect` → confirm dialog first; Cancel sends nothing. **untested**
+- Charge, events, reload the page → events, clock and chart are kept; CSV has one row per second with the events. **untested**
+- Heater in Manual at a low % (AC connected, nothing on the drum or an empty drum), page open, switch to another tab for 5+ minutes → no `comms` trip; back on the tab, the chart has no gap. **untested**
+- Same, then close the tab (Artisan closed) → `comms` trip after the watchdog timeout. **untested**
+- Artisan and the page connected together → both keep 1 s data, no reconnects. **untested**
+- Release build: control loop timing unchanged with the page open (`docs/design.md` D27 "Loop timing"). **untested**
+
 ## Config checks (pins)
 - Accepted GPIOs on both boards: 1, 2, 4-18, 21, 38-42, 47 (shared `hw/esp32s3_opi_pins.h` plus board wiring, T46). **build 2026-10-28** (host check of 0..48 against the old rules; same sizes)
 - A probe pin on GPIO 35 (PSRAM) or 43 (UART0) fails the pin `static_assert` on Croaster PID and Croaster monitor. **build 2026-10-28**
@@ -140,7 +157,9 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Nested setpoints in °F convert to °C; SV written back in °F. **host** `test_protocol_values`, `test_protocol_yaeger_compat`, `test_protocol_basic_and_data`
 - Profile steps in °F convert to °C. **host** `test_profile_in_fahrenheit`
 - Artisan setpoint 383 °F → SV 383 in telemetry and Artisan's SV LCD. **host** (conversion only, `test_unit_conversion`); bench todo
-- `{"command":{"tempUnit":"C"}}` → OLED and telemetry in °C until reboot. **untested**
+- `{"command":{"tempUnit":"C"}}` → OLED and telemetry in °C, and still °C after a reboot (saved in NVS, D27). **untested**
+- Nothing saved yet (fresh or erased NVS) → boots in `CMON_TEMP_UNIT`. A saved unit wins over `CMON_TEMP_UNIT`; an invalid saved value falls back to it. **host** `test_temp_unit_boot_uses_saved_or_default`
+- `tempUnit` saves only a unit the board applied and only when it changed (`"X"` or the same unit again → no NVS write). **host** (rule) `test_temp_unit_saves_only_changes`; on the board **untested**
 
 ## Setpoint caps
 - Setpoint above 482 °F (250 °C) → SV capped at 482 °F. **untested** (cap is in the controller, not host-tested)

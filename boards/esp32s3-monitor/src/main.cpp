@@ -7,6 +7,7 @@
 #include <CroasterApp.h>
 #include <CroasterDeviceIdentity.h>
 #include <app/MonitorProbes.h>
+#include <app/unit_store.h>
 #include <hw/thermocouples.h>
 
 // ---------------------------------------------------------------------------
@@ -31,9 +32,21 @@ CroasterDisplay* const displayPtr = nullptr;
 
 CroasterApp app(core, displayPtr, CMON_PIN_LED, CMON_LED_ON_LEVEL);
 
+#if CMON_ENABLE_WEBUI
+#    include <WebUiServer.h>
+WebUiServer::Options webUiOptions() {
+    WebUiServer::Options o;
+    o.port = CMON_WEBUI_PORT;
+    o.controls = false; // monitoring only: this board has no heater or fan
+    o.board = CMON_BOARD_NAME;
+    return o;
+}
+WebUiServer webUi(webUiOptions()); // starts once WiFi is up (see WebUiServer::loop)
+#endif
+
 void setup() {
     CroasterDeviceIdentity::setBoardName(CMON_BOARD_NAME);
-    core.changeTemperatureUnit(CMON_TEMP_UNIT);
+    UnitStore::attach(app, CMON_TEMP_UNIT);           // saved unit, else CMON_TEMP_UNIT
     Wire.setPins(CMON_PIN_I2C_SDA, CMON_PIN_I2C_SCL); // later Wire.begin() calls use these
     monitor.begin();
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display
@@ -41,4 +54,7 @@ void setup() {
 
 void loop() {
     app.loop();
+#if CMON_ENABLE_WEBUI
+    webUi.loop();
+#endif
 }

@@ -9,6 +9,7 @@
 #include <app/ControlPlugin.h>
 #include <app/RoasterProbe.h>
 #include <app/controller.h>
+#include <app/unit_store.h>
 #include <core/autotune_status.h>
 #include <hw/heater_output.h>
 #include <hw/thermocouples.h>
@@ -73,6 +74,19 @@ ControlSettings defaults() {
 }
 ControlPlugin plugin(controller);
 
+#if CMON_ENABLE_WEBUI
+#    include <WebUiServer.h>
+WebUiServer::Options webUiOptions() {
+    WebUiServer::Options o;
+    o.port = CMON_WEBUI_PORT;
+    o.controls = true;
+    o.board = CMON_BOARD_NAME;
+    o.coreId = CPID_CONTROL_CORE == 0 ? 1 : 0; // keep HTTP work off the control task's core
+    return o;
+}
+WebUiServer webUi(webUiOptions()); // starts once WiFi is up (see WebUiServer::loop)
+#endif
+
 // Header line for the SSD1306, at most 20 characters: "H50 Fan60 PID" or "TRIP overtemp Fan100".
 // "Fan" is spelled out so it can't be read as a Fahrenheit temperature. For
 // 10 s after the autotune status changes (including a refused start), the
@@ -99,7 +113,8 @@ String statusLine(const Snapshot& s) {
 
 void setup() {
     CroasterDeviceIdentity::setBoardName(CMON_BOARD_NAME);
-    core.changeTemperatureUnit(CMON_TEMP_UNIT); // Croaster converts BT/ET/RoR; the plugin converts SV and setpoints
+    // Saved unit, else CMON_TEMP_UNIT. Croaster converts BT/ET/RoR; the plugin converts SV and setpoints.
+    UnitStore::attach(app, CMON_TEMP_UNIT);
     Wire.setPins(CMON_PIN_I2C_SDA, CMON_PIN_I2C_SCL); // later Wire.begin() calls use these
 
     // Outputs safe before anything else: heater off, fan off.
@@ -124,4 +139,7 @@ void setup() {
 void loop() {
     app.loop();
     plugin.loop();
+#if CMON_ENABLE_WEBUI
+    webUi.loop();
+#endif
 }

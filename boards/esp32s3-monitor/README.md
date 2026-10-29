@@ -49,7 +49,9 @@ port), 48 (RGB LED). `src/ConfigCheck.h` rejects these at compile time.
 
 The one file to edit: thermocouple chip (`CMON_THERMOCOUPLE`: `CMON_TC_MAX31855`
 or `CMON_TC_MAX6675`), display, pins, temperature unit (`CMON_TEMP_UNIT`,
-default "F") and BLE (`CMON_ENABLE_BLE`). Every setting uses the `CMON_`
+default "F", used until a `tempUnit` command saves another one), BLE
+(`CMON_ENABLE_BLE`) and the browser UI (`CMON_ENABLE_WEBUI`,
+`CMON_WEBUI_PORT`). Every setting uses the `CMON_`
 prefix, the same names Croaster PID uses for the same settings. The file is
 force-included into every translation unit (`-include src/config.h`) so it can
 also switch Croaster library features (`CROASTER_HAS_BLE`). Editing it rebuilds
@@ -92,6 +94,14 @@ corrections, OTA...), over WebSocket :81 and BLE. For Artisan, use Croaster's
 standard setup (["How to Connect Croaster with Artisan"](../../README.md#-how-to-connect-croaster-with-artisan));
 `boards/esp32s3-pid/artisan/croaster-pid.aset` adds heater and fan controls
 this board does not have.
+
+## 🌐 Browser UI
+
+Once the board is on WiFi, open `http://<board ip>/` (the IP is on the OLED).
+Live shows BT, ET and RoR with a chart, event buttons, a roast clock and CSV
+export; Monitoring lists every value the board reports. This board has no
+Controls section. No password: anyone on the network can open it. Details:
+[`croaster-webui/README.md`](../../croaster-webui/README.md).
 
 ## ⚠️ Check before first power-up
 - IPEX antenna attached (transmitting without it can damage the RF stage).
