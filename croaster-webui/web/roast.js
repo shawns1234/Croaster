@@ -93,8 +93,8 @@
     return 'idle';
   }
 
-  // A session records samples only while it is active: from Start roast or Charge
-  // until STOP (or End roast on a board without controls). Sessions saved before
+  // A session records samples only while it is active: from Start until STOP or
+  // End roast. Sessions saved before
   // this field existed have no `active` and count as ended.
   function isRecording(session) {
     return !!session && session.active === true;
@@ -127,6 +127,23 @@
     }
     const ph = phase(session.events);
     return ph === 'idle' ? 'preheat' : ph;
+  }
+
+  // Event buttons follow the roast: nothing before Start, then Charge only, then
+  // the later events in order, each once, until Drop. An event is refused once a
+  // later one is marked; FC end needs FC start, SC start needs FC start and SC
+  // end needs SC start. Undo removes the last event and re-enables it.
+  const NEEDS = { FC_END: 'FC_START', SC_START: 'FC_START', SC_END: 'SC_START' };
+  function eventAllowed(session, code) {
+    if (!isRecording(session)) return false;
+    const has = (c) => session.events.some((e) => e.code === c);
+    const order = EVENTS.findIndex((e) => e.code === code);
+    if (order < 0 || has(code)) return false;
+    if (code === 'CHARGE') return true;
+    if (!has('CHARGE') || has('DROP')) return false;
+    if (NEEDS[code] && !has(NEEDS[code])) return false;
+    if (code === 'DROP') return true;
+    return !EVENTS.slice(order + 1).some((e) => e.code !== 'DROP' && has(e.code));
   }
 
   // The board has acted on "stop": Manual mode with the heater at 0 %.
@@ -205,5 +222,5 @@
   }
 
   return { EVENTS, lsSlope, smoothedRor, detectTurningPoint, formatClock, phase, niceTicks, convertTemp,
-    convertSession, buildCsv, isRecording, endSession, resumeSession, sessionState, stopConfirmed };
+    convertSession, buildCsv, isRecording, endSession, resumeSession, sessionState, stopConfirmed, eventAllowed };
 });

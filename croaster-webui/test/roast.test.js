@@ -159,3 +159,17 @@ test('stopConfirmed: Manual with the heater at 0 %', () => {
   assert.equal(R.stopConfirmed({ Mode: 'Manual' }), false); // a board without controls never confirms
   assert.equal(R.stopConfirmed(null), false);
 });
+
+test('eventAllowed: nothing before Start, Charge first, later events in order, Drop last', () => {
+  const ses = (active, codes) => ({ active, samples: [], events: codes.map((code, i) => ({ code, t: i })) });
+  const allowed = (s) => R.EVENTS.map((e) => e.code).filter((c) => R.eventAllowed(s, c));
+  assert.deepEqual(allowed(ses(false, [])), []); // idle: all disabled
+  assert.deepEqual(allowed(ses(true, [])), ['CHARGE']); // after Start
+  assert.deepEqual(allowed(ses(true, ['CHARGE'])), ['TP', 'DRY_END', 'FC_START', 'DROP']);
+  assert.deepEqual(allowed(ses(true, ['CHARGE', 'TP', 'DRY_END'])), ['FC_START', 'DROP']);
+  assert.deepEqual(allowed(ses(true, ['CHARGE', 'DRY_END', 'FC_START'])), ['FC_END', 'SC_START', 'DROP']);
+  assert.deepEqual(allowed(ses(true, ['CHARGE', 'FC_START', 'FC_END', 'SC_START'])), ['SC_END', 'DROP']);
+  assert.deepEqual(allowed(ses(true, ['CHARGE', 'FC_START', 'DROP'])), []); // after Drop
+  assert.deepEqual(allowed(ses(false, ['CHARGE', 'FC_START'])), []); // ended
+  assert.equal(R.eventAllowed(ses(true, ['CHARGE']), 'NOPE'), false);
+});

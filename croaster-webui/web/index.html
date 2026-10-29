@@ -28,7 +28,9 @@
   </div>
   <div class="top-actions">
     <button type="button" class="ghost appearance-open" id="appearance-open" title="Colours and style" aria-label="Appearance" aria-haspopup="dialog"><span class="ap-icon" aria-hidden="true"></span><span class="ap-text">Appearance</span></button>
+    <button type="button" class="start" id="new-roast" title="Start recording a roast">Start</button>
     <button type="button" class="stop" id="stop" data-needs="controls" hidden disabled title="Available while a roast is recording">STOP</button>
+    <button type="button" class="end" id="end-roast" hidden disabled title="Available while a roast is recording">End roast</button>
   </div>
 </header>
 
@@ -37,8 +39,8 @@
 <div class="shell">
   <aside class="sidebar">
     <nav class="tabs" aria-label="Sections">
-      <a href="#live" data-tab="live">Live</a>
       <a href="#monitoring" data-tab="monitoring">Monitoring</a>
+      <a href="#live" data-tab="live">Live</a>
       <a href="#controls" data-tab="controls" data-needs="controls" hidden>Controls</a>
     </nav>
     <div class="side-block">
@@ -49,8 +51,6 @@
       <h3>Session</h3>
       <div class="row-buttons">
         <button type="button" id="csv">Download CSV</button>
-        <button type="button" class="ghost" id="new-roast">Start roast</button>
-        <button type="button" class="ghost" id="end-roast" hidden>End roast</button>
       </div>
       <p class="muted small" id="session-info"></p>
     </div>
@@ -61,7 +61,7 @@
   </aside>
 
   <main>
-    <section id="tab-live" data-panel="live">
+    <section id="tab-live" data-panel="live" hidden>
       <div class="tiles">
         <div class="tile bt"><span class="tile-label">BT</span><span class="tile-value num" id="t-bt">—</span><span class="tile-unit" data-unit></span></div>
         <div class="tile et"><span class="tile-label">ET</span><span class="tile-value num" id="t-et">—</span><span class="tile-unit" data-unit></span></div>
@@ -91,11 +91,12 @@
       <div class="events" id="event-buttons"></div>
       <div class="row-buttons">
         <button type="button" class="ghost" id="undo-event">Undo last event</button>
+        <button type="button" id="end-after-drop" hidden title="Stop recording; the board is not changed">End roast</button>
         <label class="toggle"><input type="checkbox" id="auto-tp" checked> Find TP automatically</label>
       </div>
     </section>
 
-    <section id="tab-monitoring" data-panel="monitoring" hidden>
+    <section id="tab-monitoring" data-panel="monitoring">
       <div class="cards">
         <div class="card"><h2>Live readings <small class="muted" id="age-data"></small></h2><table class="kv" id="mon-data"></table></div>
         <div class="card" data-needs="controls" hidden><h2>Control state <small class="muted" id="age-control"></small></h2><table class="kv" id="mon-control"></table></div>

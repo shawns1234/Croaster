@@ -65,7 +65,7 @@ test('STOP starts disabled and acts only through a confirm while a roast records
   const app = read('app.js');
   assert.match(html, /<button [^>]*id="stop"[^>]* disabled[ >]/);
   assert.match(app, /\$\('#stop'\)\.addEventListener\('click', stopRoast\)/);
-  const body = app.slice(app.indexOf('function stopRoast()'), app.indexOf('function eventAllowed('));
+  const body = app.slice(app.indexOf('function stopRoast()'), app.indexOf('function renderEvents('));
   assert.match(body, /if \(!recording\(\)\) return;/);
   assert.ok(body.indexOf('confirmThen(') >= 0 && body.indexOf('confirmThen(') < body.indexOf("send({ command: 'stop' })"),
     'stop is sent from inside the confirm callback');
@@ -77,6 +77,45 @@ test('samples are recorded only after an explicit start', () => {
   const add = app.slice(app.indexOf('function addSample('), app.indexOf('function addEvent('));
   assert.match(add, /^function addSample\(d, at\) \{\s+if \(!recording\(\)\) return;/);
   assert.match(read('app.js'), /active: false/); // a new or reset session does not record
+});
+
+test('Monitoring is the first tab and the landing view; Start sits beside STOP', () => {
+  const app = read('app.js');
+  const tabs = [...html.matchAll(/data-tab="(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(tabs, ['monitoring', 'live', 'controls']);
+  assert.match(html, /<section id="tab-monitoring" data-panel="monitoring">/);
+  assert.match(html, /<section id="tab-live" data-panel="live" hidden>/);
+  assert.match(app, /tab: 'monitoring',/);
+  assert.match(app, /tab = 'monitoring';\n\s+S\.tab = tab;/); // unknown or missing hash
+  const bar = html.slice(html.indexOf('<div class="top-actions">'), html.indexOf('</header>'));
+  assert.ok(bar.indexOf('id="new-roast"') >= 0 && bar.indexOf('id="new-roast"') < bar.indexOf('id="stop"'));
+  assert.match(bar, /id="end-roast" hidden disabled/);
+});
+
+test('Start and the event buttons send nothing to the board', () => {
+  const app = read('app.js');
+  const start = app.slice(app.indexOf('function startRoast('), app.indexOf('function endRoast('));
+  const mark = app.slice(app.indexOf('function markEvent('), app.indexOf('function startRoast('));
+  for (const body of [start, mark]) assert.doesNotMatch(body, /send\(|postMessage\(/);
+  assert.match(mark, /^function markEvent\(code\) \{\s+if \(!R\.eventAllowed\(S\.session, code\)\) return;/);
+});
+
+test('the page sends commands only from user actions', () => {
+  // Every send() call site. Loading the page or switching views reaches none of
+  // them; the worker's polls (getArtisanData, getControl, getDeviceInfo) are read-only.
+  // A new command needs an entry here.
+  const app = read('app.js');
+  const calls = app.split('\n').filter((l) => /\bsend\(/.test(l) && !/function send\(/.test(l)).map((l) => l.trim());
+  assert.deepEqual(calls, [
+    "send({ command: 'stop' });",
+    'send({ command: { [key]: value } }); // one command per click',
+    'send({ command: { profile: steps } });',
+    'send(cmd);',
+    'send({ command: payload });',
+  ]);
+  const worker = read('link.worker.js');
+  const sent = [...worker.matchAll(/send\(\{ command: '(\w+)'/g)].map((m) => m[1]);
+  assert.deepEqual(sent, ['getArtisanData', 'getControl', 'getDeviceInfo']);
 });
 
 test('theme.js loads in <head>, before first paint and before app.js', () => {

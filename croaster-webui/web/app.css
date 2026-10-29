@@ -116,6 +116,10 @@ input[type="checkbox"] { padding: 0; }
 .stop:disabled { filter: grayscale(1); box-shadow: none; }
 .stop:disabled:hover { filter: grayscale(1); border-color: var(--stop); }
 .top-actions button { white-space: nowrap; }
+/* Start and End roast sit beside STOP; both only change the page's recording. */
+.start, .end { padding: 10px 16px; font-size: 1.067rem; font-weight: 700; }
+.start { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.start:disabled { filter: grayscale(1); }
 /* Half-filled circle: the Appearance button's icon on narrow screens. */
 .ap-icon {
   display: none; width: 1.1em; height: 1.1em; border-radius: 50%; border: 2px solid currentColor;
@@ -275,6 +279,8 @@ dialog.sheet {
   .style-row input[type="range"] { width: 120px; }
   .clock-value { font-size: 1.467rem; }
   .stop { padding: 8px 14px; }
+  .start, .end { padding: 8px 10px; }
+  .top-actions { gap: 6px; }
   .tile-value { font-size: 2rem; }
   .chart { height: 280px; }
   .events { grid-template-columns: repeat(2, 1fr); }
@@ -284,4 +290,6 @@ dialog.sheet {
 @media (max-width: 480px) {
   .ap-icon { display: inline-block; }
   .ap-text { display: none; }
+  .start, .end, .stop { padding: 8px; }
+  .top-actions { gap: 4px; }
 }

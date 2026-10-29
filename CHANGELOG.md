@@ -37,7 +37,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   stays Light). Export to and import from a JSON file or pasted text. A
   warning, not a block, lists text that falls below WCAG AA contrast (4.5:1).
   The chart now also draws the setpoint. Page size about 28 KB gzipped
-  (about 30 KB after the T51 fixes).
+  (about 31 KB after T51 and T52).
 - **Temperature unit survives a reboot (D16, D27).** A `tempUnit` command is
   saved in NVS (`app/unit_store`) and applied at boot; `CMON_TEMP_UNIT` is the
   unit until one is saved. Two host tests (38 in total).
@@ -96,6 +96,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `core.autocrlf true`: commit or stash your work, then run
   `git rm --cached -r .` and `git reset --hard` (this discards uncommitted
   changes), or clone again.
+- **Browser UI: the page opened on Live and roast controls were live before a
+  roast (T52).** Monitoring is now the first tab and the landing view; a
+  `#live` or `#controls` link still opens that view. Opening the page or a
+  view sends nothing but the read-only polls (a test now lists every place
+  the page sends a command). A Start button next to STOP begins the
+  recording and sends nothing to the board; Start greys out while a roast
+  records. Charge, Dry end, FC and SC start and end, and Drop are disabled
+  until Start, then Charge comes first and the later events follow in
+  order, with nothing after Drop. Charge no longer starts a recording. The
+  roast clock counts from Charge; the preheat stays on the chart before it.
+  After Drop, End roast ends the recording without stopping the board; the
+  monitor has End roast in the top bar. STOP or End roast returns the page
+  to Idle. Controls stay usable without Start, for preheating.
 - **Browser UI: opening the page started a roast (T51).** Every reading the
   page polled went into the session from the moment it connected, so the
   clock ran and samples were saved before anyone asked for a roast, and a

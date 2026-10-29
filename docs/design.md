@@ -1152,9 +1152,9 @@ Decisions:
 - **One page for both boards.** `/info.json` reports the board id, the
   WebSocket port and whether to show Controls; the monitor ships the controls
   script too (a few KB) but hides it.
-- **Sections:** Live (tiles, chart, heater and fan strips, event buttons,
-  roast clock, CSV), Monitoring (every value the board reports, nothing
-  else), Controls (Croaster PID only: every command, replies and errors
+- **Sections**, in tab order: Monitoring (every value the board reports,
+  nothing else; the landing view), Live (tiles, chart, heater and fan strips,
+  event buttons, roast clock, CSV), Controls (Croaster PID only: every command, replies and errors
   inline, STOP always visible, usable while a roast records). Device RoR by default; an optional 30 s
   least-squares RoR computed in the browser.
 - **Roast timer and events live in the browser** (`localStorage`), not on the
@@ -1168,6 +1168,27 @@ Decisions:
   nothing. On load, a saved active session whose last sample is more than
   10 min old is ended at that sample; sessions saved before this change have
   no `active` and load as ended.
+- **Start, events and views** (2026-10-29, Shawn, T52). The page used to
+  open on Live, which showed the roast clock and, before T51, a running
+  preheat, so opening the URL looked like starting a roast. Monitoring is
+  now the first tab and the landing view; a `#live` or `#controls` hash
+  opens that view, and the last view is not restored otherwise. A Start
+  button next to STOP begins the recording (samples
+  from then on, so the preheat is on the chart); it sends nothing to the
+  board, because the board has no roast state to start and a heater or fan
+  change belongs to the user's own controls. Charge no longer starts a
+  recording. Event buttons are all disabled until Start, then only Charge;
+  after Charge: Turning point, Dry end, FC start and Drop; FC end and SC
+  start need FC start, SC end needs SC start; an event cannot be marked
+  once a later one is, and nothing after Drop. The roast clock counts from
+  Charge; samples before it keep negative times on the chart and in the CSV.
+  After Drop an End roast button ends the recording without a command (the
+  monitor has End roast in the top bar in place of STOP). STOP or End roast
+  returns the page to Idle with Start enabled; the last roast stays on the
+  chart until the next Start. Controls are not gated by Start: preheating
+  is done from there. The board does nothing when a client connects (it
+  only counts clients), and the polls (`getArtisanData`, `getControl`,
+  `getDeviceInfo`) read state without changing it.
 - **STOP** (fix, 2026-10-29) is enabled only while a roast is recording and
   always asks first. It sends `{"command":"stop"}`, which `ControlPlugin`
   registers through `onCommand`: the controller sets the heater to 0 and the

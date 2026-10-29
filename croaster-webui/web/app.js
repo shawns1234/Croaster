@@ -50,7 +50,7 @@
     rorSmooth: localStorage.getItem(KEY_ROR) === '1',
     autoTp: localStorage.getItem(KEY_TP) !== '0',
     pending: {},
-    tab: 'live',
+    tab: 'monitoring',
     cursorT: null,
     dirty: true,
     lastSaveMs: 0,
@@ -241,23 +241,20 @@
   }
 
   function markEvent(code) {
-    if (!recording()) {
-      if (code === 'CHARGE') startRoast(() => markEvent('CHARGE')); // Charge also starts the recording
-      return;
-    }
-    if (eventOf(code)) return;
+    if (!R.eventAllowed(S.session, code)) return;
     const last = lastSample();
     const live = S.data && isNum(S.data.BT) ? S.data.BT : null;
     addEvent({ code, t: last ? last.t : nowT(), bt: last ? last.bt : live });
   }
 
-  // Starts a new recording; asks first when it would clear an earlier roast.
-  function startRoast(then) {
+  // Start: begins a recording in this page only (samples from now, so the preheat
+  // shows; the roast clock starts at Charge). Nothing is sent to the board. Asks
+  // first when it would clear an earlier roast.
+  function startRoast() {
     const go = () => {
       S.session = newSession();
       S.session.active = true;
       saveSession(true);
-      if (then) then();
       render();
     };
     if (recording()) return;
@@ -289,14 +286,6 @@
     });
   }
 
-  function eventAllowed(code) {
-    if (!recording()) return code === 'CHARGE';
-    const ph = R.phase(S.session.events);
-    if (eventOf(code)) return false;
-    if (code === 'CHARGE') return ph === 'idle';
-    return ph === 'roasting';
-  }
-
   function renderEvents() {
     const box = $('#event-buttons');
     if (!box.children.length) {
@@ -309,9 +298,10 @@
     for (const b of $$('button', box)) {
       const code = b.dataset.code;
       b.classList.toggle('marked', !!eventOf(code));
-      b.disabled = !eventAllowed(code);
+      b.disabled = !R.eventAllowed(S.session, code);
     }
-    $('#undo-event').disabled = !S.session.events.length;
+    $('#undo-event').disabled = !recording() || !S.session.events.length;
+    $('#end-after-drop').hidden = !recording() || !eventOf('DROP');
 
     const list = $('#event-list');
     list.textContent = '';
@@ -351,8 +341,13 @@
     const stop = $('#stop');
     stop.disabled = !recording();
     stop.title = recording() ? 'End the roast: heater off, Manual, cooldown fan' : 'Available while a roast is recording';
-    $('#new-roast').disabled = recording();
-    $('#end-roast').hidden = S.info.controls || !recording();
+    const start = $('#new-roast');
+    start.disabled = recording();
+    start.title = recording() ? 'A roast is recording: STOP or End roast ends it' : 'Start recording a roast';
+    const end = $('#end-roast');
+    end.hidden = S.info.controls;
+    end.disabled = !recording();
+    end.title = recording() ? 'Stop recording; the board is not changed' : 'Available while a roast is recording';
     $('#t-trip').textContent = d.trip ? 'TRIP ' + d.trip : (d.Target ? 'input ' + d.Target : '');
     $('.tile.mode').classList.toggle('tripped', !!d.trip);
     for (const e of $$('[data-field]')) {
@@ -371,10 +366,13 @@
     if (S.tab === 'controls') renderControls();
     let info;
     if (ss.length) {
+      const charge = chargeT();
+      const drop = eventOf('DROP');
+      const last = !recording() && charge !== null ? ', roast ' + R.formatClock((drop ? drop.t : endT()) - charge) : '';
       info = ss.length + ' samples since ' + new Date(S.session.startedAt).toLocaleTimeString() +
-        (S.session.unit ? ' (' + unitLabel() + ')' : '') + (recording() ? '' : ', recording ended');
+        (S.session.unit ? ' (' + unitLabel() + ')' : '') + (recording() ? '' : ', recording ended' + last);
     } else {
-      info = recording() ? 'Recording, waiting for the first sample' : 'Not recording. Start roast or Charge begins a recording.';
+      info = recording() ? 'Recording, waiting for the first sample' : 'Not recording. Start begins a recording.';
     }
     $('#session-info').textContent = info;
   }
@@ -393,9 +391,6 @@
     } else if (st === 'preheat') {
       label = 'Preheat';
       value = R.formatClock(nowT());
-    } else if (st === 'ended') {
-      label = 'Ended';
-      if (charge !== null) value = R.formatClock((drop ? drop.t : endT()) - charge);
     }
     $('#phase').textContent = label;
     $('#roast-clock').textContent = value;
@@ -734,9 +729,11 @@
   }
 
   // ---------- wiring ----------
+  // Monitoring is the landing view; a #live or #controls in the URL opens that view.
+  // Opening a view only changes what is drawn: it sends nothing and records nothing.
   function setTab(tab) {
-    if (tab === 'controls' && !S.info.controls) tab = 'live';
-    if (!['live', 'monitoring', 'controls'].includes(tab)) tab = 'live';
+    if (tab === 'controls' && !S.info.controls) tab = 'monitoring';
+    if (!['live', 'monitoring', 'controls'].includes(tab)) tab = 'monitoring';
     S.tab = tab;
     for (const p of $$('[data-panel]')) p.hidden = p.dataset.panel !== tab;
     for (const a of $$('[data-tab]')) a.classList.toggle('active', a.dataset.tab === tab);
@@ -941,9 +938,11 @@
     initAppearance();
     window.addEventListener('hashchange', () => setTab(location.hash.slice(1)));
     $('#stop').addEventListener('click', stopRoast);
-    $('#end-roast').addEventListener('click', () => {
-      if (recording()) confirmThen('End the roast? Recording stops; the samples stay until the next roast starts.', endRoast);
-    });
+    const askEnd = () => {
+      if (recording()) confirmThen('End the roast? Recording stops; the board is not changed. The samples stay until the next Start.', endRoast);
+    };
+    $('#end-roast').addEventListener('click', askEnd);
+    $('#end-after-drop').addEventListener('click', askEnd);
 
     $('#ror-smooth').checked = S.rorSmooth;
     $('#ror-smooth').addEventListener('change', (e) => {
@@ -957,6 +956,7 @@
       localStorage.setItem(KEY_TP, S.autoTp ? '1' : '0');
     });
     $('#undo-event').addEventListener('click', () => {
+      if (!recording()) return;
       S.session.events.pop();
       saveSession(true);
       render();
@@ -1036,7 +1036,7 @@
     for (const e of $$('[data-needs="controls"]')) e.hidden = !S.info.controls;
     wire();
     renderProfile();
-    setTab(location.hash.slice(1) || 'live');
+    setTab(location.hash.slice(1));
 
     worker = new Worker('link.worker.js');
     worker.onmessage = onWorker;
