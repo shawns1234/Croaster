@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include <Wire.h>
 
 // Everything configurable is in config.h (force-included by platformio.ini).
@@ -112,6 +113,14 @@ String statusLine(const Snapshot& s) {
 }
 
 void setup() {
+    // Serial is the native USB port (HWCDC). Once a host has opened it, each log line
+    // waits up to 20 x the TX timeout (100 ms by default, so about 2 s) when the host
+    // stops reading, which stalls loop() and with it the WebSocket server. Croaster logs
+    // every WebSocket command, so a PC holding the port open could freeze the board for
+    // seconds at a time. With 0 the line is dropped instead.
+#if ARDUINO_USB_CDC_ON_BOOT && ARDUINO_USB_MODE
+    Serial.setTxTimeoutMs(0);
+#endif
     CroasterDeviceIdentity::setBoardName(CMON_BOARD_NAME);
     // Saved unit, else CMON_TEMP_UNIT. Croaster converts BT/ET/RoR; the plugin converts SV and setpoints.
     UnitStore::attach(app, CMON_TEMP_UNIT);
@@ -132,6 +141,11 @@ void setup() {
 #endif
 
     app.begin(); // WiFi (WiFiManager portal on first boot), WebSocket :81, BLE, display
+
+#if !CMON_WIFI_SLEEP
+    // After app.begin(): WiFi and BLE are up. Arduino keeps the setting for later WiFi restarts.
+    Serial.println(WiFi.setSleep(false) ? "# WiFi sleep: off" : "# WiFi sleep: could not turn off");
+#endif
 
     plugin.begin();
 }

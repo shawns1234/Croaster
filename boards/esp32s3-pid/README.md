@@ -127,6 +127,11 @@ bar. Details: [`croaster-webui/README.md`](../../croaster-webui/README.md).
 - Not on the page yet: firmware upload (use Croaster's OTA).
 - Settings: `CMON_ENABLE_WEBUI` (1), `CMON_WEBUI_PORT` (80; the page needs
   the setup portal closed, which also uses port 80).
+- WiFi modem sleep: `CMON_WIFI_SLEEP` (0 = off, the default; replies in a
+  few ms instead of 100–300 ms, a few tens of mA more). If the board
+  resets at boot after this setting, set it to 1.
+- Over https (a reverse proxy) the page connects to `wss://<host>/ws`; the
+  proxy must forward `/ws` to port 81 with the WebSocket upgrade headers.
 
 ---
 

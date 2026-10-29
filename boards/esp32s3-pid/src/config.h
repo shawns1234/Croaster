@@ -85,6 +85,11 @@
 
 // ---- Features ---------------------------------------------------------------
 #define CMON_ENABLE_BLE 1 // Croaster BLE (app + BLE OTA); 0 saves ~300 KB flash
+// WiFi modem sleep. 1 = the ESP32 default: the radio sleeps between the
+// router's beacons, which adds about 100-300 ms to each reply. 0 = radio always
+// on: replies in a few ms, at a few tens of mA more. Allowed with BLE on
+// (ESP-IDF 5.x; on 4.x it aborted).
+#define CMON_WIFI_SLEEP 0
 // Browser UI at http://<board ip>/ once WiFi is connected: live chart, monitoring and controls.
 // No password: anyone on the network can open it. 0 removes it from the build.
 #define CMON_ENABLE_WEBUI 1

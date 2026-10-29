@@ -50,7 +50,8 @@ port), 48 (RGB LED). `src/ConfigCheck.h` rejects these at compile time.
 The one file to edit: thermocouple chip (`CMON_THERMOCOUPLE`: `CMON_TC_MAX31855`
 or `CMON_TC_MAX6675`), display, pins, temperature unit (`CMON_TEMP_UNIT`,
 default "F", used until a `tempUnit` command saves another one), BLE
-(`CMON_ENABLE_BLE`) and the browser UI (`CMON_ENABLE_WEBUI`,
+(`CMON_ENABLE_BLE`), WiFi modem sleep (`CMON_WIFI_SLEEP`, 0 = off by
+default) and the browser UI (`CMON_ENABLE_WEBUI`,
 `CMON_WEBUI_PORT`). Every setting uses the `CMON_`
 prefix, the same names Croaster PID uses for the same settings. The file is
 force-included into every translation unit (`-include src/config.h`) so it can

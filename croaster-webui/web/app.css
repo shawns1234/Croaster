@@ -102,6 +102,7 @@ input[type="checkbox"] { padding: 0; }
 .link[data-state="connecting"] .dot { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .35; } }
 .link[data-state="closed"] .dot { background: var(--stop); }
+.link[data-state="paused"] .dot { background: var(--muted); }
 .clock { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; }
 .clock-label { font-size: 0.7333rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .clock-value { font-size: 1.867rem; font-weight: 600; line-height: 1; }
@@ -204,6 +205,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: var(--gap); }
 .kv td:first-child { color: var(--muted); }
 .kv td:nth-child(2) { font-family: var(--num-font); text-align: right; }
 .kv td.key { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+#mon-link td:nth-child(2) { overflow-wrap: anywhere; }
 .field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
 .field > span:first-child { min-width: 9.5em; color: var(--muted); }
 .field label { display: inline-flex; align-items: center; gap: 6px; }

@@ -3,6 +3,7 @@
 (function () {
   'use strict';
   const R = window.Roast;
+  const L = window.Link;
   const TH = window.Theme;
   const $ = (sel, el) => (el || document).querySelector(sel);
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
@@ -46,6 +47,9 @@
     data: null, dataAt: 0,
     control: null, controlAt: 0,
     device: null, deviceAt: 0,
+    stats: null, // connection figures from the worker (Monitoring > Connection)
+    paused: false, // socket closed while the page is hidden
+    uptime: null, restarts: 0, // board uptime (telemetry `timer`, s since boot) and restarts seen from it
     session: null,
     rorSmooth: localStorage.getItem(KEY_ROR) === '1',
     autoTp: localStorage.getItem(KEY_TP) !== '0',
@@ -134,6 +138,9 @@
     if (m.type === 'status') {
       S.link = m.state;
       S.dirty = true;
+    } else if (m.type === 'stats') {
+      S.stats = m;
+      if (S.tab === 'monitoring') S.dirty = true;
     } else if (m.type === 'sent' && !m.ok) {
       logReply('err', 'not sent: not connected');
     } else if (m.type === 'message') {
@@ -149,6 +156,7 @@
       if (msg.name) S.name = msg.name;
       S.data = msg.data;
       S.dataAt = at;
+      watchUptime(msg.data.timer);
       watchStatus(msg.data);
       checkStop(msg.data);
       if (polled) addSample(msg.data, at);
@@ -163,6 +171,16 @@
         'Not loaded: the board rejected the profile (' + (r.steps || 0) + ' steps read; 1 to 32 steps, each duration above 0).';
     }
     logReply('in', '← ' + JSON.stringify(msg));
+  }
+
+  // `timer` is the board's uptime; a drop means it restarted (power, reset line, crash or watchdog).
+  function watchUptime(t) {
+    if (!isNum(t)) return;
+    if (S.uptime !== null && t + 2 < S.uptime) {
+      S.restarts++;
+      logReply('err', 'board restarted: uptime went from ' + R.formatClock(S.uptime) + ' to ' + R.formatClock(t));
+    }
+    S.uptime = t;
   }
 
   // Autotune results and trips arrive as telemetry fields; surface their changes in the reply log.
@@ -263,6 +281,17 @@
     } else {
       go();
     }
+  }
+
+  // Clear roast: drops the kept samples and events of an ended roast from this browser.
+  // Nothing is sent to the board.
+  function clearRoast() {
+    if (recording() || (!S.session.samples.length && !S.session.events.length)) return;
+    confirmThen('Clear the last roast from this browser? Its samples and events are deleted (download the CSV first to keep them). The board is not changed.', () => {
+      S.session = newSession();
+      saveSession(true);
+      render();
+    });
   }
 
   function endRoast() {
@@ -375,6 +404,7 @@
       info = recording() ? 'Recording, waiting for the first sample' : 'Not recording. Start begins a recording.';
     }
     $('#session-info').textContent = info;
+    $('#clear-roast').disabled = recording() || (!ss.length && !S.session.events.length);
   }
 
   function renderClock() {
@@ -441,6 +471,41 @@
     $('#age-data').textContent = age(S.dataAt);
     $('#age-control').textContent = age(S.controlAt);
     $('#age-info').textContent = age(S.deviceAt);
+    renderConnection();
+  }
+
+  // Connection card: what the worker sees of the WebSocket. The board does not report its client count.
+  function renderConnection() {
+    const t = $('#mon-link');
+    const st = S.stats;
+    t.textContent = '';
+    const secs = (at) => (at ? ((Date.now() - at) / 1000).toFixed(0) + ' s ago' : '—');
+    const rows = [
+      ['Page', location.origin],
+      ['WebSocket URL', st ? st.url : '—'],
+      ['State', S.link + (st && st.detail && st.detail !== st.url ? ' (' + st.detail + ')' : '')],
+      ['Last message', st ? secs(st.lastRxAt) : '—'],
+      ['Round trip (getArtisanData)', st && isNum(st.rttMs) ? st.rttMs + ' ms' : '—'],
+      ['Connected since', st && S.link === 'open' ? secs(st.openedAt) : '—'],
+      ['Connections opened', st ? String(st.opens) : '—'],
+      ['Connection attempts', st ? String(st.attempts) : '—'],
+      ['Last close', st && st.closedAt ? [st.closeCode ? L.closeText(st.closeCode) : '', st.closeReason, secs(st.closedAt)]
+        .filter(Boolean).join(', ') : '—'],
+      ['Board WiFi signal', S.data && isNum(S.data.wifiStrength) ? S.data.wifiStrength + ' dBm' : 'not reported'],
+      ['Board uptime', S.uptime !== null ? R.formatClock(S.uptime) : '—'],
+      ['Board restarts seen', String(S.restarts)],
+      ['Board clients', 'not reported by the board'],
+    ];
+    if (location.protocol === 'https:' && !new URLSearchParams(location.search).get('ws')) {
+      rows.push(['Note', 'Page loaded over https: the proxy must forward wss://' + location.host + '/ws to port ' +
+        S.info.wsPort + ' on the board.']);
+    }
+    for (const [k, v] of rows) {
+      const tr = el('tr');
+      tr.append(el('td', {}, k));
+      tr.append(el('td', {}, v));
+      t.append(tr);
+    }
   }
 
   // ---------- chart ----------
@@ -963,6 +1028,7 @@
     });
     $('#new-roast').addEventListener('click', () => startRoast());
     $('#csv').addEventListener('click', downloadCsv);
+    $('#clear-roast').addEventListener('click', clearRoast);
 
     const chart = $('#chart');
     chart.addEventListener('pointermove', onChartPointer);
@@ -999,12 +1065,27 @@
     });
     $('#profile-load').addEventListener('click', loadProfile);
 
+    // A phone suspends a hidden page without closing its socket, and the board then blocks
+    // on writes to it. So the socket is closed while hidden when nothing needs it (see
+    // Link.mayPause) and on pagehide, and reopened when the page is shown again.
+    const pause = () => {
+      if (worker && !S.paused) { S.paused = true; worker.postMessage({ type: 'pause' }); }
+    };
+    const resume = () => {
+      if (worker && S.paused) { S.paused = false; worker.postMessage({ type: 'resume' }); }
+    };
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { saveSession(true); return; }
+      if (document.hidden) {
+        saveSession(true);
+        if (L.mayPause(recording(), S.info.controls, S.data)) pause();
+        return;
+      }
+      resume();
       if (worker) worker.postMessage({ type: 'visible' }); // poll at once; the board has been fed by the worker meanwhile
       render();
     });
-    window.addEventListener('pagehide', () => saveSession(true));
+    window.addEventListener('pagehide', () => { saveSession(true); pause(); });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) resume(); });
     window.addEventListener('resize', () => { S.dirty = true; });
     // The top bar wraps to two rows on narrow screens; the sticky tabs sit below it.
     const bar = $('.topbar');
@@ -1031,7 +1112,8 @@
     // ?ws=ws://192.168.1.50:81&controls=1 points the page at a board when web/ is served from a computer.
     const query = new URLSearchParams(location.search);
     if (query.get('controls') === '1') S.info.controls = true;
-    const url = query.get('ws') || 'ws://' + location.hostname + ':' + S.info.wsPort + '/';
+    // Over https the page uses wss://<host>/ws, which the proxy forwards to the board (see Link.socketUrl).
+    const url = L.socketUrl(location, S.info.wsPort, query.get('ws'));
 
     for (const e of $$('[data-needs="controls"]')) e.hidden = !S.info.controls;
     wire();

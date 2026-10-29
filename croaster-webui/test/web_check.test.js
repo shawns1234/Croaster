@@ -138,3 +138,18 @@ test('app.css fallbacks match the default scheme, and every colour token is used
   const body = css.slice(css.indexOf('}', css.indexOf(':root {')));
   for (const t of T.TOKENS) assert.match(body, new RegExp('var\\(--' + t.key + '\\)'), '--' + t.key + ' is never used');
 });
+
+test('the page takes its WebSocket URL from Link.socketUrl (wss://<host>/ws over https)', () => {
+  const app = read('app.js');
+  assert.ok(html.indexOf('src="link.js"') > 0 && html.indexOf('src="link.js"') < html.indexOf('src="app.js"'));
+  assert.match(app, /L\.socketUrl\(location, S\.info\.wsPort, query\.get\('ws'\)\)/);
+  assert.doesNotMatch(app, /'wss?:\/\/'/);
+});
+
+test('the socket is paused only through Link.mayPause or on pagehide, and Clear roast sends nothing', () => {
+  const app = read('app.js');
+  assert.match(app, /if \(L\.mayPause\(recording\(\), S\.info\.controls, S\.data\)\) pause\(\);/);
+  assert.equal((app.match(/\bpause\(\);/g) || []).length, 2);
+  const clear = app.slice(app.indexOf('function clearRoast('), app.indexOf('function endRoast('));
+  assert.doesNotMatch(clear, /send\(|postMessage/);
+});

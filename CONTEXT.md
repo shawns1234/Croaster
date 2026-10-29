@@ -29,8 +29,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.4% (1 793 187 B), RAM 56 908 B (2026-10-29, with the browser UI changes of T51 and T52) |
-| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.4% (1 732 803 B), RAM 54 708 B (2026-10-29, with the browser UI changes of T51 and T52) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.4% (1 792 479 B), RAM 56 896 B (2026-10-29, with T51 to T53) |
+| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.4% (1 732 771 B), RAM 54 712 B (2026-10-29, with T51 to T53) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -104,7 +104,13 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   next readings show Manual with heater 0. Controls > Safety keeps a separate
   Heater off button (same command, with a confirm) for when no roast is
   recording. End roast (top bar on the monitor, after Drop on both boards)
-  ends the recording without a command. No password. `tempUnit` is saved to NVS
+  ends the recording without a command. Over https the page connects to
+  `wss://<host>/ws`, which the proxy must forward to port 81. The socket is
+  dropped after 10 s without a message, and closed while the page is hidden
+  and nothing needs the polls. Monitoring > Connection shows the link and
+  the board's uptime, restarts and WiFi signal. WiFi modem sleep is off
+  (`CMON_WIFI_SLEEP 0`). Clear roast deletes an ended roast from
+  the browser. Roast sessions are per browser. No password. `tempUnit` is saved to NVS
   (`app/unit_store`, namespace `croaster`, key `unit`) and applied at boot;
   `CMON_TEMP_UNIT` is the default when nothing is saved.
   Appearance (T50): `web/theme.js` holds the colour tokens, presets (default

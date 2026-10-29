@@ -51,6 +51,7 @@
       <h3>Session</h3>
       <div class="row-buttons">
         <button type="button" id="csv">Download CSV</button>
+        <button type="button" id="clear-roast" disabled title="Delete the last roast from this browser">Clear roast</button>
       </div>
       <p class="muted small" id="session-info"></p>
     </div>
@@ -101,6 +102,7 @@
         <div class="card"><h2>Live readings <small class="muted" id="age-data"></small></h2><table class="kv" id="mon-data"></table></div>
         <div class="card" data-needs="controls" hidden><h2>Control state <small class="muted" id="age-control"></small></h2><table class="kv" id="mon-control"></table></div>
         <div class="card"><h2>Device <small class="muted" id="age-info"></small></h2><table class="kv" id="mon-info"></table></div>
+        <div class="card"><h2>Connection</h2><table class="kv" id="mon-link"></table></div>
       </div>
     </section>
 
@@ -278,6 +280,7 @@
 </dialog>
 
 <script src="roast.js"></script>
+<script src="link.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

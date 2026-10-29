@@ -1109,7 +1109,8 @@ Our config macros say which part of the firmware they belong to (rule in
   `CMON_PIN_TC_SCK`, `CMON_PIN_TC_MISO`, `CMON_PIN_TC_CS_ET`,
   `CMON_PIN_TC_CS_BT`, `CMON_DISPLAY`, `CMON_DISPLAY_NONE`,
   `CMON_DISPLAY_SSD1306`, `CMON_PIN_I2C_SDA`, `CMON_PIN_I2C_SCL`,
-  `CMON_PIN_LED`, `CMON_LED_ON_LEVEL`, `CMON_ENABLE_BLE`.
+  `CMON_PIN_LED`, `CMON_LED_ON_LEVEL`, `CMON_ENABLE_BLE`, `CMON_WIFI_SLEEP`
+  (T53).
 - `CPID_` (control add-on, unchanged): heater, fan, mains, `CPID_PID_*`,
   `CPID_REQUIRE_AUTOTUNE`, `CPID_OVER_TEMP_C`, `CPID_MAX_SETPOINT_C`,
   `CPID_MIN_FAN_WITH_HEAT`, `CPID_COOLDOWN_*`, `CPID_WATCHDOG_*`,
@@ -1189,6 +1190,42 @@ Decisions:
   is done from there. The board does nothing when a client connects (it
   only counts clients), and the polls (`getArtisanData`, `getControl`,
   `getDeviceInfo`) read state without changing it.
+- **Connection** (2026-10-29, Shawn, T53). Shawn saw the link dot flap
+  between yellow (connecting) and red (closed) with two browsers open and
+  the board's USB port held by a program on his PC. Findings:
+  - Croaster's WebSocket server writes with blocking calls (WebSockets
+    `write()` loops up to `WEBSOCKETS_TCP_TIMEOUT`, 5 s; each
+    `NetworkClient::write` waits up to 10 x 1 s in `select`) and has no
+    heartbeat, so one client that stops reading freezes `loop()` for
+    seconds per message until TCP gives up on it.
+  - `Serial` is the native USB port (HWCDC). After a host opens it and stops
+    reading, each line waits about 2 s (20 x 100 ms), and Croaster logs every
+    command and broadcast. Fixed in the board `setup()` with
+    `Serial.setTxTimeoutMs(0)`.
+  - The page dropped a silent socket after 5 s and waited for the close
+    handshake before reconnecting, so a slow board saw extra sockets.
+  - The page built `ws://<host>:81/` even when loaded over https, which the
+    browser refuses.
+  - WiFi modem sleep was on (Arduino's default, `WIFI_PS_MIN_MODEM`):
+    pings from Shawn's PC averaged 148 ms (40–275 ms). `CMON_WIFI_SLEEP 0`
+    (default) calls `WiFi.setSleep(false)` after `app.begin()`. ESP-IDF 4.x
+    aborted when modem sleep was off with BLE on; ESP-IDF 5.x (this build:
+    5.5) allows it. Cost: the radio stays on, a few tens of mA.
+  - RSSI is already in the telemetry on Croaster PID (`wifiStrength`, from
+    `ControlPlugin`); the Connection card shows it. The monitor does not
+    report it.
+
+  Page changes: `Link.socketUrl` (https: `wss://<host>/ws` through the
+  proxy), 10 s silence and 8 s handshake limits with an immediate new
+  socket, the socket closed while hidden when `Link.mayPause` allows it (no
+  recording, heater 0, Manual; the watchdog acts only while heating), and a
+  Connection card with the uptime-based restart count. Not done, for
+  approval: a heartbeat (`server.enableHeartbeat(...)`) in
+  `CroasterWebSocketManager::begin()` (upstream code), the client count and
+  reset reason in `getDeviceInfo`, a same-origin `/ws` on the port 80
+  server bridging to the command handler (non-blocking sends, no proxy
+  rule, but a second command path and cross-task locking), and a settings
+  reset command.
 - **STOP** (fix, 2026-10-29) is enabled only while a roast is recording and
   always asks first. It sends `{"command":"stop"}`, which `ControlPlugin`
   registers through `onCommand`: the controller sets the heater to 0 and the

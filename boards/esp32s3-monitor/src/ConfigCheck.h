@@ -9,6 +9,10 @@
 #    error "config.h: CMON_DISPLAY must be CMON_DISPLAY_NONE or CMON_DISPLAY_SSD1306"
 #endif
 
+#if !defined(CMON_WIFI_SLEEP) || (CMON_WIFI_SLEEP != 0 && CMON_WIFI_SLEEP != 1)
+#    error "config.h: CMON_WIFI_SLEEP must be 0 or 1"
+#endif
+
 namespace configcheck {
 
 constexpr bool validTempUnit(const char* u) {

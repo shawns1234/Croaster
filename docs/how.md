@@ -134,7 +134,7 @@ checked on the bench (tickets T2, T3).
 The HTTP server only hands out the page files; everything else goes through
 Croaster's WebSocket on port 81, exactly like Artisan:
 
-1. The browser loads `/` (HTML, CSS, scripts: about 31 KB gzipped, built
+1. The browser loads `/` (HTML, CSS, scripts: about 33 KB gzipped, built
    into the firmware) and `/info.json` (board id, WebSocket port, whether to
    show Controls).
 2. A Web Worker opens `ws://<ip>:81/` and sends `getArtisanData` every
@@ -167,6 +167,23 @@ The worker exists because browsers slow timers in a hidden tab, and a slow
 poll would trip the comms watchdog mid-roast. Closing the tab, a sleeping
 laptop or iOS Safari in the background still stops the polls, and the
 watchdog trips as it should.
+
+Connection handling (`link.worker.js`, `link.js`):
+- The URL is `ws://<host>:81/` when the page came over http. Over https the
+  browser refuses `ws://` (mixed content), so the page uses
+  `wss://<host>/ws` and the reverse proxy in front of the board has to
+  forward that path to port 81 with the WebSocket upgrade headers (the
+  board's WebSocket server accepts any path). `?ws=` still overrides both.
+- A socket with no message for 10 s is dropped and a new one opened at once,
+  without waiting for the close handshake; a handshake not done in 8 s is
+  abandoned. Retries back off 1, 2, 4, 8, 10 s.
+- While the page is hidden and nothing needs the polls (no recording, heater
+  0, Manual; any monitor), the socket is closed and reopened when the page
+  is shown, and on `pagehide`. A phone otherwise suspends the page with the
+  socket still open, and the board then waits on writes to it.
+- Monitoring > Connection shows the URL, state, last message, round trip,
+  connections opened and attempted, the last close, the board's uptime
+  (`timer`) and the restarts seen from it.
 
 ### Watchdog
 Croaster's command handler records when it last accepted a message
@@ -215,6 +232,28 @@ settings; see the board README, "Comms watchdog".
   refused, failed or stopped; the OLED header shows it for 10 s.
 - **Probe faults in Manual don't trip.** As in yaeger, Manual keeps your
   heater %. PID, Profile and Autotune trip after 2 s of bad readings.
+- **One stalled reader freezes the board's loop.** Croaster's WebSocket
+  server (links2004 WebSockets 2.7.3, 5 clients) writes to each client with
+  blocking calls: a client that stops reading (a suspended phone tab, a
+  dead proxy link) holds `loop()` for up to about 10 s per message once its
+  send buffer is full, and there is no ping to drop it. Every other client
+  then goes silent and reconnects. The page closes its socket when hidden
+  and idle to limit this; the server-side fix is a heartbeat in
+  `CroasterWebSocketManager` (not done: upstream code).
+- **WiFi modem sleep is off** (`CMON_WIFI_SLEEP 0`). With it on, the radio
+  wakes only for the router's beacons and every reply waits 100–300 ms.
+  If a board resets at boot after a change here, set it to 1.
+- **USB serial can stall the board too.** On the S3 boards `Serial` is the
+  native USB port. A PC program that opened the port and stopped reading
+  used to block each log line for about 2 s, and Croaster logs every
+  WebSocket command. `setup()` now sets `Serial.setTxTimeoutMs(0)` so lines
+  are dropped instead. Croaster reads nothing from Serial. The port's
+  DTR/RTS lines can still reset the chip (reset reason `0x15
+  USB_UART_CHIP_RESET` in the boot log); the page logs a restart when the
+  board's uptime goes backwards.
+- **Roast sessions are per browser.** A roast started on the laptop is not
+  seen on the phone: the session is in each browser's storage. Sharing it
+  needs the board to hold the session (T53 notes).
 - **`.local` names** don't always resolve on Windows. Use the IP on the OLED.
 - **Line endings.** `.gitattributes` checks text files out with LF on every
   platform, whatever `core.autocrlf` says, and keeps any `.bat`, `.cmd` or

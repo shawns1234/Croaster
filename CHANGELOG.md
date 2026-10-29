@@ -37,7 +37,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   stays Light). Export to and import from a JSON file or pasted text. A
   warning, not a block, lists text that falls below WCAG AA contrast (4.5:1).
   The chart now also draws the setpoint. Page size about 28 KB gzipped
-  (about 31 KB after T51 and T52).
+  (about 33 KB after T51 to T53).
 - **Temperature unit survives a reboot (D16, D27).** A `tempUnit` command is
   saved in NVS (`app/unit_store`) and applied at boot; `CMON_TEMP_UNIT` is the
   unit until one is saved. Two host tests (38 in total).
@@ -96,6 +96,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `core.autocrlf true`: commit or stash your work, then run
   `git rm --cached -r .` and `git reset --hard` (this discards uncommitted
   changes), or clone again.
+- **Browser UI and boards: connection dropping (T53).** One client that
+  stops reading (a phone tab in the background) or a PC holding the USB
+  serial port open without reading could block the board's main loop for
+  seconds, so every page went silent and reconnected. Both S3 boards now set
+  `Serial.setTxTimeoutMs(0)`, so log lines are dropped instead of waited on,
+  and turn WiFi modem sleep off (`CMON_WIFI_SLEEP`, default 0; replies were
+  taking 100–300 ms).
+  The page drops a socket after 10 s without a message (was 5 s) and opens
+  a new one at once, gives up on a handshake after 8 s, closes its socket
+  while hidden when no roast records and the heater is off, and uses
+  `wss://<host>/ws` when loaded over https (the proxy forwards it to port
+  81). Monitoring has a Connection card (URL, state, last message, round
+  trip, connections, last close, WiFi signal, board uptime and restarts
+  seen), and the
+  Session block has Clear roast.
 - **Browser UI: the page opened on Live and roast controls were live before a
   roast (T52).** Monitoring is now the first tab and the landing view; a
   `#live` or `#controls` link still opens that view. Opening the page or a
