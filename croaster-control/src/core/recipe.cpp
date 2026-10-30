@@ -156,7 +156,74 @@ const char* eventName(Event e) {
     return static_cast<size_t>(e) < static_cast<size_t>(Event::Count) ? kEventNames[static_cast<size_t>(e)] : "";
 }
 
+const char* unitName(char unit) {
+    switch (unit) {
+    case 'C':
+        return "C";
+    case 'F':
+        return "F";
+    case 'K':
+        return "K";
+    default:
+        return nullptr;
+    }
+}
+
+void copyText(char* dst, size_t cap, const char* src) {
+    if (cap == 0)
+        return;
+    size_t n = src ? std::strlen(src) : 0;
+    if (n >= cap) {
+        n = cap - 1;
+        while (n > 0 && (static_cast<unsigned char>(src[n]) & 0xC0) == 0x80)
+            n--; // do not split a multi-byte character
+    }
+    if (n)
+        std::memcpy(dst, src, n);
+    dst[n] = '\0';
+}
+
+namespace {
+void putSeconds(JsonObject o, const char* key, float s) {
+    if (std::isfinite(s))
+        o[key] = std::round(s * 10) / 10;
+    else
+        o[key] = nullptr;
+}
+} // namespace
+
+void writeStatus(JsonObject r, const Runner& run, const RoastClock& clock, uint32_t nowMs, const char* name, char unit) {
+    r["state"] = stateName(run.state());
+    r["reason"] = run.reason();
+    r["seq"] = run.seq();
+    if (run.state() != State::Empty) {
+        r["name"] = static_cast<const char*>(name ? name : ""); // const char*: copied
+        r["unit"] = unitName(unit);                             // literal or null
+        r["mode"] = run.recipe().guided ? "guided" : "auto";
+        r["next"] = run.next();
+        r["prompt"] = run.prompt();
+        r["follow"] = run.state() == State::Running && run.followingSetpoint();
+    }
+    putSeconds(r, "sinceCharge", clock.sinceCharge(nowMs));
+    JsonObject ev = r["events"].to<JsonObject>();
+    for (int i = 0; i < static_cast<int>(Event::Count); i++) {
+        const Event e = static_cast<Event>(i);
+        if (clock.seen(e))
+            putSeconds(ev, eventName(e), clock.at(e));
+    }
+    JsonArray fired = r["fired"].to<JsonArray>();
+    for (size_t i = 0; i < run.firedCount(); i++) {
+        const Fired& f = run.fired(i);
+        JsonObject o = fired.add<JsonObject>();
+        o["step"] = f.step;
+        putSeconds(o, "at", f.atS);
+        o["how"] = outcomeName(f.outcome);
+    }
+}
+
 const char* parse(JsonObjectConst j, char unit, Recipe& out) {
+    if (!unitName(unit))
+        return "unit must be C, F or K";
     if (j.isNull())
         return "recipe must be an object";
     const char* mode = j["mode"] | "auto";

@@ -63,13 +63,15 @@ void RecipePlugin::attach(CroasterApp& app) {
     control_.onData([this](JsonObject& data) { writeData(data); });
 }
 
-bool RecipePlugin::load(const recipe::Recipe& r, const std::string& text, const char* name, char unit) {
+const char* RecipePlugin::load(const recipe::Recipe& r, const std::string& text, const char* name, char unit) {
+    if (!recipe::unitName(unit))
+        return "unit must be C, F or K";
     if (!runner_.load(r))
-        return false;
+        return "recipe running";
     text_ = text;
-    name_ = name ? name : "";
+    recipe::copyText(name_, sizeof(name_), name);
     unit_ = unit;
-    return true;
+    return nullptr;
 }
 
 recipe::Inputs RecipePlugin::inputs() const {
@@ -158,14 +160,20 @@ String RecipePlugin::loadCommand(const JsonObject& json) {
             r["reason"] = reason;
         return finishReply(doc);
     }
+    if (what.recipe) {
+        // Load the recipe first so a refusal leaves the schedule untouched.
+        std::string text;
+        serializeJson(p["recipe"], text);
+        if (const char* why = load(*rec, text, p["name"] | "", (p["unit"] | "C")[0])) {
+            r["ok"] = false;
+            r["error"] = proflib::errorCode(proflib::Error::BadRecipe);
+            r["reason"] = why;
+            return finishReply(doc);
+        }
+    }
     bool scheduled = false;
     if (what.schedule)
         scheduled = controller_.loadProfile(*schedule);
-    if (what.recipe) {
-        std::string text;
-        serializeJson(p["recipe"], text);
-        load(*rec, text, p["name"] | "", (p["unit"] | "C")[0]);
-    }
     r["ok"] = true;
     r["recipe"] = what.recipe;
     r["schedule"] = scheduled;
@@ -189,34 +197,8 @@ String RecipePlugin::status() {
     JsonDocument doc;
     JsonObject r = beginReply(doc, "getRecipe");
     r["ok"] = true;
-    r["state"] = recipe::stateName(runner_.state());
-    r["reason"] = runner_.reason();
-    r["seq"] = runner_.seq();
+    recipe::writeStatus(r, runner_, clock_, now, name_, unit_);
     const bool loaded = runner_.state() != recipe::State::Empty;
-    if (loaded) {
-        r["name"] = name_.c_str();
-        const char unit[2] = {unit_, '\0'};
-        r["unit"] = unit;
-        r["mode"] = runner_.recipe().guided ? "guided" : "auto";
-        r["next"] = runner_.next();
-        r["prompt"] = runner_.prompt();
-        r["follow"] = running() && runner_.followingSetpoint();
-    }
-    putSeconds(r, "sinceCharge", clock_.sinceCharge(now));
-    JsonObject ev = r["events"].to<JsonObject>();
-    for (int i = 0; i < static_cast<int>(recipe::Event::Count); i++) {
-        const recipe::Event e = static_cast<recipe::Event>(i);
-        if (clock_.seen(e))
-            putSeconds(ev, recipe::eventName(e), clock_.at(e));
-    }
-    JsonArray fired = r["fired"].to<JsonArray>();
-    for (size_t i = 0; i < runner_.firedCount(); i++) {
-        const recipe::Fired& f = runner_.fired(i);
-        JsonObject o = fired.add<JsonObject>();
-        o["step"] = f.step;
-        putSeconds(o, "at", f.atS);
-        o["how"] = recipe::outcomeName(f.outcome);
-    }
     String out;
     serializeJson(doc, out);
     if (loaded && !text_.empty()) {

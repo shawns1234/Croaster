@@ -95,6 +95,8 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Save refused while heating: heater above 0 (Manual 10 %) → Save and Delete greyed with "Not while the heater is on"; `librarySave` sent by hand replies `busy` / `heater on`. **untested**
 - OTA keeps the library: save two profiles, update the firmware over WiFi, both are still listed and load. **untested**
 - `getControl` `loopStackFree` stays above about 8000 after `libraryList` with 50 profiles, `libraryGet` of an 8 KB profile, `libraryLoad` and `getRecipe` with 32 steps. **untested**
+- Recipe status strings: the `getRecipe` fields are copied or static (a `const char[N]` stored by pointer reproduces the stale bytes), the unit is C, F or K or the recipe is refused, the name is cut at a UTF-8 boundary, a loaded recipe applies nothing before Start. **host** `pio test -e native` (`test_recipe_status_strings_owned`)
+- Load "Test Recipe 2" (guided, °F) with Load to device, then stay on the page for a minute and reload it twice: the page stays connected, `getRecipe` shows `"unit":"F"` and the name, Library lists each profile's unit as C or F, serial shows no `WebSocket Client Disconnected`. **untested**
 - Recipe triggers on the roaster: steps at BT 300 °F (heater 60 %, fan 50 %) and at FC_START (setpoint 410 °F over 1:00) → each fires once at its point, the fired list shows the roast time, the mode switches Manual then PID, SV ramps. **untested** (needs AC)
 - Recipe aborts: STOP, Abort recipe, a comms watchdog trip (close every page) and an OTA start each end the recipe with that reason and nothing more is applied. **untested**
 - Guided mode: a fired step shows Set now and Skip; Set now applies it; an unanswered prompt becomes "missed" when the next fires. **untested**

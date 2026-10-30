@@ -73,8 +73,7 @@ String LibraryPlugin::list() {
         JsonObject o = a.add<JsonObject>();
         o["id"] = m.id.c_str(); // copied: the index may change before the reply is sent
         o["name"] = m.name.c_str();
-        const char unit[2] = {m.unit, '\0'};
-        o["unit"] = unit;
+        o["unit"] = recipe::unitName(m.unit); // literal, or null for a bad file
         o["steps"] = m.steps;
         o["recipeSteps"] = m.recipeSteps;
         o["duration"] = std::lround(m.durationS);
@@ -156,13 +155,20 @@ String LibraryPlugin::load(const JsonObject& json) {
     for (const proflib::Meta& x : library_.list())
         if (x.id == id)
             m = &x;
+    // Load the recipe first so a refusal leaves the schedule untouched.
+    bool recipeLoaded = false;
+    if (what.recipe && recipes_) {
+        if (const char* why = recipes_->load(*rec, text, m ? m->name.c_str() : id, m ? m->unit : 'C'))
+            return failure("libraryLoad", proflib::Error::BadRecipe, why);
+        recipeLoaded = true;
+    }
     JsonDocument doc;
     JsonObject r = beginReply(doc, "libraryLoad");
     r["ok"] = true;
     r["id"] = id;
     r["loaded"] = what.schedule && controller_.loadProfile(*p);
     r["steps"] = what.schedule ? p->size() : 0;
-    r["recipe"] = what.recipe && recipes_ && recipes_->load(*rec, text, m ? m->name.c_str() : id, m ? m->unit : 'C');
+    r["recipe"] = recipeLoaded;
     return finishReply(doc);
 }
 #endif

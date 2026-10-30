@@ -123,6 +123,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Page connection dropped after loading a recipe (T59).** After a recipe
+  was loaded, every `getRecipe` reply carried stray bytes in `unit` (for
+  example `"unit":"t??????"`). The unit letter was put in a local
+  `const char[2]`, which ArduinoJson 7 stores by pointer, so the buffer was
+  reused before the reply was serialized. The bytes were not valid UTF-8, so
+  the browser closed the WebSocket; the page reconnected, asked for the
+  recipe again and dropped again. `libraryList` had the same fault for each
+  profile's unit. The status fields are now written by
+  `recipe::writeStatus()` with copied or static strings, the recipe name is
+  kept in a fixed-size owned buffer, and `recipe::parse()`,
+  `recipeLoad` and `libraryLoad` refuse any unit other than C, F or K with
+  `badRecipe` (the recipe is checked before the schedule is loaded, so a
+  refusal changes nothing). Heater, fan and recipe temperatures were not
+  affected: a loaded recipe does nothing until started, and its temperatures
+  are converted when parsed from the file's validated unit.
 - **Board reset on "Load to device" (T54).** Croaster PID restarted with
   "Stack canary watchpoint triggered (loopTask)" while replying to a profile
   load, and could do the same on `getControl`. Croaster runs a WebSocket

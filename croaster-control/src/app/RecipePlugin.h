@@ -32,6 +32,7 @@
 
 #include "ControlPlugin.h"
 #include "controller.h"
+#include "core/profile_library.h"
 #include "core/recipe.h"
 
 class CroasterApp;
@@ -50,8 +51,9 @@ public:
     void loop();
 
     // Replaces the loaded recipe (already parsed, in C). `text` is its JSON as
-    // written, `unit` the file's unit. False while a recipe runs.
-    bool load(const recipe::Recipe& r, const std::string& text, const char* name, char unit);
+    // written, `unit` the file's unit ('C', 'F' or 'K'). Returns nullptr when
+    // loaded, else the reason it was refused (bad unit, or a recipe running).
+    const char* load(const recipe::Recipe& r, const std::string& text, const char* name, char unit);
     bool running() const {
         return runner_.state() == recipe::State::Running;
     }
@@ -71,7 +73,7 @@ private:
     recipe::Runner runner_;
     recipe::RoastClock clock_;
     std::string text_; // the loaded recipe object, as JSON
-    std::string name_;
-    char unit_ = 'C';
+    char name_[proflib::kMaxNameChars * 4 + 1] = ""; // UTF-8, owned copy
+    char unit_ = 'C';                                // validated by load()
     uint32_t lastTickMs_ = 0;
 };

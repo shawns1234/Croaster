@@ -175,7 +175,7 @@ Time is seconds since CHARGE; event values are `CHARGE`, `TP`, `DRY_END`, `FC_ST
 
 | JSON | Reply `response` |
 |:---|:---|
-| `{"command":"recipeLoad","profile":{"version":1,"name":..,"unit":"F","recipe":{"mode":"auto"\|"guided","steps":[..]}}}` | `{ok,recipe,schedule}`; refused (`busy`) while one runs |
+| `{"command":"recipeLoad","profile":{"version":1,"name":..,"unit":"F","recipe":{"mode":"auto"\|"guided","steps":[..]}}}` | `{ok,recipe,schedule}`; refused (`busy`) while one runs, `badRecipe` for a unit other than C, F or K |
 | `{"command":"recipeStart"}` / `"recipeAbort"` | `{ok}`; errors `empty`, `running`, `notRunning`, `autotuneRunning` |
 | `{"command":"recipeConfirm","step":n}` | guided: apply the prompted step; error `noPrompt` |
 | `{"command":"recipeSkip"}` / `{"command":"recipeSkip","step":n}` | skip the next step, or dismiss the prompt for step n |

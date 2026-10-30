@@ -1266,6 +1266,65 @@ void test_recipe_setpoint_ramp_and_mixing() {
     TEST_ASSERT_FALSE(run.followingSetpoint());
 }
 
+// getRecipe status strings must be owned by the document. ArduinoJson 7 stores
+// a const char[N] array by pointer, so a local unit buffer went stale before
+// serialization and sent stray bytes (the "unit":"t??????" bench fault).
+void test_recipe_status_strings_owned() {
+    // The old pattern: the document aliases the caller's array.
+    char buf[2] = {'F', '\0'};
+    JsonDocument alias;
+    alias["unit"] = static_cast<const char(&)[2]>(buf);
+    TEST_ASSERT_TRUE(alias["unit"].as<JsonString>().isStatic());
+    buf[0] = 't';
+    TEST_ASSERT_EQUAL_STRING("t", alias["unit"].as<const char*>());
+
+    TEST_ASSERT_EQUAL_STRING("C", recipe::unitName('C'));
+    TEST_ASSERT_EQUAL_STRING("F", recipe::unitName('F'));
+    TEST_ASSERT_EQUAL_STRING("K", recipe::unitName('K'));
+    TEST_ASSERT_NULL(recipe::unitName('t'));
+    TEST_ASSERT_NULL(recipe::unitName('f'));
+    TEST_ASSERT_NULL(recipe::unitName('\0'));
+
+    recipe::Recipe r;
+    const char* guided = R"({"mode":"guided","steps":[
+        {"trigger":{"type":"bt","value":300},"actions":[{"type":"fan","value":50}]}]})";
+    TEST_ASSERT_NOT_EQUAL(0, std::strlen(parseRecipe(guided, r, 't'))); // unknown unit refused
+    TEST_ASSERT_EQUAL_STRING("", parseRecipe(guided, r, 'F'));
+    recipe::Runner run;
+    recipe::RoastClock clock;
+    TEST_ASSERT_TRUE(run.load(r));
+
+    JsonDocument doc;
+    {
+        char name[16] = "Test Recipe 2";
+        char unit = 'F';
+        recipe::writeStatus(doc.to<JsonObject>(), run, clock, 0, name, unit);
+        std::memset(name, '?', sizeof(name) - 1); // caller storage reused before the reply is sent
+        unit = 't';
+    }
+    std::string out;
+    serializeJson(doc, out);
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, out.find(R"("name":"Test Recipe 2")"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, out.find(R"("unit":"F")"));
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, out.find(R"("mode":"guided")"));
+    TEST_ASSERT_EQUAL(std::string::npos, out.find('?'));
+
+    // A loaded recipe does not command anything until started.
+    TEST_ASSERT_TRUE(run.state() == recipe::State::Ready);
+    recipe::Output o;
+    run.tick(at(1000, 200), clock, o);
+    TEST_ASSERT_EQUAL(0, o.count);
+
+    // Owned name copy: terminated, cut at a UTF-8 boundary.
+    char small[4];
+    recipe::copyText(small, sizeof(small), "ab\xC3\xA9"); // "abé" needs 5 bytes
+    TEST_ASSERT_EQUAL_STRING("ab", small);
+    recipe::copyText(small, sizeof(small), nullptr);
+    TEST_ASSERT_EQUAL_STRING("", small);
+    recipe::copyText(small, sizeof(small), "abc");
+    TEST_ASSERT_EQUAL_STRING("abc", small);
+}
+
 void test_recipe_guided_and_aborts() {
     recipe::Recipe r;
     parseRecipe(R"({"mode":"guided","steps":[
@@ -1416,6 +1475,7 @@ int main() {
     RUN_TEST(test_recipe_time_and_events);
     RUN_TEST(test_recipe_setpoint_ramp_and_mixing);
     RUN_TEST(test_recipe_guided_and_aborts);
+    RUN_TEST(test_recipe_status_strings_owned);
     RUN_TEST(test_library_recipe_profiles);
     runAutotuneTests(); // test_autotune.cpp
     return UNITY_END();

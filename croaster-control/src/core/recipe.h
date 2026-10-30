@@ -83,10 +83,27 @@ struct Recipe {
     size_t count = 0;
 };
 
-// Parses and checks a recipe object; temperatures are in `unit`. Returns ""
-// and fills `out` (converted to C) on success, else a short reason. `out` may
-// be partly written on failure.
+// Parses and checks a recipe object; temperatures are in `unit` ('C', 'F' or
+// 'K'; anything else is refused). Returns "" and fills `out` (converted to C)
+// on success, else a short reason. `out` may be partly written on failure.
 const char* parse(JsonObjectConst json, char unit, Recipe& out);
+
+// "C", "F" or "K" as a string literal; nullptr for any other unit. Literals are
+// safe to store in a JsonDocument by pointer. ArduinoJson 7 also stores a
+// `const char[N]` array by pointer, so a local array must never be assigned.
+const char* unitName(char unit);
+
+// Copies `src` into `dst` (capacity `cap` including the terminator), cutting
+// at a UTF-8 character boundary. `dst` is always terminated.
+void copyText(char* dst, size_t cap, const char* src);
+
+class RoastClock;
+class Runner;
+
+// Fields of the getRecipe reply (all but "ok" and the recipe text) into `r`.
+// Every string is copied or static, so `r` stays valid after the caller's
+// buffers change. `name` and `unit` are only written while a recipe is loaded.
+void writeStatus(JsonObject r, const Runner& run, const RoastClock& clock, uint32_t nowMs, const char* name, char unit);
 
 // Roast events reported by the page and the clock since CHARGE. CHARGE starts
 // a new roast: it clears the other events.
