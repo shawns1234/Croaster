@@ -92,26 +92,48 @@ test('Monitoring is the first tab and the landing view; Start sits beside STOP',
   assert.match(bar, /id="end-roast" hidden disabled/);
 });
 
-test('Start and the event buttons send nothing to the board', () => {
+test('Start sends nothing to the board; event marks send only roastEvent', () => {
   const app = read('app.js');
   const start = app.slice(app.indexOf('function startRoast('), app.indexOf('function endRoast('));
   const mark = app.slice(app.indexOf('function markEvent('), app.indexOf('function startRoast('));
   for (const body of [start, mark]) assert.doesNotMatch(body, /send\(|postMessage\(/);
   assert.match(mark, /^function markEvent\(code\) \{\s+if \(!R\.eventAllowed\(S\.session, code\)\) return;/);
+  // addEvent tells the board's roast clock (recipe event and time triggers) and nothing else.
+  const add = app.slice(app.indexOf('function addEvent('), app.indexOf('}', app.indexOf('function addEvent(')));
+  assert.match(add, /sendEvent\(ev\.code\)/);
+  const ev = app.slice(app.indexOf('function sendEvent('), app.indexOf('function firedText('));
+  assert.deepEqual([...ev.matchAll(/command: '(\w+)'/g)].map((m) => m[1]), ['roastEvent', 'roastEvent']);
 });
 
 test('the page sends commands only from user actions', () => {
   // Every send() call site. Loading the page or switching views reaches none of
-  // them; the worker's polls (getArtisanData, getControl, getDeviceInfo) are read-only.
-  // A new command needs an entry here.
+  // them, except the read-only libraryList (link open, Controls tab) and getRecipe
+  // (the data payload's recipe.seq changed); the worker's polls (getArtisanData,
+  // getControl, getDeviceInfo) are read-only too. A new command needs an entry here.
   const app = read('app.js');
   const calls = app.split('\n').filter((l) => /\bsend\(/.test(l) && !/function send\(/.test(l)).map((l) => l.trim());
   assert.deepEqual(calls, [
     "send({ command: 'stop' });",
     'send({ command: { [key]: value } }); // one command per click',
     'send({ command: { profile: steps } });',
+    "send({ command: 'libraryList' });",
+    "send(Object.assign({ command: 'librarySave', profile }, extra));",
+    "if (r.recipe) send({ command: 'getRecipe' });",
+    `btn('Load to board', '', () => { send({ command: 'libraryLoad', id: m.id }); libStatus('Loading "' + m.name + '"…'); }, !m.valid);`,
+    "btn('Edit', 'ghost', () => { lib.getIntent[m.id] = 'edit'; send({ command: 'libraryGet', id: m.id }); });",
+    "btn('Export', 'ghost', () => { lib.getIntent[m.id] = 'export'; send({ command: 'libraryGet', id: m.id }); });",
+    "send({ command: 'libraryDelete', id: m.id });",
+    "send({ command: 'recipeLoad', profile: res.profile });",
+    "send({ command: 'getRecipe' });",
+    "else if (r.seq !== S.recipeSeq) { S.recipeSeq = r.seq; send({ command: 'getRecipe' }); }",
+    "send(undo ? { command: 'roastEvent', event: code, undo: true } : { command: 'roastEvent', event: code });",
     'send(cmd);',
     'send({ command: payload });',
+    "const runRecipe = () => send({ command: 'recipeStart' });",
+    "$('#rl-abort').addEventListener('click', () => confirmThen('Abort the recipe? No further steps run; the heater and fan stay as they are.', () => send({ command: 'recipeAbort' })));",
+    "$('#rl-skip').addEventListener('click', () => send({ command: 'recipeSkip' }));",
+    "$('#rl-apply').addEventListener('click', () => { if (S.recipe) send({ command: 'recipeConfirm', step: S.recipe.prompt }); });",
+    "$('#rl-dismiss').addEventListener('click', () => { if (S.recipe) send({ command: 'recipeSkip', step: S.recipe.prompt }); });",
   ]);
   const worker = read('link.worker.js');
   const sent = [...worker.matchAll(/send\(\{ command: '(\w+)'/g)].map((m) => m[1]);

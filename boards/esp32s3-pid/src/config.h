@@ -94,6 +94,10 @@
 // No password: anyone on the network can open it. 0 removes it from the build.
 #define CMON_ENABLE_WEBUI 1
 #define CMON_WEBUI_PORT 80 // HTTP port of the page (it talks to Croaster's WebSocket on 81)
+// Profile library: up to 50 named profiles on the board (LittleFS on the stock
+// "spiffs" partition; no partition change). The page lists, loads, saves,
+// imports and exports them (Controls > Device library). 0 removes it from the build.
+#define CPID_ENABLE_LIBRARY 1
 
 // ---- Control and safety (always Celsius, whatever CMON_TEMP_UNIT is) --------
 // PID input: the probe the firmware PID and autotune regulate. First-boot

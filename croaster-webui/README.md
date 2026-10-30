@@ -57,7 +57,7 @@ network you trust, or build with `CMON_ENABLE_WEBUI 0`.
 
 | Path | What |
 |:---|:---|
-| `web/` | Page sources: `index.html`, `app.css`, `app.js` (UI), `theme.js` (colour schemes, validation and contrast; also loaded by the tests), `roast.js` (pure roast math, also loaded by the tests), `link.worker.js` (WebSocket and polling) |
+| `web/` | Page sources: `index.html`, `app.css`, `app.js` (UI), `theme.js` (colour schemes, validation and contrast; also loaded by the tests), `roast.js` (pure roast math, also loaded by the tests), `library.js` (profile file format, recipe editor rows, behind-schedule check; also loaded by the tests), `link.worker.js` (WebSocket and polling) |
 | `embed_assets.py` | Library extra script: gzips `web/` into `src/webui_assets.h`. Runs on every build and rewrites the header only when a source changes. Output is reproducible (gzip level 9, no timestamp, sorted files). Fails the build above 100 KB gzipped |
 | `src/webui_assets.h` | Generated, committed. Its first lines carry the SHA-256 of the sources |
 | `src/WebUiServer.*` | ESP-IDF `esp_http_server` serving the assets and `/info.json` |
@@ -106,14 +106,17 @@ Open `web/index.html` from any static server and point it at a board:
 ## Tests
 
 ```bash
-node --test croaster-webui/test/*.test.js          # roast math, CSV, themes, page checks
+node --test croaster-webui/test/*.test.js          # roast math, CSV, themes, library and recipes, page checks
 python3 -m unittest discover -s croaster-webui/test # asset pipeline
 ```
 
 `roast.test.js` covers the least-squares RoR, turning-point detection, unit
 conversion, axis ticks, clock format and CSV. `theme.test.js` covers colour
 parsing, presets, validation, migration of saved values, import and export,
-and WCAG contrast. `web_check.test.js` parses every
+and WCAG contrast. `library.test.js` covers the profile format (limits, unknown
+keys kept, newer versions refused, unit conversion), recipe validation with
+the board's reasons, editor round trips and the behind-schedule check.
+`web_check.test.js` parses every
 script and checks that the page loads nothing from outside the board, that
 every element id the script uses exists, that every form has a command, and
 that risky commands ask first. `test_embed_assets.py` checks the output is

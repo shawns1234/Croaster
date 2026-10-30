@@ -17,6 +17,8 @@
 // turns the heater off while one runs (Update.isRunning()).
 #include <Arduino.h>
 
+#include <functional>
+
 #include "config_store.h"
 #include "controller.h"
 #include "core/control_protocol.h"
@@ -36,6 +38,18 @@ public:
     // Call from loop() next to app.loop().
     void loop();
 
+    // The stop command's path: heater off, Manual, fan to the stop cooldown speed.
+    void stop();
+    // Called on the stop and emergency-off commands (the recipe runner aborts).
+    void onStop(std::function<void()> fn) {
+        stopListener_ = fn;
+    }
+    // Adds fields to every data payload after the control fields (Croaster has
+    // one onJsonData hook and this plugin uses it).
+    void onData(std::function<void(JsonObject&)> fn) {
+        dataWriter_ = fn;
+    }
+
 private:
     String handleNested(const JsonObject& json, const char* key);
     String handleLegacy(const JsonObject& json, const char* name);
@@ -51,4 +65,6 @@ private:
     uint32_t autotuneSeq_ = 0;
     bool correctionSent_ = false;
     float correctionBtC_ = 0, correctionEtC_ = 0;
+    std::function<void()> stopListener_;
+    std::function<void(JsonObject&)> dataWriter_;
 };

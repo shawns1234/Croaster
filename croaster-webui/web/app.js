@@ -5,6 +5,7 @@
   const R = window.Roast;
   const L = window.Link;
   const TH = window.Theme;
+  const P = window.ProfileLibrary;
   const $ = (sel, el) => (el || document).querySelector(sel);
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
   const SVGNS = 'http://www.w3.org/2000/svg';
@@ -14,6 +15,10 @@
   const KEY_THEME = 'croaster.theme';
   const KEY_ROR = 'croaster.rorSmooth';
   const KEY_TP = 'croaster.autoTp';
+  const KEY_RECIPE = 'croaster.recipe';
+  const KEY_LAG = 'croaster.recipeLag'; // + ".F" / ".C": behind-schedule threshold in that unit
+  const LIB_TIMEOUT_MS = 4000;
+  const BEHIND_HOLD_MS = 20000; // heater at 100 % this long before the behind-schedule warning
   const MAX_SAMPLES = 4 * 3600; // 4 h at 1 Hz
   const PENDING_STALE_MS = 4000;
   const PENDING_DROP_MS = 10000;
@@ -62,6 +67,11 @@
     lastTrip: null,
     stopCheck: null, // {at, warned} while waiting for the board to report the stop
     profile: loadJson(KEY_PROFILE) || [{ duration: 60, setpoint: '', interpolation: 'linear', fanValue: '' }],
+    lib: { state: 'unknown', list: [], askedAt: 0, used: null, total: null, max: null, base: null, imported: null, getIntent: {} },
+    recipeRows: (loadJson(KEY_RECIPE) || {}).rows || [],
+    recipeMode: (loadJson(KEY_RECIPE) || {}).mode === 'guided' ? 'guided' : 'auto',
+    recipe: null, recipeSeq: null, // the board's getRecipe reply and the data "recipe.seq" it matches
+    behind: { state: null, warn: false, lagC: NaN },
   };
   let worker = null;
 
@@ -136,8 +146,10 @@
   function onWorker(e) {
     const m = e.data;
     if (m.type === 'status') {
+      const opened = m.state === 'open' && S.link !== 'open';
       S.link = m.state;
       S.dirty = true;
+      if (opened) { requestLibrary(); S.recipeSeq = null; }
     } else if (m.type === 'stats') {
       S.stats = m;
       if (S.tab === 'monitoring') S.dirty = true;
@@ -159,12 +171,23 @@
       watchUptime(msg.data.timer);
       watchStatus(msg.data);
       checkStop(msg.data);
+      if (S.info.controls) watchRecipe(msg.data);
       if (polled) addSample(msg.data, at);
       S.dirty = true;
       return;
     }
     if (msg.command === 'getControl') { S.control = msg.response || {}; S.controlAt = at; S.dirty = true; return; }
     if (msg.command === 'getDeviceInfo') { S.device = msg.response || {}; S.deviceAt = at; S.dirty = true; return; }
+    if (typeof msg.command === 'string' && /^library/.test(msg.command)) {
+      onLibrary(msg.command, msg.response || {});
+      if (msg.command !== 'libraryList') logReply(msg.response && msg.response.ok ? 'in' : 'err', '← ' + msg.command + (msg.response && msg.response.ok ? '' : ': ' + (msg.response || {}).error));
+      return;
+    }
+    if (typeof msg.command === 'string' && (/^recipe/.test(msg.command) || msg.command === 'getRecipe' || msg.command === 'roastEvent')) {
+      onRecipe(msg.command, msg.response || {});
+      if (msg.command !== 'getRecipe') logReply(msg.response && msg.response.ok ? 'in' : 'err', '← ' + JSON.stringify(msg));
+      return;
+    }
     if (msg.command === 'profile') {
       const r = msg.response || {};
       $('#profile-status').textContent = r.loaded ? 'Loaded ' + r.steps + ' steps.' :
@@ -253,6 +276,7 @@
 
   function addEvent(ev) {
     S.session.events.push(ev);
+    sendEvent(ev.code); // the board's roast clock and event triggers (recipes)
     S.dirty = true;
     renderEvents();
     saveSession(true);
@@ -392,7 +416,8 @@
     renderEvents();
     if (S.tab === 'live') { renderChart(); }
     if (S.tab === 'monitoring') renderMonitoring();
-    if (S.tab === 'controls') renderControls();
+    if (S.tab === 'controls') { renderControls(); renderLibrary(); }
+    if (S.tab === 'live') renderRecipeLive();
     let info;
     if (ss.length) {
       const charge = chargeT();
@@ -800,6 +825,385 @@
     send({ command: { profile: steps } });
   }
 
+  // ---------- device library ----------
+  // Controls > Device library: profiles kept on the board (library.js has the
+  // format). The board answers libraryList; no answer within LIB_TIMEOUT_MS
+  // (monitor firmware, or a build without the library) shows it as unavailable.
+  const edUnit = () => unit() || 'C';
+
+  function libStatus(text, isError) {
+    const p = $('#lib-status');
+    p.textContent = text;
+    p.classList.toggle('err', !!isError);
+  }
+
+  function requestLibrary() {
+    if (!S.info.controls || S.link !== 'open') return;
+    if (S.lib.state !== 'ready') S.lib.state = 'waiting';
+    S.lib.askedAt = Date.now();
+    send({ command: 'libraryList' });
+    setTimeout(() => { S.dirty = true; }, LIB_TIMEOUT_MS + 100); // shows "unavailable" without new data
+  }
+
+  // Schedule rows, or null when every setpoint is blank (the profile is a recipe only).
+  function scheduleRows() {
+    return S.profile.every((s) => s.setpoint === '' || s.setpoint === undefined || s.setpoint === null) ? null : S.profile;
+  }
+
+  function editorProfile() {
+    const name = $('#lib-name').value;
+    const rows = scheduleRows();
+    const recipe = S.recipeRows.length ? P.recipeFromEditor(S.recipeRows, S.recipeMode) : null;
+    if (!rows && !recipe) return { error: 'empty' };
+    return P.fromEditor(rows, name, $('#lib-notes').value, edUnit(), S.lib.base, recipe);
+  }
+
+  // Saves `profile`, asking first when a profile with its name exists.
+  function saveToDevice(profile, done) {
+    const same = P.findByName(S.lib.list, profile.name);
+    const go = (extra) => {
+      send(Object.assign({ command: 'librarySave', profile }, extra));
+      libStatus('Saving "' + profile.name + '"…');
+      if (done) done();
+    };
+    if (same) confirmThen('Replace "' + same.name + '" on the board with this version?', () => go({ id: same.id, overwrite: true }));
+    else go({});
+  }
+
+  function openInEditors(p) {
+    S.profile = Array.isArray(p.steps) ? P.toEditor(p, edUnit()) : [{ duration: 60, setpoint: '', interpolation: 'linear', fanValue: '' }];
+    S.recipeRows = p.recipe ? P.recipeToEditor(p.recipe, p.unit, edUnit()) : [];
+    S.recipeMode = p.recipe && p.recipe.mode === 'guided' ? 'guided' : 'auto';
+    S.lib.base = JSON.parse(JSON.stringify(p));
+    $('#lib-name').value = p.name || '';
+    $('#lib-notes').value = p.notes || '';
+    saveJson(KEY_PROFILE, S.profile);
+    saveRecipeRows();
+    renderProfile();
+    renderRecipe();
+  }
+
+  function downloadJson(name, obj) {
+    const a = el('a', { download: P.fileName(name) });
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2) + '\n'], { type: 'application/json' }));
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function onLibrary(cmd, r) {
+    const fail = (what) => libStatus(what + ': ' + P.message(r.error, r.reason) + (r.error === 'badRecipe' && r.reason ? '' : '.'), true);
+    if (cmd === 'libraryList') {
+      if (!r.ok) { S.lib.state = 'unavailable'; S.lib.list = []; return; }
+      S.lib.state = 'ready';
+      S.lib.list = r.profiles || [];
+      S.lib.used = r.usedBytes; S.lib.total = r.totalBytes; S.lib.max = r.max;
+      libStatus(S.lib.list.length ? '' : 'No profiles on the board yet. Save the editors or import a file.');
+    } else if (cmd === 'libraryGet') {
+      const intent = S.lib.getIntent[r.id];
+      delete S.lib.getIntent[r.id];
+      if (!r.ok) { fail('Not read'); return; }
+      if (intent === 'export') { downloadJson(r.profile.name, r.profile); libStatus('Exported "' + r.profile.name + '".'); }
+      else { openInEditors(r.profile); libStatus('Opened "' + r.profile.name + '" in the editors.'); }
+    } else if (cmd === 'librarySave') {
+      if (!r.ok) { fail('Not saved'); return; }
+      libStatus(r.created ? 'Saved as a new profile.' : 'Saved over the existing profile.');
+      requestLibrary();
+    } else if (cmd === 'libraryDelete') {
+      if (!r.ok) { fail('Not deleted'); return; }
+      libStatus('Deleted.');
+      requestLibrary();
+    } else if (cmd === 'libraryLoad') {
+      if (!r.ok) { fail('Not loaded'); return; }
+      const parts = [];
+      if (r.loaded) parts.push('schedule of ' + r.steps + ' steps (Start profile runs it)');
+      if (r.recipe) parts.push('recipe (Run recipe on Live runs it)');
+      libStatus(parts.length ? 'Loaded the ' + parts.join(' and the ') + '.' : 'The board did not load it.', !parts.length);
+      if (r.recipe) send({ command: 'getRecipe' });
+    }
+    S.dirty = true;
+  }
+
+  function renderLibrary() {
+    const lib = S.lib;
+    if (lib.state === 'waiting' && Date.now() - lib.askedAt > LIB_TIMEOUT_MS) lib.state = 'unavailable';
+    const ready = lib.state === 'ready';
+    $('#lib-table').hidden = !ready || !lib.list.length;
+    $('#lib-tools').hidden = !ready;
+    if (lib.state === 'unavailable') libStatus('Device library unavailable: this firmware has none, or its storage did not mount.');
+    else if (lib.state !== 'ready' && S.link !== 'open') libStatus('Not connected.');
+    $('#lib-count').textContent = ready ? lib.list.length + ' of ' + (lib.max || P.MAX_PROFILES) +
+      (isNum(lib.used) && isNum(lib.total) && lib.total ? ' · ' + Math.round(lib.used / 1024) + ' of ' + Math.round(lib.total / 1024) + ' KB' : '') : '';
+    const busy = P.busyReason(S.data);
+    for (const b of [$('#lib-save'), $('#lib-import-save')]) {
+      b.disabled = !!busy;
+      b.title = busy ? 'Not while ' + busy : '';
+    }
+    const body = $('#lib-list');
+    const key = JSON.stringify(lib.list) + busy;
+    if (body.dataset.key === key) return; // rebuild only on change, so focus and clicks survive
+    body.dataset.key = key;
+    body.textContent = '';
+    for (const m of lib.list) {
+      const tr = el('tr');
+      tr.append(el('td', {}, m.name + (m.valid ? '' : ' (not valid)')));
+      tr.append(el('td', {}, m.unit));
+      tr.append(el('td', {}, m.steps ? m.steps + ' steps · ' + R.formatClock(m.duration) : '—'));
+      tr.append(el('td', {}, m.recipeSteps ? m.recipeSteps + ' steps' : '—'));
+      const td = el('td', { class: 'row-buttons' });
+      const btn = (label, cls, fn, disabled, title) => {
+        const b = el('button', { type: 'button', class: cls }, label);
+        if (disabled) b.disabled = true;
+        if (title) b.title = title;
+        b.addEventListener('click', fn);
+        td.append(b);
+      };
+      btn('Load to board', '', () => { send({ command: 'libraryLoad', id: m.id }); libStatus('Loading "' + m.name + '"…'); }, !m.valid);
+      btn('Edit', 'ghost', () => { lib.getIntent[m.id] = 'edit'; send({ command: 'libraryGet', id: m.id }); });
+      btn('Export', 'ghost', () => { lib.getIntent[m.id] = 'export'; send({ command: 'libraryGet', id: m.id }); });
+      btn('Delete', 'ghost', () => confirmThen('Delete "' + m.name + '" from the board? Export it first to keep a copy.', () => {
+        send({ command: 'libraryDelete', id: m.id });
+      }), !!busy, busy ? 'Not while ' + busy : '');
+      tr.append(td);
+      body.append(tr);
+    }
+  }
+
+  function importFile(file) {
+    if (!file) return;
+    if (file.size > 64 * 1024) { libStatus('Not imported: the file is larger than 64 KB.', true); return; }
+    file.text().then((text) => {
+      const r = P.parseFile(text);
+      if (r.error) {
+        const why = r.error === 'badRecipe' ? ' (' + P.recipeReason(JSON.parse(text).recipe, JSON.parse(text).unit) + ')' : '';
+        libStatus('Not imported: ' + P.message(r.error) + why + '.', true);
+        return;
+      }
+      S.lib.imported = r.profile;
+      const p = r.profile;
+      const parts = [];
+      if (p.steps) parts.push(p.steps.length + ' schedule steps');
+      if (p.recipe) parts.push(p.recipe.steps.length + ' recipe steps');
+      $('#lib-imported-text').textContent = '"' + p.name + '": ' + parts.join(', ') + '.';
+      $('#lib-imported').hidden = false;
+    }, () => libStatus('Could not read the file.', true));
+  }
+
+  // ---------- recipe ----------
+  // Controls > Recipe edits the steps; Live shows the board's run (getRecipe).
+  const TRIGGER_LABELS = { time: 'Time', bt: 'BT', et: 'ET', ror: 'RoR', event: 'Event' };
+  const OP_LABELS = { gte: '\u2265', lte: '\u2264', near: '\u2248' };
+  const ACTION_LABELS = { power: 'Heater %', fan: 'Fan %', setpoint: 'Setpoint (PID)', hold: 'Hold ramp',
+    cool: 'Cool (stop)', end: 'End recipe', note: 'Note' };
+
+  function saveRecipeRows() {
+    saveJson(KEY_RECIPE, { mode: S.recipeMode, rows: S.recipeRows });
+  }
+
+  function recipeStatus(text, isError) {
+    const p = $('#recipe-status');
+    p.textContent = text;
+    p.classList.toggle('err', !!isError);
+  }
+
+  function renderRecipe() {
+    const body = $('#recipe-table tbody');
+    body.textContent = '';
+    $('#recipe-mode').value = S.recipeMode;
+    const changed = () => saveRecipeRows();
+    const select = (options, labels, value, onChange) => {
+      const s = el('select');
+      for (const o of options) s.append(el('option', { value: o }, labels[o] || o));
+      s.value = value;
+      s.addEventListener('change', () => { onChange(s.value); changed(); });
+      return s;
+    };
+    const input = (attrs, value, onInput) => {
+      const i = el('input', attrs);
+      i.value = value === undefined || value === null ? '' : value;
+      i.addEventListener('input', () => { onInput(i.value); changed(); });
+      return i;
+    };
+    S.recipeRows.forEach((row, i) => {
+      const tr = el('tr');
+      tr.append(el('td', { class: 'num' }, String(i + 1)));
+      const when = el('div', { class: 'when' });
+      when.append(select(P.TRIGGERS, TRIGGER_LABELS, row.type, (v) => { row.type = v; renderRecipe(); }));
+      if (row.type === 'event') {
+        when.append(select(P.EVENTS, P.EVENT_LABELS, row.event || 'CHARGE', (v) => { row.event = v; }));
+      } else {
+        when.append(select(P.OPS, OP_LABELS, row.op || 'gte', (v) => { row.op = v; renderRecipe(); }));
+        const isTime = row.type === 'time';
+        when.append(input(isTime ? { type: 'text', placeholder: 'm:ss', 'aria-label': 'Time since Charge' } :
+          { type: 'number', step: 'any', 'aria-label': 'Value' }, row.value, (v) => { row.value = v; }));
+        when.append(el('span', { class: 'small muted' }, isTime ? 'since Charge' : row.type === 'ror' ? unitLabel() + '/min' : unitLabel()));
+        if (row.op === 'near') {
+          when.append(el('span', { class: 'small muted' }, '\u00b1'));
+          when.append(input({ type: 'number', step: 'any', min: '0', placeholder: isTime ? '5' : '2', 'aria-label': 'Tolerance' },
+            row.tol, (v) => { row.tol = v; }));
+        }
+      }
+      const any = el('label', { class: 'small toggle', title: 'Armed from the start instead of after the step before it' });
+      const cb = el('input', { type: 'checkbox' });
+      cb.checked = !!row.anyOrder;
+      cb.addEventListener('change', () => { row.anyOrder = cb.checked; changed(); });
+      any.append(cb, ' any order');
+      when.append(any);
+      when.append(input({ type: 'text', maxlength: '40', placeholder: 'label', 'aria-label': 'Label' }, row.label, (v) => { row.label = v; }));
+      const tdWhen = el('td');
+      tdWhen.append(when);
+      tr.append(tdWhen);
+
+      const then = el('div', { class: 'then' });
+      row.actions.forEach((a, k) => {
+        const act = el('div', { class: 'act' });
+        act.append(select(P.ACTIONS, ACTION_LABELS, a.type, (v) => { a.type = v; renderRecipe(); }));
+        if (a.type === 'power' || a.type === 'fan') {
+          act.append(input({ type: 'number', min: '0', max: '100', step: '1', 'aria-label': ACTION_LABELS[a.type] }, a.value, (v) => { a.value = v; }));
+        } else if (a.type === 'setpoint') {
+          act.append(input({ type: 'number', step: 'any', 'aria-label': 'Setpoint' }, a.value, (v) => { a.value = v; }));
+          act.append(el('span', { class: 'small muted' }, unitLabel() + ', ramp s'));
+          act.append(input({ type: 'number', min: '0', max: '3600', step: '1', placeholder: '0', 'aria-label': 'Ramp seconds' }, a.ramp, (v) => { a.ramp = v; }));
+        } else if (a.type === 'note') {
+          act.append(input({ type: 'text', class: 'note', maxlength: '80', 'aria-label': 'Note' }, a.text, (v) => { a.text = v; }));
+        }
+        const rm = el('button', { type: 'button', class: 'ghost', title: 'Remove action' }, '\u2715');
+        rm.disabled = row.actions.length <= 1;
+        rm.addEventListener('click', () => { row.actions.splice(k, 1); changed(); renderRecipe(); });
+        act.append(rm);
+        then.append(act);
+      });
+      const add = el('button', { type: 'button', class: 'ghost' }, '+ action');
+      add.disabled = row.actions.length >= P.RECIPE.MAX_ACTIONS;
+      add.addEventListener('click', () => { row.actions.push({ type: 'fan', value: '' }); changed(); renderRecipe(); });
+      then.append(add);
+      const tdThen = el('td');
+      tdThen.append(then);
+      tr.append(tdThen);
+
+      const td = el('td', { class: 'row-buttons' });
+      const btn = (label, title, fn) => {
+        const b = el('button', { type: 'button', class: 'ghost', title }, label);
+        b.addEventListener('click', () => { fn(); changed(); renderRecipe(); });
+        td.append(b);
+      };
+      const rows = S.recipeRows;
+      btn('\u2191', 'Move up', () => { if (i > 0) rows.splice(i - 1, 0, rows.splice(i, 1)[0]); });
+      btn('\u2193', 'Move down', () => { if (i < rows.length - 1) rows.splice(i + 1, 0, rows.splice(i, 1)[0]); });
+      btn('\u2715', 'Remove', () => { rows.splice(i, 1); });
+      tr.append(td);
+      body.append(tr);
+    });
+    $('#recipe-table').hidden = !S.recipeRows.length;
+    $('#recipe-add').disabled = S.recipeRows.length >= P.RECIPE.MAX_STEPS;
+    const empty = 'No recipe steps. Add step starts one with heater and fan.';
+    if (!S.recipeRows.length) recipeStatus(empty);
+    else if ($('#recipe-status').textContent === empty) recipeStatus('');
+    const lag = $('#recipe-lag');
+    if (document.activeElement !== lag) lag.value = lagSetting();
+  }
+
+  // "step 3: " for the first recipe row the board would refuse, so the message points at it.
+  function stepHint(reason) {
+    if (!reason) return '';
+    for (let i = 0; i < S.recipeRows.length; i++) {
+      const one = P.recipeFromEditor([S.recipeRows[i]], S.recipeMode);
+      if (P.recipeReason(one, edUnit())) return 'step ' + (i + 1) + ': ';
+    }
+    return '';
+  }
+
+  function loadRecipe() {
+    if (!S.recipeRows.length) { recipeStatus('Add a step first.', true); return; }
+    const name = $('#lib-name').value.trim() || 'Recipe';
+    const res = P.fromEditor(null, name, '', edUnit(), null, P.recipeFromEditor(S.recipeRows, S.recipeMode));
+    if (res.error) { recipeStatus('Not sent: ' + stepHint(res.reason) + (res.reason || P.message(res.error)) + '.', true); return; }
+    send({ command: 'recipeLoad', profile: res.profile });
+    recipeStatus('Sent ' + S.recipeRows.length + ' steps, waiting for the board…');
+  }
+
+  // Behind-schedule threshold, in the page unit (default 15 °F or 8 °C).
+  function lagSetting() {
+    const v = Number(localStorage.getItem(KEY_LAG + '.' + edUnit()));
+    return v > 0 ? v : edUnit() === 'F' ? 15 : 8;
+  }
+
+  function onRecipe(cmd, r) {
+    if (cmd === 'getRecipe') {
+      S.recipe = r;
+    } else if (cmd === 'recipeLoad') {
+      if (r.ok) recipeStatus('Loaded on the board' + (r.schedule ? ', with its schedule' : '') + '. Run recipe starts it.');
+      else recipeStatus('Not loaded: ' + (r.reason || P.message(r.error)) + '.', true);
+      send({ command: 'getRecipe' });
+    } else if (!r.ok) {
+      const why = { empty: 'no recipe is loaded', running: 'a recipe is already running', notRunning: 'no recipe is running',
+        noPrompt: 'that step is not waiting', badEvent: 'unknown event' }[r.error] || r.error;
+      logReply('err', cmd + ': ' + why);
+    }
+    S.dirty = true;
+  }
+
+  // Data payloads carry a short recipe status; fetch the full one when it changes.
+  function watchRecipe(d) {
+    const r = d.recipe;
+    if (!r) { if (S.recipe && S.recipe.state !== 'empty') S.recipe = null; S.recipeSeq = null; }
+    else if (r.seq !== S.recipeSeq) { S.recipeSeq = r.seq; send({ command: 'getRecipe' }); }
+    const u = d.temp || 'C';
+    const b = P.behindSchedule(S.behind.state, {
+      nowMs: Date.now(), follow: !!(r && r.state === 'running' && r.follow), heater: d.BurnerVal,
+      btC: isNum(d.BT) ? P.toCelsius(d.BT, u) : NaN, setpointC: isNum(d.SV) ? P.toCelsius(d.SV, u) : NaN,
+    }, { lagC: lagSetting() * (u === 'F' ? 5 / 9 : 1), holdMs: BEHIND_HOLD_MS });
+    S.behind = b;
+  }
+
+  function sendEvent(code, undo) {
+    if (!S.info.controls || S.link !== 'open') return;
+    send(undo ? { command: 'roastEvent', event: code, undo: true } : { command: 'roastEvent', event: code });
+  }
+
+  function firedText(rec, f) {
+    const u = edUnit();
+    const step = P.describeStep(rec.recipe, f.step, rec.unit, u);
+    const head = 'Step ' + (f.step + 1) + ' ' + (f.how === 'skipped' ? 'skipped' : f.how === 'missed' ? 'missed' : 'fired') +
+      (isNum(f.at) ? ' at ' + P.clock(f.at) : ' before Charge');
+    return head + ':' + step.slice(step.indexOf(':') + 1) + (f.how === 'prompted' ? ' (waiting)' : f.how === 'confirmed' ? ' (set)' : '');
+  }
+
+  function renderRecipeLive() {
+    const box = $('#recipe-live');
+    const rec = S.recipe;
+    const show = S.info.controls && !!rec && rec.ok && rec.state !== 'empty';
+    box.hidden = !show;
+    if (!show) return;
+    const u = edUnit();
+    $('#rl-name').textContent = rec.name ? '· ' + rec.name : '';
+    const states = { ready: 'loaded', running: 'running', done: 'finished', aborted: 'aborted' };
+    $('#rl-state').textContent = (states[rec.state] || rec.state) +
+      ((rec.state === 'aborted' || rec.state === 'done') && rec.reason ? ' (' + rec.reason + ')' : '') +
+      (rec.mode === 'guided' ? ', guided' : '') +
+      (isNum(rec.sinceCharge) ? '' : rec.state === 'running' ? ' · time steps wait for Charge' : '');
+    const running = rec.state === 'running';
+    $('#rl-start').disabled = running;
+    $('#rl-skip').disabled = !running || rec.next < 0;
+    $('#rl-abort').disabled = !running;
+    $('#rl-next').textContent = running && rec.next >= 0 ? 'Next: ' + P.describeStep(rec.recipe, rec.next, rec.unit, u) :
+      running ? 'No steps left in order.' : '';
+    const prompt = $('#rl-prompt');
+    prompt.hidden = !(running && rec.prompt >= 0);
+    if (!prompt.hidden) $('#rl-prompt-text').textContent = P.describeStep(rec.recipe, rec.prompt, rec.unit, u);
+    const list = $('#rl-fired');
+    list.textContent = '';
+    for (const f of (rec.fired || []).slice().reverse()) list.append(el('li', { class: f.how }, firedText(rec, f)));
+    const warn = $('#rl-behind');
+    warn.hidden = !(running && S.behind.warn);
+    if (!warn.hidden) {
+      const lag = S.behind.lagC * (u === 'F' ? 9 / 5 : 1);
+      warn.textContent = 'Behind schedule: BT is ' + lag.toFixed(0) + ' ' + unitLabel() +
+        ' under the setpoint with the heater at 100 %. The roaster cannot follow this curve.';
+    }
+  }
+
   // ---------- wiring ----------
   // Monitoring is the landing view; a #live or #controls in the URL opens that view.
   // Opening a view only changes what is drawn: it sends nothing and records nothing.
@@ -809,6 +1213,7 @@
     S.tab = tab;
     for (const p of $$('[data-panel]')) p.hidden = p.dataset.panel !== tab;
     for (const a of $$('[data-tab]')) a.classList.toggle('active', a.dataset.tab === tab);
+    if (tab === 'controls' && S.lib.state !== 'ready') requestLibrary();
     render();
   }
 
@@ -1029,7 +1434,8 @@
     });
     $('#undo-event').addEventListener('click', () => {
       if (!recording()) return;
-      S.session.events.pop();
+      const gone = S.session.events.pop();
+      if (gone) sendEvent(gone.code, true);
       saveSession(true);
       render();
     });
@@ -1071,6 +1477,45 @@
       renderProfile();
     });
     $('#profile-load').addEventListener('click', loadProfile);
+
+    // Device library
+    $('#lib-refresh').addEventListener('click', requestLibrary);
+    $('#lib-save').addEventListener('click', () => {
+      const res = editorProfile();
+      if (res.error === 'empty') { libStatus('Nothing to save: fill the profile setpoints or add recipe steps.', true); return; }
+      if (res.error) { libStatus('Not saved: ' + stepHint(res.reason) + (res.reason || P.message(res.error)) + '.', true); return; }
+      saveToDevice(res.profile);
+    });
+    $('#lib-import').addEventListener('click', () => $('#lib-file').click());
+    $('#lib-file').addEventListener('change', (e) => { importFile(e.target.files[0]); e.target.value = ''; });
+    const closeImport = () => { S.lib.imported = null; $('#lib-imported').hidden = true; };
+    $('#lib-import-save').addEventListener('click', () => { if (S.lib.imported) saveToDevice(S.lib.imported, closeImport); });
+    $('#lib-import-edit').addEventListener('click', () => {
+      if (S.lib.imported) { openInEditors(S.lib.imported); libStatus('Opened "' + S.lib.imported.name + '" in the editors; Save editors to device keeps it.'); }
+      closeImport();
+    });
+    $('#lib-import-cancel').addEventListener('click', closeImport);
+
+    // Recipe
+    $('#recipe-mode').addEventListener('change', (e) => { S.recipeMode = e.target.value; saveRecipeRows(); });
+    $('#recipe-lag').addEventListener('change', (e) => {
+      const v = Number(e.target.value);
+      if (v > 0 && v <= 50) localStorage.setItem(KEY_LAG + '.' + edUnit(), String(v));
+      e.target.value = lagSetting();
+    });
+    $('#recipe-add').addEventListener('click', () => {
+      S.recipeRows.push(P.newRecipeRow());
+      saveRecipeRows();
+      renderRecipe();
+    });
+    $('#recipe-load').addEventListener('click', loadRecipe);
+    const runRecipe = () => send({ command: 'recipeStart' });
+    $('#recipe-run').addEventListener('click', runRecipe);
+    $('#rl-start').addEventListener('click', runRecipe);
+    $('#rl-abort').addEventListener('click', () => confirmThen('Abort the recipe? No further steps run; the heater and fan stay as they are.', () => send({ command: 'recipeAbort' })));
+    $('#rl-skip').addEventListener('click', () => send({ command: 'recipeSkip' }));
+    $('#rl-apply').addEventListener('click', () => { if (S.recipe) send({ command: 'recipeConfirm', step: S.recipe.prompt }); });
+    $('#rl-dismiss').addEventListener('click', () => { if (S.recipe) send({ command: 'recipeSkip', step: S.recipe.prompt }); });
 
     // A phone suspends a hidden page without closing its socket, and the board then blocks
     // on writes to it. So the socket is closed while hidden when nothing needs it (see
@@ -1125,6 +1570,7 @@
     for (const e of $$('[data-needs="controls"]')) e.hidden = !S.info.controls;
     wire();
     renderProfile();
+    renderRecipe();
     setTab(location.hash.slice(1));
 
     worker = new Worker('link.worker.js');

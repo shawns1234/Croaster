@@ -1335,6 +1335,84 @@ options, set in the browser:
 | `esp32s3-monitor` | 54 708 B (+0) | 1 729 987 B (+8 208) |
 | `esp32s3-monitor-debug` | 54 484 B (+0) | 1 463 051 B (+8 204) |
 
+### D28. Profile library and recipe steps on the board — resolved 2026-10-29 (Shawn)
+Profiles lived only in the page's local storage and were lost with the
+browser. Shawn asked for profiles kept on the board, and then for steps the
+board applies by itself during a roast (for example: fan to 50 % when BT
+reaches 389 °F), with heater power and fan per step, the way most roast
+recipes are written.
+
+Decisions (Shawn approved 1 to 3 on 2026-10-29):
+
+- **Storage:** LittleFS on the stock `spiffs` partition of `default_16MB.csv`
+  (3.4 MB, unused), mounted at `/littlefs`, files in `/profiles/<id>.json`.
+  No partition change, so OTA keeps working and keeps the files (it writes
+  only the app slots). A blank partition is formatted once on first boot; a
+  partition that mounts is never formatted. `CPID_ENABLE_LIBRARY` (default 1)
+  in `config.h`, checked in `ConfigCheck.h`. Croaster PID only.
+- **Writes are atomic:** `<id>.json.tmp`, then rename. A `.tmp` found at boot
+  is an interrupted save and is removed; the `.json` beside it is the last
+  good copy.
+- **Limits:** 50 profiles, 8 KB per file, name up to 40 characters, notes up
+  to 1 KB, id 1 to 32 of `a-z 0-9 _ -` (made from the name, `-2`, `-3` when
+  taken).
+- **Format v1:** `{"version":1,"name","notes","unit","steps":[...],"recipe":{...}}`.
+  `steps` is the existing timed setpoint schedule (Profile mode, unchanged);
+  `recipe` is the new trigger list. Either may be missing, not both. Keys the
+  firmware does not know are kept as written; a higher `version` is refused.
+  Temperatures are in `unit` and converted when loaded.
+- **Busy rule:** save and delete are refused while the heater is above 0 or
+  a profile or autotune runs (`busy` with the reason); load is refused while
+  a recipe runs. The page disables those buttons and shows why.
+- **Recipe step:** one trigger and 1 to 4 actions; up to 32 steps.
+  - Triggers: time since CHARGE, BT, ET, RoR (BT) with `gte`, `lte` or
+    `near` (± `tol`; default 5 s, 2 °C, 1 °C/min; at most 60 s or 20), or an
+    event (CHARGE, TP, DRY_END, FC_START, FC_END, SC_START, SC_END, DROP).
+  - A step fires once, on a false-to-true change: a condition already true
+    when the step is armed must go false first. Unknown readings (a faulted
+    probe) count as neither. Time triggers are false before CHARGE.
+  - Steps are armed in order; a step with `anyOrder` is armed from the start.
+    Steps that are true in the same tick fire together, in order.
+  - Actions: `power` (switches to Manual with that heater %), `fan`,
+    `setpoint` (switches to PID; optional `ramp` seconds moves the target
+    linearly from the current setpoint), `hold` (stops a ramp where it is),
+    `cool` (the same as STOP: heater 0, cooldown fan, recipe ends), `end`
+    (recipe ends, outputs stay), `note` (logged only).
+  - **(1) The editor's default step is heater % plus fan % (open loop).**
+    **(2) Setpoint and setpoint ramps stay available per step.** Power and
+    setpoint steps mix in one recipe: each switches the mode it needs.
+  - Values outside 0..100 %, 0..350 °C, -50..100 °C/min or 0..3600 s are
+    refused when the recipe is loaded, not clamped silently; the controller
+    clamps again on submit.
+- **Where it runs:** `RecipePlugin` ticks the runner (`core/recipe.h`) at
+  4 Hz on the loop task, from the corrected readings the user sees. Every
+  action goes through `Controller::submit`, so the interlocks, setpoint caps,
+  autotune gate and trips apply as for a user command. The board keeps its
+  own roast clock: the page sends `roastEvent` when an event is marked or
+  undone.
+- **Aborts:** a trip (including the comms watchdog), STOP, emergency off and
+  OTA abort the recipe and log the reason. Manual changes by the user are
+  allowed and do not abort. The watchdog still applies, so a recipe in
+  Manual or PID needs a connected client, as before (only Profile mode is
+  exempt).
+- **Guided mode:** the board does not apply a fired step; the page shows it
+  with Set now and Skip. A prompt not answered before the next one fires is
+  logged as missed.
+- **Status:** each data payload carries `recipe:{state,next,prompt,fired,seq,follow}`
+  once a recipe is loaded; the page fetches `getRecipe` (fired list with
+  times, events, the recipe itself) only when `seq` changes.
+- **(3) Behind schedule (page):** on Live, when a setpoint or ramp step is
+  being followed, BT is more than a threshold below the setpoint (default
+  15 °F or 8 °C, set in Controls > Recipe) and the heater has been at 100 %
+  for 20 s, the page warns that the roaster cannot follow the curve.
+- **Not done:** a heads-up shortly before a step fires; STOP in the top bar
+  stays greyed unless a roast is recording (Abort recipe and Controls >
+  Heater off work at any time).
+- **Cost (`esp32s3-pid`):** RAM 59 912 B (+3 016), flash 1 952 691 B
+  (+159 536, of which LittleFS about 110 000). Page 47 166 B gzipped
+  (+13 141, budget 100 KB). Monitor: RAM +0, flash +13 204 (page only).
+  Mount time is logged at boot (`# Library: LittleFS on "spiffs" in N ms`).
+
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
   Arduino builds ignore `board_build.sdkconfig_path`; stock libs already have

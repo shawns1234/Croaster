@@ -155,6 +155,36 @@ it. The change is saved, so the board boots in that unit from then on. Limits an
 | `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile: 1 to 32 steps, duration above 0 and up to 3600 s, setpoint -50 to 1000 °C (in the current unit), `fanValue` 0..100 optional; replies `{"command":"profile","response":{"loaded":bool,"steps":n}}` |
 | `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getControl"` | actions / query |
 
+Profile library (`CPID_ENABLE_LIBRARY`, design D28). Files are format v1:
+`{"version":1,"name":..,"notes":..,"unit":"F","steps":[...],"recipe":{...}}`,
+`steps` and/or `recipe`. Save and delete reply `busy` while the heater is on or
+a profile or autotune runs. Errors: `{"ok":false,"error":"badName"|"notFound"|"exists"|"full"|"busy"|"badRecipe"|"unavailable"|...,"reason":..}`.
+
+| JSON | Reply `response` |
+|:---|:---|
+| `{"command":"libraryList"}` | `{ok,version,max,maxBytes,usedBytes,totalBytes,profiles:[{id,name,unit,steps,recipeSteps,duration,bytes,valid}]}` |
+| `{"command":"libraryGet","id":"city"}` | `{ok,id,profile}` |
+| `{"command":"librarySave","profile":{..},"id":"city","overwrite":true}` | `{ok,id,created}`; without `id` a new id is made from the name |
+| `{"command":"libraryDelete","id":"city"}` | `{ok,id}` |
+| `{"command":"libraryLoad","id":"city"}` | `{ok,id,loaded,steps,recipe}`: the schedule goes to Profile mode, the recipe to the runner; refused while a recipe runs |
+
+Recipe steps run on the board (design D28). A step is
+`{"trigger":{"type":"time"|"bt"|"et"|"ror"|"event","op":"gte"|"lte"|"near","value":v,"tol":t},"anyOrder":bool,"label":..,"actions":[...]}`;
+actions are `{"type":"power","value":%}`, `fan`, `{"type":"setpoint","value":T,"ramp":s}`, `hold`, `cool`, `end`, `{"type":"note","text":..}`.
+Time is seconds since CHARGE; event values are `CHARGE`, `TP`, `DRY_END`, `FC_START`, `FC_END`, `SC_START`, `SC_END`, `DROP`.
+
+| JSON | Reply `response` |
+|:---|:---|
+| `{"command":"recipeLoad","profile":{"version":1,"name":..,"unit":"F","recipe":{"mode":"auto"\|"guided","steps":[..]}}}` | `{ok,recipe,schedule}`; refused (`busy`) while one runs |
+| `{"command":"recipeStart"}` / `"recipeAbort"` | `{ok}`; errors `empty`, `running`, `notRunning` |
+| `{"command":"recipeConfirm","step":n}` | guided: apply the prompted step; error `noPrompt` |
+| `{"command":"recipeSkip"}` / `{"command":"recipeSkip","step":n}` | skip the next step, or dismiss the prompt for step n |
+| `{"command":"roastEvent","event":"CHARGE","undo":false}` | `{ok,event,sinceCharge}`: the board's roast clock (the page sends it on each event mark and undo) |
+| `{"command":"getRecipe"}` | `{ok,state,reason,seq,name,unit,mode,next,prompt,follow,sinceCharge,events:{..},fired:[{step,at,how}],recipe}` |
+
+Data samples carry `"recipe":{"state","next","prompt","fired","seq","follow"}` once a recipe is loaded.
+`state` is `ready`, `running`, `done` or `aborted`; `reason` is `complete`, `end`, `cool`, `user`, `stop`, `ota` or the trip name.
+
 yaeger's named commands also work (same parser, see `docs/control-parity.md`).
 yaeger's flat keys (`{"BurnerVal":v}` without `"command"`) are not accepted.
 

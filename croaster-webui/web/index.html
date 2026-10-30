@@ -95,6 +95,25 @@
         <button type="button" id="end-after-drop" hidden title="Stop recording; the board is not changed">End roast</button>
         <label class="toggle"><input type="checkbox" id="auto-tp" checked> Find TP automatically</label>
       </div>
+
+      <div class="recipe-live" id="recipe-live" data-needs="controls" hidden>
+        <div class="recipe-head">
+          <h3>Recipe <span id="rl-name"></span> <small class="muted" id="rl-state"></small></h3>
+          <div class="row-buttons">
+            <button type="button" id="rl-start">Run recipe</button>
+            <button type="button" class="ghost" id="rl-skip" title="Mark the next step as done without running it">Skip step</button>
+            <button type="button" class="stop-inline" id="rl-abort" title="Stop the recipe; the heater and fan stay as they are">Abort recipe</button>
+          </div>
+        </div>
+        <div class="recipe-warn" id="rl-behind" role="status" hidden></div>
+        <div class="recipe-prompt" id="rl-prompt" role="status" hidden>
+          <span id="rl-prompt-text"></span>
+          <button type="button" id="rl-apply">Set now</button>
+          <button type="button" class="ghost" id="rl-dismiss">Skip</button>
+        </div>
+        <p class="small" id="rl-next"></p>
+        <ol class="recipe-fired small" id="rl-fired"></ol>
+      </div>
     </section>
 
     <section id="tab-monitoring" data-panel="monitoring">
@@ -185,6 +204,53 @@
             <button type="button" data-cmd='{"command":"startProfile"}'>Start profile</button>
           </div>
           <p class="small" id="profile-status"></p>
+        </div>
+
+        <div class="card span2" id="recipe">
+          <h2>Recipe</h2>
+          <p class="muted small">Steps the board runs during the roast: each fires once when its condition becomes true, in order (or in any order when ticked). Heater % switches to Manual; a setpoint switches to PID. Time counts from Charge.</p>
+          <div class="row-buttons">
+            <label class="small">Mode <select id="recipe-mode">
+              <option value="auto">Auto: the board applies each step</option>
+              <option value="guided">Guided: the board asks first</option>
+            </select></label>
+            <label class="small" title="Shown on Live when a setpoint step runs, BT lags the setpoint by this much and the heater has been at 100 % for 20 s">Behind-schedule warning at <input type="number" id="recipe-lag" min="1" max="50" step="1"> <span data-unit></span></label>
+          </div>
+          <table class="profile recipe-table" id="recipe-table">
+            <thead><tr><th>#</th><th>When</th><th>Then</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="row-buttons">
+            <button type="button" class="ghost" id="recipe-add">Add step</button>
+            <button type="button" id="recipe-load">Load to device</button>
+            <button type="button" id="recipe-run">Run recipe</button>
+          </div>
+          <p class="small" id="recipe-status"></p>
+        </div>
+
+        <div class="card span2" id="library">
+          <h2>Device library <small class="muted" id="lib-count"></small></h2>
+          <p class="small" id="lib-status">Checking the board…</p>
+          <table class="profile" id="lib-table" hidden>
+            <thead><tr><th>Name</th><th>Unit</th><th>Schedule</th><th>Recipe</th><th></th></tr></thead>
+            <tbody id="lib-list"></tbody>
+          </table>
+          <div class="lib-save" id="lib-tools" hidden>
+            <label>Name <input type="text" id="lib-name" maxlength="40" placeholder="Profile name"></label>
+            <label class="lib-notes">Notes <textarea id="lib-notes" rows="2" maxlength="1024"></textarea></label>
+            <div class="row-buttons">
+              <button type="button" id="lib-save" title="Saves the profile and recipe editors under this name">Save editors to device</button>
+              <button type="button" class="ghost" id="lib-import">Import from PC</button>
+              <button type="button" class="ghost" id="lib-refresh">Refresh</button>
+              <input type="file" id="lib-file" accept=".json,application/json" hidden>
+            </div>
+            <div class="row-buttons" id="lib-imported" hidden>
+              <span class="small" id="lib-imported-text"></span>
+              <button type="button" id="lib-import-save">Save to device</button>
+              <button type="button" class="ghost" id="lib-import-edit">Open in editor</button>
+              <button type="button" class="ghost" id="lib-import-cancel">Cancel</button>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -280,6 +346,7 @@
 </dialog>
 
 <script src="roast.js"></script>
+<script src="library.js"></script>
 <script src="link.js"></script>
 <script src="app.js"></script>
 </body>

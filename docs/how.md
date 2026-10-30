@@ -134,7 +134,7 @@ checked on the bench (tickets T2, T3).
 The HTTP server only hands out the page files; everything else goes through
 Croaster's WebSocket on port 81, exactly like Artisan:
 
-1. The browser loads `/` (HTML, CSS, scripts: about 33 KB gzipped, built
+1. The browser loads `/` (HTML, CSS, scripts: about 47 KB gzipped, built
    into the firmware) and `/info.json` (board id, WebSocket port, whether to
    show Controls).
 2. A Web Worker opens `ws://<ip>:81/` and sends `getArtisanData` every
@@ -155,6 +155,34 @@ Croaster's WebSocket on port 81, exactly like Artisan:
    command when nothing is recording.
 5. Controls send the same JSON commands as in the board README and show the
    reply or error next to the log.
+6. Controls > Device library (Croaster PID) lists the profiles kept on the
+   board with `libraryList` when the link opens or Controls is shown; no
+   reply in 4 s shows it as unavailable. Edit opens a profile in the profile
+   and recipe editors; Save editors to device asks before replacing a
+   profile of the same name.
+7. Controls > Recipe edits recipe steps (default: heater % and fan % at a
+   time since Charge). Load to device sends `recipeLoad`, Run recipe sends
+   `recipeStart`. On Live, the recipe panel shows the next step, the fired
+   list, guided prompts and the behind-schedule warning. The page fetches
+   `getRecipe` only when the data's `recipe.seq` changes.
+
+### Recipes on the board
+`app/RecipePlugin` owns a `recipe::Runner` and a `recipe::RoastClock`
+(`core/recipe.h`, host tested). Every 250 ms on the loop task it builds the
+inputs (BT, ET, RoR in °C from the corrected readings, the setpoint, the
+roast clock) and ticks the runner. The runner returns controller commands
+(`SetMode`, `SetHeater`, `SetFan`, `SetSetpoint`) and a stop flag; the plugin
+submits them through `Controller::submit`, so every interlock applies. A
+setpoint ramp is a stream of `SetSetpoint` every 500 ms. `ControlPlugin`
+calls the plugin's stop hook on `stop`, Stop and emergency off, which aborts
+the recipe; a trip is seen in the inputs and aborts it on the next tick;
+OTA aborts it in `loop()`. Event triggers and time since CHARGE come from
+`roastEvent`, which the page sends on each event mark and undo.
+
+The profile library (`core/profile_library.h`, `app/library_storage`,
+`app/LibraryPlugin`) keeps one JSON file per profile on LittleFS. Load reads
+the file, validates both parts on the heap (not on the loop stack, see
+Gotchas), loads `steps` into the controller and `recipe` into the runner.
 
 Colours and style: `theme.js` runs in `<head>`, reads `croaster.theme`
 from the browser's storage and sets CSS custom properties (`--bg`, `--bt`,
@@ -211,6 +239,9 @@ settings; see the board README, "Comms watchdog".
 | `croaster-control/src/app/config_store.*` | NVS settings (gains, PID input, cooldown fan, watchdog) |
 | `croaster-control/src/hw/` | SSR, dimmer, PWM fan, thermocouple bus |
 | `croaster-control/src/app/unit_store.*`, `core/temp_unit.h` | Saved temperature unit (NVS `croaster`/`unit`) |
+| `croaster-control/src/core/recipe.*` | Recipe format, parser, roast clock and step runner (pure, host tested) |
+| `croaster-control/src/app/RecipePlugin.*` | Recipe commands, data field, 4 Hz tick on the loop task |
+| `croaster-control/src/core/profile_library.*`, `app/library_storage.*`, `app/LibraryPlugin.*` | Profile library: format and limits (pure), LittleFS backend, commands |
 | `croaster-webui/` | The browser page: `web/` sources, `embed_assets.py` (gzips them into the firmware), `WebUiServer` (HTTP), tests |
 | `croaster/src/` | Croaster library (WiFi, WebSocket, BLE, OTA, RoR) |
 
@@ -221,6 +252,9 @@ settings; see the board README, "Comms watchdog".
   reply straight into its JsonDocument; don't copy one document into another
   (`doc["response"] = other` recurses) and don't keep large arrays on the
   stack. `getControl` `loopStackFree` shows the margin.
+- **A recipe still needs a connected client.** The comms watchdog exempts
+  only Profile mode; a recipe running in Manual or PID trips it like any
+  other heat if no client polls for the timeout.
 - **Units.** Temperatures in commands use Croaster's unit setting (°F by
   default; a `tempUnit` change is saved and survives a reboot). Keep Artisan
   in the same unit as the board.

@@ -74,6 +74,12 @@ ControlSettings defaults() {
     return d;
 }
 ControlPlugin plugin(controller);
+#include <app/RecipePlugin.h>
+RecipePlugin recipes(controller, plugin); // recipe steps run on the board (core/recipe.h)
+#if CPID_ENABLE_LIBRARY
+#    include <app/LibraryPlugin.h>
+LibraryPlugin library(controller); // profile library on LittleFS (Controls > Device library)
+#endif
 
 #if CMON_ENABLE_WEBUI
 #    include <WebUiServer.h>
@@ -140,6 +146,12 @@ void setup() {
     controller.begin(settings.gains, settings.gainsTuned, settings.pidInput, settings.cooldownFan.trip,
                      CPID_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
+    recipes.attach(app);
+#if CPID_ENABLE_LIBRARY
+    library.begin(); // mounts LittleFS; the outputs are already safe
+    library.attach(app);
+    library.setRecipes(&recipes);
+#endif
 #if CMON_DISPLAY == CMON_DISPLAY_SSD1306
     display.setHeaderText([]() {
         return statusLine(controller.snapshot());
@@ -161,6 +173,7 @@ void setup() {
 void loop() {
     app.loop();
     plugin.loop();
+    recipes.loop();
 #if CMON_ENABLE_WEBUI
     webUi.loop();
 #endif

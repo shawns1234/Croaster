@@ -84,6 +84,22 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Artisan and the page connected together → both keep 1 s data, no reconnects. **untested**
 - Release build: control loop timing unchanged with the page open (`docs/design.md` D27 "Loop timing"). **untested**
 
+## Profile library and recipes (D28, T55)
+- Format and limits: 50 profiles, 8 KB, name 40, notes 1 KB, ids, unknown keys kept, newer version refused, °F/°C conversion, interrupted save (a `.tmp` beside the `.json`) cleaned up at boot, busy rule. **host** `pio test -e native`
+- Recipe parser and runner: limits and reasons, `gte`/`lte`/`near`, false-to-true firing, ordered and any-order arming, unknown readings, time before CHARGE, setpoint ramps, power and setpoint steps mixed (Manual then PID), guided prompts and missed prompts, trip abort, cool and end. **host** `pio test -e native` (`test_recipe_*`, `test_library_recipe_profiles`)
+- Page: format checks with the board's reasons, editor round trips, behind-schedule check. **host** `library.test.js`; send call sites **host** `web_check.test.js`
+- Page against a mock board: list, Save refused while heating with the reason shown, overwrite asks, Edit, Delete asks, Import keeps unknown keys, unavailable after 4 s; recipe editor default heater + fan, a blank value names the step, Load to device payload in °F, Run, "Step 1 fired at 0:42: power 60 %, fan 50 %", next step, Abort, guided Set now, Heater off aborts. **build 2026-10-29** (`recipe.js` against `mock.js`)
+- First boot: serial shows `# Library: LittleFS on "spiffs" in N ms, 0 of 1408 KB used, 0 profiles` (note N: the first mount formats the partition); the next boot mounts without formatting and N is small. **untested**
+- Save, load, delete from the page: save a profile with a schedule and a recipe, reboot, it is still listed; Load to board replies with both parts; Delete removes it. **untested**
+- Power cut during save: save a large profile and pull USB power during the save; after boot the profile is either the old or the new version, never empty or unlisted, and no `.tmp` remains. **untested**
+- Save refused while heating: heater above 0 (Manual 10 %) → Save and Delete greyed with "Not while the heater is on"; `librarySave` sent by hand replies `busy` / `heater on`. **untested**
+- OTA keeps the library: save two profiles, update the firmware over WiFi, both are still listed and load. **untested**
+- `getControl` `loopStackFree` stays above about 8000 after `libraryList` with 50 profiles, `libraryGet` of an 8 KB profile, `libraryLoad` and `getRecipe` with 32 steps. **untested**
+- Recipe triggers on the roaster: steps at BT 300 °F (heater 60 %, fan 50 %) and at FC_START (setpoint 410 °F over 1:00) → each fires once at its point, the fired list shows the roast time, the mode switches Manual then PID, SV ramps. **untested** (needs AC)
+- Recipe aborts: STOP, Abort recipe, a comms watchdog trip (close every page) and an OTA start each end the recipe with that reason and nothing more is applied. **untested**
+- Guided mode: a fired step shows Set now and Skip; Set now applies it; an unanswered prompt becomes "missed" when the next fires. **untested**
+- Behind-schedule warning: setpoint step well above what the roaster can reach, heater at 100 % for 20 s with BT more than 15 °F below SV → the warning shows; it clears when BT catches up. **untested** (needs AC)
+
 ## Config checks (pins)
 - Accepted GPIOs on both boards: 1, 2, 4-18, 21, 38-42, 47 (shared `hw/esp32s3_opi_pins.h` plus board wiring, T46). **build 2026-10-28** (host check of 0..48 against the old rules; same sizes)
 - A probe pin on GPIO 35 (PSRAM) or 43 (UART0) fails the pin `static_assert` on Croaster PID and Croaster monitor. **build 2026-10-28**

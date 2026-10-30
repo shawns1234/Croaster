@@ -23,6 +23,9 @@
 #    error "config.h: CPID_MAINS_HZ must be 50 or 60"
 #endif
 
+#if !defined(CPID_ENABLE_LIBRARY) || (CPID_ENABLE_LIBRARY != 0 && CPID_ENABLE_LIBRARY != 1)
+#    error "config.h: CPID_ENABLE_LIBRARY must be 0 or 1"
+#endif
 #if !defined(CMON_WIFI_SLEEP) || (CMON_WIFI_SLEEP != 0 && CMON_WIFI_SLEEP != 1)
 #    error "config.h: CMON_WIFI_SLEEP must be 0 or 1"
 #endif

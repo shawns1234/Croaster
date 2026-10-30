@@ -70,15 +70,21 @@ bool RoastProfile::load(const ProfileStep* steps, size_t n) {
     return true;
 }
 
-bool RoastProfile::loadJson(JsonArrayConst arr, char unit) {
-    // Two passes instead of a ProfileStep[kMaxSteps] scratch copy (512 B of stack):
-    // check every step, then parse them straight into steps_.
+bool RoastProfile::validJson(JsonArrayConst arr, char unit) {
     if (arr.isNull() || arr.size() == 0 || arr.size() > kMaxSteps)
         return false;
     ProfileStep one;
     for (JsonVariantConst v : arr)
         if (!parseStep(v, unit, one))
             return false;
+    return true;
+}
+
+bool RoastProfile::loadJson(JsonArrayConst arr, char unit) {
+    // Two passes instead of a ProfileStep[kMaxSteps] scratch copy (512 B of stack):
+    // check every step, then parse them straight into steps_.
+    if (!validJson(arr, unit))
+        return false;
     size_t n = 0;
     for (JsonVariantConst v : arr)
         parseStep(v, unit, steps_[n++]);

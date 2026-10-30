@@ -8,6 +8,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — Croaster PID control board (branch rework/roaster)
 
 ### Added
+- **Profile library on the board (D28, T55).** Croaster PID keeps up to 50
+  named profiles as JSON files on LittleFS, on the stock `spiffs` partition
+  (no partition change; OTA keeps them). Format v1 with a timed setpoint
+  schedule (`steps`), a recipe, or both; unknown keys are kept, newer
+  versions refused, temperatures converted on load; writes are atomic (temp
+  file and rename). Commands `libraryList`, `libraryGet`, `librarySave`,
+  `libraryDelete`, `libraryLoad`; save and delete are refused while the
+  heater is on or a profile or autotune runs. `CPID_ENABLE_LIBRARY`
+  (default 1). Page: Controls > Device library with Load to board, Edit,
+  Export, Delete (asks first), Save editors to device (asks before replacing
+  a profile of the same name), Import from PC, and an unavailable state.
+- **Recipe steps run on the board (D28, T55).** Each step has a trigger
+  (time since Charge, BT, ET, RoR or a roast event; at or above, at or
+  below, or near a value) and up to four actions: heater %, fan %, setpoint
+  with an optional ramp, hold, cool, end, note. A step fires once when its
+  condition becomes true, in order or in any order. Auto mode applies steps;
+  guided mode asks on the page (Set now or Skip). A trip, STOP, emergency
+  off or OTA aborts the recipe. Commands `recipeLoad`, `recipeStart`,
+  `recipeAbort`, `recipeConfirm`, `recipeSkip`, `roastEvent`, `getRecipe`;
+  `recipe` status in each data sample. Page: Controls > Recipe editor
+  (default step: heater % and fan %), Live recipe panel with the next step,
+  the fired list ("Step 3 fired at 7:42: fan 50 %"), guided prompts and a
+  behind-schedule warning when a setpoint step cannot be followed with the
+  heater at 100 %.
 - **Browser UI served by the board (D27, T48).** New library
   `croaster-webui/` (`CroasterWebUi`) on both boards: open
   `http://<board ip>/` once the board is on WiFi. Live section with BT, ET,

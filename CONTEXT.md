@@ -17,9 +17,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
 | `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan (always both), 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
-| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, profile library format, recipe runner, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `LibraryPlugin` + `library_storage` (profile library on LittleFS), `RecipePlugin` (recipe commands and tick), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
 | `croaster-webui/` | Browser UI lib `CroasterWebUi` (D27): `web/` page sources (`theme.js` colour schemes, T50), `embed_assets.py` (library extra script, gzips `web/` into the committed `src/webui_assets.h`), `src/WebUiServer` (ESP-IDF `esp_http_server` on `CMON_WEBUI_PORT`), host tests in `test/` (node + python) |
-| `docs/` | `design.md` (architecture + decisions D1–D27), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D28), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `tools/` | Build helpers: `force_include_deps.py` (pre: extra script; force-included `config.h` as a rebuild dependency, T47) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -29,8 +29,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `esp32c3` | ESP32-C3 | 128×64 SSD1306 | `esp32c3` | ~85.7% |
 | `esp8266` | ESP8266 | 128×64 SSD1306 | `esp8266` | ~39.8% |
 | `esp32s3` (ES3C28P) | ESP32-S3 | 320×240 ILI9341 + LVGL 9 | `esp32s3` | ~29.0% |
-| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 27.4% (1 793 155 B), RAM 56 896 B (2026-10-29, with T51 to T54) |
-| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.4% (1 732 995 B), RAM 54 712 B (2026-10-29, with T51 to T54) |
+| `esp32s3-pid` | ESP32-S3 N16R8 | 0.96" 128×64 SSD1306 I2C (`boards/common` display; confirmed by Shawn) | `esp32s3-pid` | 29.8% (1 952 691 B), RAM 59 912 B (2026-10-29, with T55) |
+| `esp32s3-monitor` | ESP32-S3 N16R8 | same as `esp32s3-pid` | `esp32s3-monitor` | 26.6% (1 746 199 B), RAM 54 712 B (2026-10-29, with T55) |
 
 ## How a board is wired
 - `main.cpp` creates `CroasterCore core(dummyMode, pins)`, a display subclass
@@ -272,6 +272,10 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `FORMAT` in the script when the generated layout changes.
 - Web UI tests: `node --test croaster-webui/test/*.test.js` and
   `python3 -m unittest discover -s croaster-webui/test`.
+- Croaster PID keeps profiles on LittleFS on the stock `spiffs` partition
+  (`CPID_ENABLE_LIBRARY`, D28); OTA keeps them, a USB erase-flash does not.
+  Recipe steps run on the board (`app/RecipePlugin`, `core/recipe.h`) and
+  still need a connected client for the comms watchdog.
 - Host tests (`pio test -e native`) call `g++`. On a machine without it, a
   `g++` wrapper script running `python3 -m ziglang c++ "$@"` (pip package
   `ziglang`) on `PATH` works.

@@ -217,6 +217,38 @@ main { min-width: 0; display: flex; flex-direction: column; gap: var(--gap); }
 .profile th { text-align: left; font-size: 0.8rem; color: var(--muted); font-weight: 500; padding: 4px; }
 .profile td { padding: 3px 4px; }
 .profile input[type="number"] { width: 6.5em; }
+.lib-save { display: grid; gap: 8px; }
+.lib-save label { display: grid; gap: 4px; }
+.lib-save input[type="text"] { max-width: 24em; }
+.lib-save textarea {
+  width: 100%; resize: vertical; font: inherit; color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--pad-y) var(--pad-x);
+}
+#lib-list td:last-child { white-space: normal; }
+.recipe-table td { vertical-align: top; }
+.recipe-table .when, .recipe-table .then { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.recipe-table .then { flex-direction: column; align-items: flex-start; }
+.recipe-table .act { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.recipe-table select, .recipe-table input { width: auto; min-width: 0; }
+.recipe-table input[type="number"] { width: 5.5em; }
+.recipe-table input[type="text"] { width: 6.5em; }
+.recipe-table input.note { width: 14em; max-width: 100%; }
+.recipe-table .act { flex-wrap: nowrap; }
+@media (max-width: 640px) {
+  .recipe-table thead { display: none; }
+  .recipe-table tr { display: grid; grid-template-columns: 2em 1fr; gap: 6px 4px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .recipe-table td { display: block; padding: 0; border: 0; }
+  .recipe-table td:nth-child(3) { grid-column: 2; }
+  .recipe-table td.row-buttons { grid-column: 2; }
+  .recipe-table .act { flex-wrap: wrap; }
+}
+.recipe-live { padding: var(--card-pad); margin-top: var(--gap); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.recipe-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.recipe-head h3 { margin: 0; }
+.recipe-warn { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--warn); border-radius: var(--radius-sm); color: var(--warn); }
+.recipe-prompt { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; padding: 8px 10px; border: 1px solid var(--accent); border-radius: var(--radius-sm); }
+.recipe-fired { margin: 4px 0 0; padding-left: 1.4em; }
+.recipe-fired .missed, .recipe-fired .skipped { color: var(--muted); }
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); max-width: 420px; }
 dialog::backdrop { background: rgba(0, 0, 0, .55); }
 .danger-btn { background: var(--stop); border-color: var(--stop); color: var(--on-danger); }

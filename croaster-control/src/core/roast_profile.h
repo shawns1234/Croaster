@@ -37,6 +37,8 @@ public:
     // after conversion); fanValue is optional (0..100); interpolation is optional
     // (unknown names are linear).
     bool loadJson(JsonArrayConst steps, char unit = 'C');
+    // The checks loadJson() applies, without loading: true if loadJson() would accept `steps`.
+    static bool validJson(JsonArrayConst steps, char unit = 'C');
     ProfileTarget at(float elapsedS) const;
     size_t size() const {
         return n_;

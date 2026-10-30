@@ -54,6 +54,8 @@ void ControlPlugin::attach(CroasterApp& app, const ControlSettings& settings) {
         controlproto::writeDataFields(controller_.snapshot(), unit(), data);
         if (WiFi.status() == WL_CONNECTED)
             data["wifiStrength"] = WiFi.RSSI();
+        if (dataWriter_)
+            dataWriter_(data);
     });
 }
 
@@ -85,8 +87,14 @@ String ControlPlugin::handleLegacy(const JsonObject& json, const char* name) {
 }
 
 void ControlPlugin::apply(const controlproto::Parsed& p) {
-    for (size_t i = 0; i < p.count; i++)
+    bool stopped = false;
+    for (size_t i = 0; i < p.count; i++) {
         controller_.submit(p.commands[i]);
+        stopped = stopped || p.commands[i].kind == Command::Kind::Stop ||
+                  p.commands[i].kind == Command::Kind::EmergencyOff;
+    }
+    if (stopped && stopListener_)
+        stopListener_();
     if (p.hasGains) {
         settings_.gains = p.gains;
         ConfigStore::saveGains(p.gains);
@@ -119,11 +127,12 @@ void ControlPlugin::apply(const controlproto::Parsed& p) {
 String ControlPlugin::handleBasic(const char* name) {
     Command c;
     if (controlproto::basicCommand(name, c)) {
-        controller_.submit(c);
         if (c.kind == Command::Kind::Stop) {
-            Command fan{Command::Kind::SetFan};
-            fan.a = settings_.cooldownFan.stop;
-            controller_.submit(fan);
+            stop();
+            if (stopListener_)
+                stopListener_();
+        } else {
+            controller_.submit(c);
         }
         return "";
     }
@@ -133,6 +142,13 @@ String ControlPlugin::handleBasic(const char* name) {
     // Smallest free loop task stack since boot, in bytes (ESP-IDF counts bytes).
     r["loopStackFree"] = uxTaskGetStackHighWaterMark(nullptr);
     return finishReply(doc);
+}
+
+void ControlPlugin::stop() {
+    controller_.submit(Command{Command::Kind::Stop});
+    Command fan{Command::Kind::SetFan};
+    fan.a = settings_.cooldownFan.stop;
+    controller_.submit(fan);
 }
 
 void ControlPlugin::begin() {

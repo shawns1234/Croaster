@@ -3,6 +3,8 @@
 
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <memory>
 #include <string>
 
 #include <ArduinoJson.h>
@@ -16,6 +18,8 @@
 #include "core/pid.h"
 #include "core/probe_channel.h"
 #include "core/probe_correction.h"
+#include "core/profile_library.h"
+#include "core/recipe.h"
 #include "core/relay_autotune.h"
 #include "core/roast_profile.h"
 #include "core/temp_unit.h"
@@ -813,6 +817,547 @@ void test_temp_unit_saves_only_changes() {
     TEST_ASSERT_FALSE(tempunit::needsSave("", ""));
 }
 
+
+// ---------- Profile library ----------
+namespace {
+// In-memory LibraryStorage. failWrites makes write() fail (a full or failing flash).
+struct FakeStorage : proflib::LibraryStorage {
+    std::map<std::string, std::string> files;
+    bool failWrites = false;
+    int writes = 0;
+    bool list(std::vector<std::string>& names) override {
+        for (auto& f : files)
+            names.push_back(f.first);
+        return true;
+    }
+    bool read(const std::string& n, std::string& out) override {
+        auto it = files.find(n);
+        if (it == files.end())
+            return false;
+        out = it->second;
+        return true;
+    }
+    bool write(const std::string& n, const std::string& d) override {
+        writes++;
+        if (failWrites) {
+            files[n] = d.substr(0, d.size() / 2); // a torn write
+            return false;
+        }
+        files[n] = d;
+        return true;
+    }
+    bool rename(const std::string& a, const std::string& b) override {
+        auto it = files.find(a);
+        if (it == files.end())
+            return false;
+        files[b] = it->second;
+        files.erase(it);
+        return true;
+    }
+    bool remove(const std::string& n) override {
+        return files.erase(n) == 1;
+    }
+};
+
+const char* const kGoodProfile =
+    R"({"version":1,"name":"City roast","notes":"Kenya AA","unit":"F","steps":[)"
+    R"({"duration":60,"setpoint":300,"interpolation":"linear"},{"duration":120,"setpoint":400,"fanValue":60}]})";
+
+proflib::Error validateText(const std::string& text) {
+    JsonDocument d;
+    deserializeJson(d, text);
+    return proflib::validate(d.as<JsonObjectConst>());
+}
+std::string withField(const char* field) { // kGoodProfile with one more (or a replaced) member
+    JsonDocument d;
+    deserializeJson(d, kGoodProfile);
+    JsonDocument f;
+    deserializeJson(f, field);
+    for (JsonPairConst kv : f.as<JsonObjectConst>())
+        d[kv.key()] = kv.value();
+    std::string out;
+    serializeJson(d, out);
+    return out;
+}
+} // namespace
+
+void test_library_validate_format() {
+    using proflib::Error;
+    TEST_ASSERT_EQUAL(Error::None, validateText(kGoodProfile));
+    TEST_ASSERT_EQUAL(Error::BadVersion, validateText(R"({"name":"x","unit":"C","steps":[{"duration":1,"setpoint":1}]})"));
+    TEST_ASSERT_EQUAL(Error::BadVersion, validateText(withField(R"({"version":0})")));
+    TEST_ASSERT_EQUAL(Error::BadVersion, validateText(withField(R"({"version":"1"})")));
+    TEST_ASSERT_EQUAL(Error::BadVersion, validateText(withField(R"({"version":1.5})")));
+    TEST_ASSERT_EQUAL(Error::NewerVersion, validateText(withField(R"({"version":2})")));
+    TEST_ASSERT_EQUAL(Error::BadName, validateText(withField(R"({"name":""})")));
+    TEST_ASSERT_EQUAL(Error::BadName, validateText(withField(R"({"name":"   "})")));
+    TEST_ASSERT_EQUAL(Error::BadName, validateText(withField(R"({"name":7})")));
+    TEST_ASSERT_EQUAL(Error::BadName, validateText(withField(R"({"name":"tab\there"})")));
+    TEST_ASSERT_EQUAL(Error::None, validateText(withField(R"({"name":"0123456789012345678901234567890123456789"})")));
+    TEST_ASSERT_EQUAL(Error::BadName, validateText(withField(R"({"name":"01234567890123456789012345678901234567890"})")));
+    // 40 code points of two bytes each still fit: the limit counts characters, not bytes
+    std::string accented = R"({"name":")";
+    for (int i = 0; i < 40; i++)
+        accented += "\xC3\xA9";
+    TEST_ASSERT_EQUAL(Error::None, validateText(withField((accented + "\"}").c_str())));
+    TEST_ASSERT_EQUAL(Error::BadNotes, validateText(withField(R"({"notes":5})")));
+    TEST_ASSERT_EQUAL(Error::None, validateText(withField(("{\"notes\":\"" + std::string(1024, 'n') + "\"}").c_str())));
+    TEST_ASSERT_EQUAL(Error::BadNotes, validateText(withField(("{\"notes\":\"" + std::string(1025, 'n') + "\"}").c_str())));
+    TEST_ASSERT_EQUAL(Error::BadUnit, validateText(withField(R"({"unit":"X"})")));
+    TEST_ASSERT_EQUAL(Error::BadUnit, validateText(withField(R"({"unit":"FF"})")));
+    // steps follow the T54 limits of RoastProfile::loadJson
+    TEST_ASSERT_EQUAL(Error::BadSteps, validateText(withField(R"({"steps":[]})")));
+    TEST_ASSERT_EQUAL(Error::BadSteps, validateText(withField(R"({"steps":[{"duration":3601,"setpoint":300}]})")));
+    TEST_ASSERT_EQUAL(Error::BadSteps, validateText(withField(R"({"steps":[{"duration":60,"setpoint":300,"fanValue":101}]})")));
+    TEST_ASSERT_EQUAL(Error::BadSteps, validateText(withField(R"({"unit":"C","steps":[{"duration":60,"setpoint":1001}]})")));
+    TEST_ASSERT_EQUAL(Error::None, validateText(withField(R"({"unit":"F","steps":[{"duration":60,"setpoint":1001}]})"))); // 538 C
+    // keys this version does not know are allowed (a later "triggers" field)
+    TEST_ASSERT_EQUAL(Error::None, validateText(withField(R"({"triggers":[{"at":"FC_START","fan":80}]})")));
+}
+
+void test_library_ids_and_busy() {
+    TEST_ASSERT_TRUE(proflib::validId("city-roast_2"));
+    TEST_ASSERT_FALSE(proflib::validId(""));
+    TEST_ASSERT_FALSE(proflib::validId("City"));
+    TEST_ASSERT_FALSE(proflib::validId("../x"));
+    TEST_ASSERT_FALSE(proflib::validId("a.json"));
+    TEST_ASSERT_TRUE(proflib::validId(std::string(32, 'a').c_str()));
+    TEST_ASSERT_FALSE(proflib::validId(std::string(33, 'a').c_str()));
+    TEST_ASSERT_EQUAL_STRING("city-roast-2", proflib::slug("  City Roast #2!").c_str());
+    TEST_ASSERT_EQUAL_STRING("profile", proflib::slug("\xC3\xA9\xC3\xA9").c_str());
+    TEST_ASSERT_EQUAL(24, proflib::slug("a very long profile name that keeps going").size());
+
+    Snapshot s;
+    TEST_ASSERT_NULL(proflib::busyReason(s));
+    s.mode = Mode::Pid; // PID holding with the heater at 0 is idle enough
+    TEST_ASSERT_NULL(proflib::busyReason(s));
+    s.heaterPct = 0.5f;
+    TEST_ASSERT_EQUAL_STRING("heater on", proflib::busyReason(s));
+    s.heaterPct = 0;
+    s.mode = Mode::Profile;
+    TEST_ASSERT_EQUAL_STRING("profile running", proflib::busyReason(s));
+    s.mode = Mode::Autotune;
+    TEST_ASSERT_EQUAL_STRING("autotune running", proflib::busyReason(s));
+}
+
+namespace {
+proflib::Error saveText(proflib::Library& lib, const char* id, bool overwrite, const std::string& text,
+                        std::string* idOut = nullptr) {
+    JsonDocument d;
+    deserializeJson(d, text);
+    std::string out;
+    bool created = false;
+    const proflib::Error e = lib.save(id, overwrite, d.as<JsonObjectConst>(), out, created);
+    if (idOut)
+        *idOut = out;
+    return e;
+}
+} // namespace
+
+void test_library_save_get_delete() {
+    using proflib::Error;
+    FakeStorage fs;
+    proflib::Library lib(fs);
+    std::string id;
+    TEST_ASSERT_EQUAL(Error::Unavailable, saveText(lib, nullptr, false, kGoodProfile)); // before begin()
+    TEST_ASSERT_TRUE(lib.begin());
+    TEST_ASSERT_EQUAL(Error::None, saveText(lib, nullptr, false, kGoodProfile, &id));
+    TEST_ASSERT_EQUAL_STRING("city-roast", id.c_str());
+    TEST_ASSERT_TRUE(fs.files.count("city-roast.json") == 1 && fs.files.count("city-roast.tmp") == 0);
+    // same name again: a new id, not an overwrite
+    TEST_ASSERT_EQUAL(Error::None, saveText(lib, nullptr, false, kGoodProfile, &id));
+    TEST_ASSERT_EQUAL_STRING("city-roast-2", id.c_str());
+    // an existing id needs overwrite
+    TEST_ASSERT_EQUAL(Error::Exists, saveText(lib, "city-roast", false, withField(R"({"name":"Changed"})")));
+    TEST_ASSERT_EQUAL(Error::None, saveText(lib, "city-roast", true, withField(R"({"name":"Changed"})")));
+    TEST_ASSERT_EQUAL(Error::BadId, saveText(lib, "../etc", true, kGoodProfile));
+    TEST_ASSERT_EQUAL(Error::NewerVersion, saveText(lib, "new", false, withField(R"({"version":2})")));
+
+    // list: metadata only, sorted by name
+    TEST_ASSERT_EQUAL(2, lib.list().size());
+    TEST_ASSERT_EQUAL_STRING("Changed", lib.list()[0].name.c_str());
+    TEST_ASSERT_EQUAL_STRING("City roast", lib.list()[1].name.c_str());
+    TEST_ASSERT_EQUAL(2, lib.list()[1].steps);
+    TEST_ASSERT_EQUAL_FLOAT(180, lib.list()[1].durationS);
+    TEST_ASSERT_EQUAL('F', lib.list()[1].unit);
+
+    // get returns the stored text, unknown keys kept
+    TEST_ASSERT_EQUAL(Error::None, saveText(lib, "t", false, withField(R"({"triggers":[{"at":"DRY_END"}]})")));
+    std::string text;
+    TEST_ASSERT_EQUAL(Error::None, lib.get("t", text));
+    TEST_ASSERT_NOT_NULL(std::strstr(text.c_str(), "\"triggers\":[{\"at\":\"DRY_END\"}]"));
+    TEST_ASSERT_EQUAL(Error::NotFound, lib.get("missing", text));
+
+    TEST_ASSERT_EQUAL(Error::None, lib.remove("t"));
+    TEST_ASSERT_EQUAL(Error::NotFound, lib.remove("t"));
+    TEST_ASSERT_EQUAL(0, fs.files.count("t.json"));
+}
+
+void test_library_limits() {
+    using proflib::Error;
+    FakeStorage fs;
+    proflib::Library lib(fs);
+    lib.begin();
+    // over 8 KB serialized, even with valid fields
+    const std::string big = withField(("{\"extra\":\"" + std::string(proflib::kMaxFileBytes, 'x') + "\"}").c_str());
+    TEST_ASSERT_EQUAL(Error::TooLarge, saveText(lib, "big", false, big));
+    TEST_ASSERT_EQUAL(0, fs.writes);
+    for (size_t i = 0; i < proflib::kMaxProfiles; i++)
+        TEST_ASSERT_EQUAL(Error::None, saveText(lib, ("p" + std::to_string(i)).c_str(), false, kGoodProfile));
+    TEST_ASSERT_EQUAL(Error::Full, saveText(lib, "one-more", false, kGoodProfile));
+    TEST_ASSERT_EQUAL(Error::None, saveText(lib, "p7", true, kGoodProfile)); // overwriting is not a new profile
+    TEST_ASSERT_EQUAL(proflib::kMaxProfiles, lib.list().size());
+}
+
+void test_library_failed_write_keeps_old_file() {
+    using proflib::Error;
+    FakeStorage fs;
+    proflib::Library lib(fs);
+    lib.begin();
+    TEST_ASSERT_EQUAL(Error::None, saveText(lib, "a", false, kGoodProfile));
+    const std::string before = fs.files["a.json"];
+    fs.failWrites = true;
+    TEST_ASSERT_EQUAL(Error::Storage, saveText(lib, "a", true, withField(R"({"name":"Other"})")));
+    TEST_ASSERT_EQUAL_STRING(before.c_str(), fs.files["a.json"].c_str());
+    TEST_ASSERT_EQUAL(0, fs.files.count("a.tmp"));
+    TEST_ASSERT_EQUAL_STRING("City roast", lib.list()[0].name.c_str());
+}
+
+void test_library_begin_recovers_and_indexes() {
+    FakeStorage fs;
+    fs.files["a.json"] = kGoodProfile;
+    fs.files["a.tmp"] = "{\"version\":1,\"na"; // power cut during a save
+    fs.files["broken.json"] = "{not json";
+    fs.files["Upper.json"] = kGoodProfile; // not a valid id: ignored
+    fs.files["notes.txt"] = "x";
+    proflib::Library lib(fs);
+    TEST_ASSERT_TRUE(lib.begin());
+    TEST_ASSERT_EQUAL(0, fs.files.count("a.tmp"));
+    TEST_ASSERT_EQUAL(2, lib.list().size());
+    const proflib::Meta& broken = lib.list()[0].id == "broken" ? lib.list()[0] : lib.list()[1];
+    TEST_ASSERT_FALSE(broken.valid); // listed so it can be deleted
+    RoastProfile p;
+    TEST_ASSERT_EQUAL(proflib::Error::Storage, lib.load("broken", p));
+    TEST_ASSERT_EQUAL(proflib::Error::None, lib.remove("broken"));
+}
+
+void test_library_load_converts_unit() {
+    FakeStorage fs;
+    fs.files["f.json"] = kGoodProfile; // 300 F, then 400 F
+    proflib::Library lib(fs);
+    lib.begin();
+    RoastProfile p;
+    TEST_ASSERT_EQUAL(proflib::Error::None, lib.load("f", p));
+    TEST_ASSERT_EQUAL(2, p.size());
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 148.8f, p.at(0).setpointC); // 300 F = 148.9 C, floored to 0.1
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 204.4f, p.at(180).setpointC);
+    TEST_ASSERT_EQUAL_FLOAT(60, p.at(100).fanPct);
+    TEST_ASSERT_EQUAL(proflib::Error::NotFound, lib.load("nope", p));
+    TEST_ASSERT_EQUAL(2, p.size()); // a failed load keeps the previous profile
+}
+
+// ---- recipe (core/recipe.h) ----
+namespace {
+const char* parseRecipe(const char* text, recipe::Recipe& r, char unit = 'C') {
+    JsonDocument d;
+    deserializeJson(d, text);
+    return recipe::parse(d.as<JsonObjectConst>(), unit, r);
+}
+recipe::Inputs at(uint32_t ms, float bt = NAN, float et = NAN, float ror = NAN) {
+    recipe::Inputs in;
+    in.nowMs = ms;
+    in.btC = bt;
+    in.etC = et;
+    in.rorC = ror;
+    in.setpointC = 150;
+    return in;
+}
+bool has(const recipe::Output& o, Command::Kind k, float a) {
+    for (size_t i = 0; i < o.count; i++)
+        if (o.commands[i].kind == k && std::fabs(o.commands[i].a - a) < 0.01f)
+            return true;
+    return false;
+}
+} // namespace
+
+void test_recipe_parse_limits() {
+    recipe::Recipe r;
+    TEST_ASSERT_EQUAL_STRING("", parseRecipe(R"({"steps":[{"trigger":{"type":"bt","value":389},"actions":[{"type":"fan","value":50}]}]})", r, 'F'));
+    TEST_ASSERT_EQUAL(1, r.count);
+    TEST_ASSERT_FALSE(r.guided);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 198.33f, r.steps[0].trigger.value); // 389 F
+    TEST_ASSERT_TRUE(r.steps[0].trigger.op == recipe::Op::Gte);         // default
+    TEST_ASSERT_EQUAL_STRING("", parseRecipe(R"({"mode":"guided","steps":[{"trigger":{"type":"ror","op":"near","value":18,"tol":9},"actions":[{"type":"note","text":"hi"}]}]})", r, 'F'));
+    TEST_ASSERT_TRUE(r.guided);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 10, r.steps[0].trigger.value); // F/min to C/min
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5, r.steps[0].trigger.tol);
+    TEST_ASSERT_EQUAL_STRING("", parseRecipe(R"({"steps":[{"trigger":{"type":"event","value":"FC_START"},"actions":[{"type":"setpoint","value":220,"ramp":90},{"type":"hold"},{"type":"cool"},{"type":"end"}]}]})", r));
+    TEST_ASSERT_EQUAL(4, r.steps[0].actionCount);
+    // refused
+    const char* bad[] = {
+        R"({"steps":[]})",
+        R"({"mode":"fast","steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":3601},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":-1},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"bt","value":351},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"ror","value":101},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"bt","op":"eq","value":200},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"bt","op":"near","value":200,"tol":21},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"bt","value":"hot"},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"event","value":"CRACK"},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"drum","value":1},"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"end"},{"type":"end"},{"type":"end"},{"type":"end"},{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"power","value":101}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"fan","value":-1}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"setpoint","value":400}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"setpoint","value":200,"ramp":3601}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"drum","value":50}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"anyOrder":1,"actions":[{"type":"end"}]}]})",
+        R"({"steps":[{"trigger":{"type":"time","value":1},"actions":[{"type":"note"}]}]})",
+    };
+    for (const char* b : bad)
+        TEST_ASSERT_NOT_EQUAL_MESSAGE(0, std::strlen(parseRecipe(b, r)), b);
+    std::string many = R"({"steps":[)";
+    for (int i = 0; i < 33; i++)
+        many += std::string(i ? "," : "") + R"({"trigger":{"type":"time","value":1},"actions":[{"type":"end"}]})";
+    TEST_ASSERT_NOT_EQUAL(0, std::strlen(parseRecipe((many + "]}").c_str(), r)));
+}
+
+void test_recipe_comparators() {
+    recipe::Recipe r;
+    parseRecipe(R"({"steps":[
+        {"trigger":{"type":"bt","op":"gte","value":200},"anyOrder":true,"actions":[{"type":"fan","value":10}]},
+        {"trigger":{"type":"et","op":"lte","value":100},"anyOrder":true,"actions":[{"type":"fan","value":20}]},
+        {"trigger":{"type":"ror","op":"near","value":10,"tol":1},"anyOrder":true,"actions":[{"type":"fan","value":30}]}]})", r);
+    recipe::Runner run;
+    recipe::RoastClock clock;
+    TEST_ASSERT_TRUE(run.load(r));
+    TEST_ASSERT_TRUE(run.start());
+    recipe::Output o;
+    run.tick(at(0, 190, 150, 20), clock, o); // all false: armed
+    TEST_ASSERT_EQUAL(0, o.count);
+    o = recipe::Output();
+    run.tick(at(1000, 199.9f, 100.1f, 11.1f), clock, o);
+    TEST_ASSERT_EQUAL(0, o.count);
+    o = recipe::Output();
+    run.tick(at(2000, 200, 150, 11), clock, o); // gte at the edge, near at the tolerance
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetFan, 10));
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetFan, 30));
+    TEST_ASSERT_FALSE(has(o, Command::Kind::SetFan, 20));
+    o = recipe::Output();
+    run.tick(at(3000, 250, 100, 10), clock, o); // lte at the edge; the others fired once only
+    TEST_ASSERT_EQUAL(1, o.count);
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetFan, 20));
+    TEST_ASSERT_TRUE(run.state() == recipe::State::Done);
+    TEST_ASSERT_EQUAL(3, run.firedCount());
+}
+
+void test_recipe_edge_and_order() {
+    recipe::Recipe r;
+    parseRecipe(R"({"steps":[
+        {"trigger":{"type":"bt","value":150},"actions":[{"type":"power","value":80}]},
+        {"trigger":{"type":"bt","value":160},"actions":[{"type":"fan","value":50}]},
+        {"trigger":{"type":"bt","value":300},"actions":[{"type":"end"}]}]})", r);
+    recipe::Runner run;
+    recipe::RoastClock clock;
+    run.load(r);
+    run.start();
+    recipe::Output o;
+    run.tick(at(0, 170), clock, o); // already true at start: steps 0 and 1 are not armed yet
+    TEST_ASSERT_EQUAL(0, o.count);
+    run.tick(at(500, NAN), clock, o); // no reading does not count as false
+    TEST_ASSERT_EQUAL(0, o.count);
+    run.tick(at(1000, 155), clock, o); // step 0 true, step 1 seen false
+    TEST_ASSERT_EQUAL(0, o.count);
+    run.tick(at(2000, 140), clock, o); // both false now
+    TEST_ASSERT_EQUAL(0, run.firedCount());
+    TEST_ASSERT_EQUAL(0, run.next());
+    run.tick(at(3000, 165), clock, o); // step 0 fires, then step 1 in the same tick, in order
+    TEST_ASSERT_EQUAL(2, run.firedCount());
+    TEST_ASSERT_EQUAL(0, run.fired(0).step);
+    TEST_ASSERT_EQUAL(1, run.fired(1).step);
+    TEST_ASSERT_TRUE(o.commands[0].kind == Command::Kind::SetMode && o.commands[0].a == static_cast<float>(Mode::Manual));
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetHeater, 80));
+    TEST_ASSERT_TRUE(o.commands[2].kind == Command::Kind::SetFan);
+    TEST_ASSERT_TRUE(std::isnan(run.fired(0).atS)); // before CHARGE
+    TEST_ASSERT_EQUAL(2, run.next());
+
+    // a later step does not fire before the earlier one
+    parseRecipe(R"({"steps":[
+        {"trigger":{"type":"event","value":"FC_START"},"actions":[{"type":"fan","value":70}]},
+        {"trigger":{"type":"bt","value":100},"actions":[{"type":"fan","value":40}]}]})", r);
+    recipe::Runner seq;
+    seq.load(r);
+    seq.start();
+    o = recipe::Output();
+    seq.tick(at(0, 90), clock, o);
+    seq.tick(at(1000, 120), clock, o);
+    TEST_ASSERT_EQUAL(0, seq.firedCount());
+    TEST_ASSERT_TRUE(seq.skipNext(clock, 1000)); // the user skips the event step
+    TEST_ASSERT_TRUE(seq.fired(0).outcome == recipe::Outcome::Skipped);
+    seq.tick(at(2000, 120), clock, o); // step 1 was seen false at 90 C, so it fires now
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetFan, 40));
+    TEST_ASSERT_FALSE(has(o, Command::Kind::SetFan, 70));
+}
+
+void test_recipe_time_and_events() {
+    recipe::Recipe r;
+    parseRecipe(R"({"steps":[
+        {"trigger":{"type":"event","value":"DRY_END"},"actions":[{"type":"power","value":70}]},
+        {"trigger":{"type":"time","value":60},"actions":[{"type":"fan","value":45}]}]})", r);
+    recipe::Runner run;
+    recipe::RoastClock clock;
+    run.load(r);
+    run.start();
+    recipe::Output o;
+    run.tick(at(1000), clock, o); // event not seen, time false before CHARGE
+    clock.mark(recipe::Event::Charge, 5000);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 2, clock.sinceCharge(7000));
+    run.tick(at(6000), clock, o);
+    clock.mark(recipe::Event::DryEnd, 40000);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 35, clock.at(recipe::Event::DryEnd));
+    run.tick(at(41000), clock, o);
+    TEST_ASSERT_EQUAL(1, run.firedCount());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 36, run.fired(0).atS);
+    run.tick(at(64000), clock, o); // 59 s
+    TEST_ASSERT_EQUAL(1, run.firedCount());
+    run.tick(at(65000), clock, o); // 60 s
+    TEST_ASSERT_EQUAL(2, run.firedCount());
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetFan, 45));
+    TEST_ASSERT_TRUE(run.state() == recipe::State::Done);
+    // CHARGE starts a new roast: earlier events are cleared; undo CHARGE stops the clock
+    clock.mark(recipe::Event::Charge, 70000);
+    TEST_ASSERT_FALSE(clock.seen(recipe::Event::DryEnd));
+    clock.undo(recipe::Event::Charge);
+    TEST_ASSERT_FALSE(clock.charged());
+    TEST_ASSERT_TRUE(std::isnan(clock.sinceCharge(80000)));
+}
+
+void test_recipe_setpoint_ramp_and_mixing() {
+    recipe::Recipe r;
+    parseRecipe(R"({"steps":[
+        {"trigger":{"type":"bt","value":100},"actions":[{"type":"setpoint","value":250,"ramp":10}]},
+        {"trigger":{"type":"bt","value":200},"actions":[{"type":"power","value":40}]}]})", r);
+    recipe::Runner run;
+    recipe::RoastClock clock;
+    run.load(r);
+    run.start();
+    recipe::Output o;
+    run.tick(at(0, 90), clock, o);
+    run.tick(at(1000, 110), clock, o); // ramp from 150 (current setpoint) to 250 over 10 s
+    TEST_ASSERT_TRUE(o.commands[0].kind == Command::Kind::SetMode && o.commands[0].a == static_cast<float>(Mode::Pid));
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetSetpoint, 150));
+    TEST_ASSERT_TRUE(run.followingSetpoint());
+    TEST_ASSERT_TRUE(run.ramping());
+    o = recipe::Output();
+    run.tick(at(1200, 120), clock, o); // under 500 ms: nothing sent
+    TEST_ASSERT_EQUAL(0, o.count);
+    run.tick(at(6000, 150), clock, o); // half way
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetSetpoint, 200));
+    o = recipe::Output();
+    run.tick(at(20000, 190), clock, o); // ramp ends at the target
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetSetpoint, 250));
+    TEST_ASSERT_FALSE(run.ramping());
+    o = recipe::Output();
+    run.tick(at(21000, 205), clock, o); // a power step switches back to Manual
+    TEST_ASSERT_TRUE(o.commands[0].kind == Command::Kind::SetMode && o.commands[0].a == static_cast<float>(Mode::Manual));
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetHeater, 40));
+    TEST_ASSERT_FALSE(run.followingSetpoint());
+}
+
+void test_recipe_guided_and_aborts() {
+    recipe::Recipe r;
+    parseRecipe(R"({"mode":"guided","steps":[
+        {"trigger":{"type":"bt","value":100},"actions":[{"type":"fan","value":50}]},
+        {"trigger":{"type":"bt","value":120},"actions":[{"type":"cool"}]}]})", r);
+    recipe::Runner run;
+    recipe::RoastClock clock;
+    run.load(r);
+    run.start();
+    TEST_ASSERT_FALSE(run.load(r)); // not while running
+    recipe::Output o;
+    run.tick(at(0, 90), clock, o);
+    run.tick(at(1000, 105), clock, o); // fires as a prompt: nothing applied
+    TEST_ASSERT_EQUAL(0, o.count);
+    TEST_ASSERT_EQUAL(0, run.prompt());
+    TEST_ASSERT_FALSE(run.confirm(1, at(1000), o));
+    TEST_ASSERT_TRUE(run.confirm(0, at(1500), o));
+    TEST_ASSERT_TRUE(has(o, Command::Kind::SetFan, 50));
+    TEST_ASSERT_TRUE(run.fired(0).outcome == recipe::Outcome::Confirmed);
+    o = recipe::Output();
+    run.tick(at(2000, 125), clock, o); // cool prompt
+    TEST_ASSERT_TRUE(run.dismiss(1));
+    TEST_ASSERT_TRUE(run.fired(1).outcome == recipe::Outcome::Skipped);
+    TEST_ASSERT_FALSE(o.stop);
+    run.tick(at(3000, 125), clock, o);
+    TEST_ASSERT_TRUE(run.state() == recipe::State::Done);
+
+    // auto cool runs the stop path and ends the recipe
+    parseRecipe(R"({"steps":[{"trigger":{"type":"bt","value":100},"actions":[{"type":"cool"}]},
+        {"trigger":{"type":"bt","value":110},"actions":[{"type":"fan","value":1}]}]})", r);
+    run.load(r);
+    run.start();
+    o = recipe::Output();
+    run.tick(at(0, 90), clock, o);
+    run.tick(at(1000, 120), clock, o);
+    TEST_ASSERT_TRUE(o.stop);
+    TEST_ASSERT_FALSE(has(o, Command::Kind::SetFan, 1));
+    TEST_ASSERT_TRUE(run.state() == recipe::State::Done);
+    TEST_ASSERT_EQUAL_STRING("cool", run.reason());
+
+    // a safety trip aborts; nothing fires after
+    run.start();
+    o = recipe::Output();
+    run.tick(at(0, 90), clock, o);
+    recipe::Inputs trip = at(1000, 120);
+    trip.trip = SafetyTrip::CommsLost;
+    run.tick(trip, clock, o);
+    TEST_ASSERT_TRUE(run.state() == recipe::State::Aborted);
+    TEST_ASSERT_EQUAL_STRING("comms", run.reason());
+    TEST_ASSERT_EQUAL(0, o.count);
+    run.tick(at(2000, 120), clock, o);
+    TEST_ASSERT_EQUAL(0, o.count);
+    run.start();
+    run.abort("stop");
+    TEST_ASSERT_EQUAL_STRING("stop", run.reason());
+}
+
+void test_library_recipe_profiles() {
+    using proflib::Error;
+    const char* rec = R"({"version":1,"name":"Recipe only","unit":"F","recipe":{"steps":[)"
+                      R"({"trigger":{"type":"bt","value":389},"actions":[{"type":"fan","value":50},{"type":"power","value":60}]}]}})";
+    TEST_ASSERT_EQUAL(Error::None, validateText(rec));
+    TEST_ASSERT_EQUAL(Error::BadSteps, validateText(R"({"version":1,"name":"x","unit":"C"})"));
+    const char* why = "";
+    JsonDocument d;
+    deserializeJson(d, R"({"version":1,"name":"x","unit":"C","recipe":{"steps":[{"trigger":{"type":"bt","value":999},"actions":[{"type":"end"}]}]}})");
+    TEST_ASSERT_EQUAL(Error::BadRecipe, proflib::validate(d.as<JsonObjectConst>(), &why));
+    TEST_ASSERT_EQUAL_STRING("temperature trigger must be 0..350 C", why);
+    TEST_ASSERT_EQUAL(Error::None, validateText(withField(R"({"recipe":{"mode":"guided","steps":[{"trigger":{"type":"time","value":30},"actions":[{"type":"note","text":"x"}]}]}})")));
+
+    FakeStorage fs;
+    fs.files["r.json"] = rec;
+    fs.files["both.json"] = withField(R"({"recipe":{"steps":[{"trigger":{"type":"time","value":30},"actions":[{"type":"fan","value":40}]}]}})");
+    proflib::Library lib(fs);
+    lib.begin();
+    TEST_ASSERT_EQUAL(1, lib.list()[1].recipeSteps); // sorted: "City roast", "Recipe only"
+    TEST_ASSERT_EQUAL(0, lib.list()[1].steps);
+    RoastProfile sched;
+    std::unique_ptr<recipe::Recipe> r(new recipe::Recipe());
+    proflib::Loaded what;
+    std::string text;
+    TEST_ASSERT_EQUAL(Error::None, lib.load("r", sched, *r, what, &text));
+    TEST_ASSERT_TRUE(what.recipe);
+    TEST_ASSERT_FALSE(what.schedule);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 198.33f, r->steps[0].trigger.value);
+    TEST_ASSERT_EQUAL('{', text[0]);
+    TEST_ASSERT_EQUAL(Error::BadSteps, lib.load("r", sched)); // nothing to schedule
+    TEST_ASSERT_EQUAL(Error::None, lib.load("both", sched, *r, what, &text));
+    TEST_ASSERT_TRUE(what.recipe && what.schedule);
+    TEST_ASSERT_EQUAL(2, sched.size());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_moving_average_seeds_with_first_sample);
@@ -856,5 +1401,19 @@ int main() {
     RUN_TEST(test_mains_heater_off_resets_grace);
     RUN_TEST(test_temp_unit_boot_uses_saved_or_default);
     RUN_TEST(test_temp_unit_saves_only_changes);
+    RUN_TEST(test_library_validate_format);
+    RUN_TEST(test_library_ids_and_busy);
+    RUN_TEST(test_library_save_get_delete);
+    RUN_TEST(test_library_limits);
+    RUN_TEST(test_library_failed_write_keeps_old_file);
+    RUN_TEST(test_library_begin_recovers_and_indexes);
+    RUN_TEST(test_library_load_converts_unit);
+    RUN_TEST(test_recipe_parse_limits);
+    RUN_TEST(test_recipe_comparators);
+    RUN_TEST(test_recipe_edge_and_order);
+    RUN_TEST(test_recipe_time_and_events);
+    RUN_TEST(test_recipe_setpoint_ramp_and_mixing);
+    RUN_TEST(test_recipe_guided_and_aborts);
+    RUN_TEST(test_library_recipe_profiles);
     return UNITY_END();
 }
