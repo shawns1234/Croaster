@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — Croaster PID control board (branch rework/roaster)
 
 ### Added
+- **Multi-point autotune (D29, T57).** `{"command":"autotune"}` needs no
+  setpoint: the board heats to each test point (`CPID_AUTOTUNE_POINT*_C`,
+  default 300/350/400 °F), runs a relay with bias correction until three
+  cycles agree, computes Ku, Tu, a FOPDT model and Ziegler–Nichols PI gains
+  (`CPID_AUTOTUNE_RULE`), and recommends the most cautious set over the
+  points. Results wait until `{"command":{"autotune":"apply"}}` (saved to
+  NVS) or `"discard"`. Stops with the heater off on probe fault, over
+  temperature, overshoot, no heat-up, no oscillation, a 90-minute limit,
+  STOP and trips. New `getAutotune` report (plan, progress, per-point
+  results, log), `atTarget` in data, status text and OLED with point and
+  cycle. Autotune and a running recipe refuse each other (`recipeRunning`,
+  `autotuneRunning`). Page: Controls > Autotune with a start confirm,
+  progress bar, step list, log, results and a Save/Cancel dialog shown again
+  after a reload; the test point on the Live chart. Docs in
+  `docs/autotune/`.
 - **Profile library on the board (D28, T55).** Croaster PID keeps up to 50
   named profiles as JSON files on LittleFS, on the stock `spiffs` partition
   (no partition change; OTA keeps them). Format v1 with a timed setpoint
@@ -236,6 +251,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Autotune (D29).** Replaces the single-point relay around the setpoint
+  (`RelayAutotune`, kept for its host tests): no 212 °F setpoint gate, no
+  gains applied or saved until the user accepts them, the relay steps the
+  heater 40 % either side of a corrected bias instead of 100/0 %, and a
+  finished run leaves the stop cooldown fan instead of 30 %.
 - **Shared ESP32-S3 pin rules (T46).** The chip and octal-PSRAM module pin
   rules move from both boards' `ConfigCheck.h` to
   `croaster-control/src/hw/esp32s3_opi_pins.h`; UART0 and RGB LED pins stay

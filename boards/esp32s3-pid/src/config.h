@@ -118,6 +118,28 @@
 // tuned gains in NVS, from a completed autotune or the pid command. Manual and
 // autotune always work. 0: the default gains above are usable at once.
 #define CPID_REQUIRE_AUTOTUNE 1
+// Autotune (docs/autotune): one click, no setpoint. It heats to each test point
+// in turn (lowest first), runs a relay oscillation there until the cycles agree,
+// and reports gains per point plus a recommended set; nothing is applied until
+// the user saves them. Points in C on the PID input's corrected scale; 0 drops
+// one. Each must be at least 100 C and at most CPID_MAX_SETPOINT_C, and below
+// CPID_OVER_TEMP_C - 5 - CPID_AUTOTUNE_OVERSHOOT_C.
+#define CPID_AUTOTUNE_POINT1_C 148.9f // 300 F
+#define CPID_AUTOTUNE_POINT2_C 176.7f // 350 F
+#define CPID_AUTOTUNE_POINT3_C 204.4f // 400 F
+#define CPID_AUTOTUNE_POINT4_C 0   // unused
+#define CPID_AUTOTUNE_RELAY_STEP 40      // relay swing around its centre, heater %
+#define CPID_AUTOTUNE_HYSTERESIS_C 1.0f  // relay band; above twice the PV noise
+#define CPID_AUTOTUNE_MIN_CYCLES 3       // cycles that must agree (consistency window)
+#define CPID_AUTOTUNE_MAX_CYCLES 6       // measured cycles per point before giving up on agreement
+#define CPID_AUTOTUNE_MAX_CV_PCT 10      // agreement: amplitude and period vary less than this
+#define CPID_AUTOTUNE_OVERSHOOT_C 30     // PV this far above the test point: stop, failed
+#define CPID_AUTOTUNE_TIME_LIMIT_MIN 90  // whole run
+#define CPID_AUTOTUNE_RULE_ZN_PI 0       // Ziegler-Nichols PI (default; tuning-rules.md)
+#define CPID_AUTOTUNE_RULE_TL_PI 1       // Tyreus-Luyben PI: slower, more margin
+#define CPID_AUTOTUNE_RULE_TL_PID 2      // Tyreus-Luyben PID: D term amplifies probe noise
+#define CPID_AUTOTUNE_RULE_SIMC_PI 3     // SIMC PI from the fitted dead-time model
+#define CPID_AUTOTUNE_RULE CPID_AUTOTUNE_RULE_ZN_PI
 #define CPID_OVER_TEMP_C 275      // 527 F; any probe above: heater off, fan 100 %
 #define CPID_MAX_SETPOINT_C 250   // 482 F; higher setpoints are capped here
 #define CPID_MIN_FAN_WITH_HEAT 30 // fan forced to at least this while heating

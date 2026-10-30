@@ -59,6 +59,7 @@ test('risky commands sit behind a confirm step', () => {
   }
   assert.match(html, /data-send="wifiConnect" data-confirm="/);
   assert.match(html, /data-cmd='\{"command":"stop"\}' data-confirm="[^"]+">Heater off</);
+  assert.match(html, /data-cmd='\{"command":"stop"\}' data-confirm="[^"]+">Stop autotune</);
 });
 
 test('STOP starts disabled and acts only through a confirm while a roast records', () => {
@@ -107,8 +108,9 @@ test('Start sends nothing to the board; event marks send only roastEvent', () =>
 
 test('the page sends commands only from user actions', () => {
   // Every send() call site. Loading the page or switching views reaches none of
-  // them, except the read-only libraryList (link open, Controls tab) and getRecipe
-  // (the data payload's recipe.seq changed); the worker's polls (getArtisanData,
+  // them, except the read-only libraryList (link open, Controls tab), getRecipe
+  // (the data payload's recipe.seq changed) and getAutotune (link open, status
+  // change, timer while a run or its results are pending); the worker's polls (getArtisanData,
   // getControl, getDeviceInfo) are read-only too. A new command needs an entry here.
   const app = read('app.js');
   const calls = app.split('\n').filter((l) => /\bsend\(/.test(l) && !/function send\(/.test(l)).map((l) => l.trim());
@@ -127,6 +129,9 @@ test('the page sends commands only from user actions', () => {
     "send({ command: 'getRecipe' });",
     "else if (r.seq !== S.recipeSeq) { S.recipeSeq = r.seq; send({ command: 'getRecipe' }); }",
     "send(undo ? { command: 'roastEvent', event: code, undo: true } : { command: 'roastEvent', event: code });",
+    "send({ command: 'getAutotune' }, true); // polled: kept out of the reply log",
+    "confirmThen(A.confirmText(S.at), () => send({ command: 'autotune' }), 'OK');",
+    'send({ command: { autotune: choice } });',
     'send(cmd);',
     'send({ command: payload });',
     "const runRecipe = () => send({ command: 'recipeStart' });",
@@ -174,4 +179,17 @@ test('the socket is paused only through Link.mayPause or on pagehide, and Clear 
   assert.equal((app.match(/\bpause\(\);/g) || []).length, 2);
   const clear = app.slice(app.indexOf('function clearRoast('), app.indexOf('function endRoast('));
   assert.doesNotMatch(clear, /send\(|postMessage/);
+});
+
+test('autotune starts only from the confirm, and results change only from Save, Cancel or Discard', () => {
+  const app = read('app.js');
+  const start = app.slice(app.indexOf('function startAutotune('), app.indexOf('function decideAutotune('));
+  assert.ok(start.indexOf('confirmThen(') >= 0 && start.indexOf('confirmThen(') < start.indexOf("send({ command: 'autotune' })"));
+  assert.doesNotMatch(html, /data-cmd='\{"command":"autotune"\}'/);
+  const dlg = app.slice(app.indexOf('function showAutotuneDialog('), app.indexOf('function renderAutotune('));
+  assert.match(dlg, /returnValue === 'save'\) decideAutotune\('apply'\)/);
+  assert.match(dlg, /returnValue === 'cancel'\) decideAutotune\('discard'\)/);
+  const calls = [...app.matchAll(/decideAutotune\('(\w+)'\)/g)].map((m) => m[1]);
+  assert.deepEqual(calls, ['apply', 'discard', 'discard']);
+  assert.match(html, /<button value="save" autofocus>Save<\/button>/);
 });

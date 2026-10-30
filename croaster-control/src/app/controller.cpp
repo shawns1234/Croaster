@@ -39,6 +39,20 @@ bool Controller::loadProfile(const RoastProfile& p) {
     return true;
 }
 
+void Controller::configureAutotune(const autotune::Config& c) {
+    atCfg_ = c;
+    atCfg_.dtSeconds = pidCfg().dtSeconds;
+    // Fail inside the sequence (a clear reason) before the over-temperature trip.
+    atCfg_.abortAboveC = fminf(c.abortAboveC, lim_.overTempC - 5);
+    autotune::makePlan(c.pointsC, c.pointCount, kAutotuneMinSetpointC, lim_.maxSetpointC, atCfg_);
+}
+
+void Controller::autotuneReport(autotune::Report& out) const {
+    portENTER_CRITICAL(&mux_);
+    out = atReport_;
+    portEXIT_CRITICAL(&mux_);
+}
+
 void Controller::taskEntry(void* self) {
     static_cast<Controller*>(self)->run();
 }
@@ -85,8 +99,8 @@ void Controller::setMode(Mode m, float pv, const char* abortReason) {
     }
     if (m == Mode::Manual)
         manualHeater_ = carry;
-    if (leavingAutotune && autotune_.state() == RelayAutotune::State::Running) {
-        autotune_.abort();
+    if (leavingAutotune && autotune_.running()) {
+        autotune_.abort(*abortReason ? abortReason : "stopped");
         setAutotuneStatus(AutotuneStatus::Aborted, abortReason);
     }
     st_.mode = m;
@@ -153,25 +167,43 @@ void Controller::apply(const Command& c) {
         st_.gainsTuned = true; // the pid command counts as tuned
         break;
     case Command::Kind::StartAutotune: {
-        if (!(st_.setpoint >= kAutotuneMinSetpointC)) {
-            setAutotuneStatus(AutotuneStatus::NeedSetpoint);
-            break;
-        }
+        // Test points come from configureAutotune(); the setpoint plays no part.
+        if (st_.mode == Mode::Autotune)
+            break; // already running
         if (!std::isfinite(pv)) {
             setAutotuneStatus(AutotuneStatus::NeedProbe);
             break;
         }
         if (fan_.get() < 30)
             fan_.set(60); // legacy CommandLoop behaviour
-        RelayAutotune::Config cfg;
-        cfg.setpoint = st_.setpoint;
-        cfg.dtSeconds = pidCfg().dtSeconds;
-        cfg.abortAboveC = lim_.overTempC;
-        autotune_.start(cfg);
+        st_.autotunePending = false; // a new run replaces unapplied results
+        autotune_.start(atCfg_, pv);
+        if (!autotune_.running()) {
+            setAutotuneStatus(AutotuneStatus::Failed, autotune_.failure());
+            break;
+        }
+        if (st_.mode != Mode::Manual)
+            setMode(Mode::Manual, pv);
         setAutotuneStatus(AutotuneStatus::Running);
         st_.mode = Mode::Autotune;
         break;
     }
+    case Command::Kind::ApplyAutotune:
+        if (!st_.autotunePending)
+            break;
+        st_.gains = autotune_.recommended();
+        pid_.setGains(st_.gains);
+        st_.gainsTuned = true;
+        st_.autotuneSeq++; // ControlPlugin saves the gains to NVS
+        st_.autotunePending = false;
+        setAutotuneStatus(AutotuneStatus::Done);
+        break;
+    case Command::Kind::DiscardAutotune:
+        if (!st_.autotunePending)
+            break;
+        st_.autotunePending = false;
+        setAutotuneStatus(AutotuneStatus::Discarded);
+        break;
     case Command::Kind::StartProfile:
         if (modeNeedsTuning(Mode::Profile, lim_.requireTunedGains, st_.gainsTuned)) {
             setAutotuneStatus(AutotuneStatus::Required); // a loaded profile stays pending
@@ -242,18 +274,15 @@ void Controller::controlStep(uint32_t now) {
     }
     case Mode::Autotune:
         out = autotune_.update(pv);
-        if (autotune_.state() == RelayAutotune::State::Done) {
-            st_.gains = autotune_.result();
-            pid_.setGains(st_.gains);
-            st_.gainsTuned = true;
-            st_.autotuneSeq++;
-            setAutotuneStatus(AutotuneStatus::Done);
-            manualHeater_ = 0; // legacy: after tuning heater off (setpoint 0) and fan 30
-            st_.mode = Mode::Manual;
-            fan_.set(30);
-            out = 0;
-        } else if (autotune_.state() == RelayAutotune::State::Failed) {
-            setAutotuneStatus(AutotuneStatus::Failed, autotune_.failure());
+        if (!autotune_.running()) {
+            // Heater off either way; ControlPlugin sets the stop cooldown fan.
+            // Results wait for ApplyAutotune or DiscardAutotune.
+            if (autotune_.phase() == autotune::Phase::Done) {
+                st_.autotunePending = true;
+                setAutotuneStatus(AutotuneStatus::Pending);
+            } else {
+                setAutotuneStatus(AutotuneStatus::Failed, autotune_.failure());
+            }
             manualHeater_ = 0;
             st_.mode = Mode::Manual;
             out = 0;
@@ -305,7 +334,15 @@ void Controller::controlStep(uint32_t now) {
     st_.heaterPct = heater_.requested();
     st_.fanPct = fan_.get();
     st_.uptimeMs = now;
+    st_.autotuneProgress = autotune_.progress();
+    // The report (about 1 KB) is copied only when the sequence logged something.
+    const bool reportChanged = autotune_.changes() != atReportSeq_;
+    if (reportChanged)
+        autotune_.fillReport(scratchReport_);
     portENTER_CRITICAL(&mux_);
     published_ = st_;
+    if (reportChanged)
+        atReport_ = scratchReport_;
     portEXIT_CRITICAL(&mux_);
+    atReportSeq_ = autotune_.changes();
 }

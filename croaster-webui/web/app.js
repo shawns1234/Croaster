@@ -6,6 +6,7 @@
   const L = window.Link;
   const TH = window.Theme;
   const P = window.ProfileLibrary;
+  const A = window.Autotune;
   const $ = (sel, el) => (el || document).querySelector(sel);
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
   const SVGNS = 'http://www.w3.org/2000/svg';
@@ -64,6 +65,7 @@
     dirty: true,
     lastSaveMs: 0,
     lastAutotune: null,
+    at: null, atAskedAt: 0, atError: '', atShownFor: null, // getAutotune reply; results dialog shown for
     lastTrip: null,
     stopCheck: null, // {at, warned} while waiting for the board to report the stop
     profile: loadJson(KEY_PROFILE) || [{ duration: 60, setpoint: '', interpolation: 'linear', fanValue: '' }],
@@ -137,10 +139,10 @@
   }
 
   // ---------- link ----------
-  function send(payload) {
+  function send(payload, quiet) {
     if (!worker) return;
     worker.postMessage({ type: 'send', payload });
-    logReply('out', '→ ' + JSON.stringify(payload));
+    if (!quiet) logReply('out', '→ ' + JSON.stringify(payload));
   }
 
   function onWorker(e) {
@@ -149,7 +151,7 @@
       const opened = m.state === 'open' && S.link !== 'open';
       S.link = m.state;
       S.dirty = true;
-      if (opened) { requestLibrary(); S.recipeSeq = null; }
+      if (opened) { requestLibrary(); S.recipeSeq = null; if (S.info.controls) askAutotune(); }
     } else if (m.type === 'stats') {
       S.stats = m;
       if (S.tab === 'monitoring') S.dirty = true;
@@ -188,6 +190,11 @@
       if (msg.command !== 'getRecipe') logReply(msg.response && msg.response.ok ? 'in' : 'err', '← ' + JSON.stringify(msg));
       return;
     }
+    if (msg.command === 'getAutotune' || msg.command === 'autotune') {
+      onAutotune(msg.command, msg.response || {});
+      if (msg.command === 'autotune') logReply(msg.response && msg.response.ok ? 'in' : 'err', '← ' + JSON.stringify(msg));
+      return;
+    }
     if (msg.command === 'profile') {
       const r = msg.response || {};
       $('#profile-status').textContent = r.loaded ? 'Loaded ' + r.steps + ' steps.' :
@@ -214,6 +221,7 @@
         logReply(bad ? 'err' : 'in', 'autotune: ' + d.autotune);
       }
       S.lastAutotune = d.autotune;
+      if (S.info.controls) askAutotune();
     }
     if (d.trip !== undefined && d.trip !== S.lastTrip) {
       if (d.trip) logReply('err', 'trip: ' + d.trip);
@@ -261,6 +269,7 @@
       dbt: isNum(d.DBT) ? d.DBT : null, det: isNum(d.DET) ? d.DET : null,
       h: isNum(d.BurnerVal) ? d.BurnerVal : null, f: isNum(d.FanVal) ? d.FanVal : null,
       sv: isNum(d.SV) ? d.SV : null,
+      at: isNum(d.atTarget) ? d.atTarget : null,
       mode: (d.Mode || '') + (d.trip ? ' trip:' + d.trip : ''),
     };
     ses.samples.push(s);
@@ -416,7 +425,7 @@
     renderEvents();
     if (S.tab === 'live') { renderChart(); }
     if (S.tab === 'monitoring') renderMonitoring();
-    if (S.tab === 'controls') { renderControls(); renderLibrary(); }
+    if (S.tab === 'controls') { renderControls(); renderLibrary(); renderAutotune(); }
     if (S.tab === 'live') renderRecipeLive();
     let info;
     if (ss.length) {
@@ -554,7 +563,7 @@
     let tLo = base[0], tHi = base[1], rLo = 0, rHi = u === 'F' ? 30 : 18;
     const vis = ss.filter((s) => s.t - t0 >= xMin);
     for (const s of vis) {
-      for (const v of [s.bt, s.et, s.sv]) if (isNum(v)) { tLo = Math.min(tLo, v); tHi = Math.max(tHi, v); }
+      for (const v of [s.bt, s.et, s.sv, s.at]) if (isNum(v)) { tLo = Math.min(tLo, v); tHi = Math.max(tHi, v); }
     }
     const first = ss.length - vis.length;
     for (let i = first; i < ss.length; i++) {
@@ -602,6 +611,7 @@
       if (d) svg.append(svgEl('path', { class: cls, d }));
     };
     line('sv', (i) => ss[i].sv, yt);
+    line('at-target', (i) => ss[i].at, yt);
     line('et', (i) => ss[i].et, yt);
     line('bt', (i) => ss[i].bt, yt);
     line('ror', rorAt, yr);
@@ -678,6 +688,7 @@
     if (isNum(s.h)) parts.push('heater ' + s.h + '%');
     if (isNum(s.f)) parts.push('fan ' + s.f + '%');
     if (isNum(s.sv)) parts.push('SV ' + fmt(s.sv));
+    if (isNum(s.at)) parts.push('test point ' + fmt(s.at));
     $('#readout').textContent = parts.join('  ');
     renderChart();
   }
@@ -742,10 +753,11 @@
     return null;
   }
 
-  function confirmThen(text, action) {
+  function confirmThen(text, action, okLabel) {
     if (!text) { action(); return; }
     const dlg = $('#confirm');
     $('#confirm-text').textContent = text;
+    $('#confirm button[value="ok"]').textContent = okLabel || 'Confirm';
     dlg.returnValue = '';
     dlg.onclose = () => { if (dlg.returnValue === 'ok') action(); };
     dlg.showModal();
@@ -1137,7 +1149,8 @@
       else recipeStatus('Not loaded: ' + (r.reason || P.message(r.error)) + '.', true);
       send({ command: 'getRecipe' });
     } else if (!r.ok) {
-      const why = { empty: 'no recipe is loaded', running: 'a recipe is already running', notRunning: 'no recipe is running',
+      if (r.error === 'autotuneRunning') recipeStatus(A.refusal(r.error), true);
+      const why = { autotuneRunning: 'autotune is running', empty: 'no recipe is loaded', running: 'a recipe is already running', notRunning: 'no recipe is running',
         noPrompt: 'that step is not waiting', badEvent: 'unknown event' }[r.error] || r.error;
       logReply('err', cmd + ': ' + why);
     }
@@ -1202,6 +1215,110 @@
       warn.textContent = 'Behind schedule: BT is ' + lag.toFixed(0) + ' ' + unitLabel() +
         ' under the setpoint with the heater at 100 %. The roaster cannot follow this curve.';
     }
+  }
+
+  // ---------- autotune ----------
+  // getAutotune is read-only: asked on connect, when the telemetry status changes,
+  // and on a timer while a run is going or its results wait for a choice.
+  function askAutotune() {
+    S.atAskedAt = Date.now();
+    send({ command: 'getAutotune' }, true); // polled: kept out of the reply log
+  }
+
+  function onAutotune(cmd, r) {
+    if (cmd === 'getAutotune') {
+      S.at = r;
+      const key = r.pending && r.recommended ? JSON.stringify(r.recommended) + (r.results || []).length : null;
+      // Pending results open the dialog once per page load, including after a reload.
+      if (key && key !== S.atShownFor) { S.atShownFor = key; showAutotuneDialog(); }
+      if (!r.pending && $('#at-dialog').open) $('#at-dialog').close('closed');
+    } else if (r.error) {
+      S.atError = A.refusal(r.error);
+    } else if (r.action) {
+      S.atError = r.ok ? '' : 'No results waiting: they were already saved or discarded.';
+      if (r.ok) logReply('in', r.action === 'apply' ? 'autotune: new gains saved' : 'autotune: results discarded');
+      askAutotune();
+    }
+    S.dirty = true;
+  }
+
+  function startAutotune() {
+    S.atError = '';
+    if (S.recipe && S.recipe.state === 'running') { S.atError = A.refusal('recipeRunning'); S.dirty = true; return; }
+    confirmThen(A.confirmText(S.at), () => send({ command: 'autotune' }), 'OK');
+  }
+
+  function decideAutotune(choice) {
+    send({ command: { autotune: choice } });
+  }
+
+  function cells(tr, values) {
+    for (const v of values) tr.append(el('td', {}, v));
+    return tr;
+  }
+
+  function showAutotuneDialog() {
+    const rep = S.at;
+    const gains = A.gainRows(rep);
+    if (!gains) return;
+    const dlg = $('#at-dialog');
+    const rows = A.resultRows(rep);
+    const rec = rep.recommended;
+    $('#at-dialog-summary').textContent = 'Recommended from ' + rec.used + ' of ' + rows.length + ' test points (' +
+      A.ruleName(rec.rule) + ', the most cautious gains of the points that measured cleanly).';
+    const pts = $('#at-dialog-points tbody');
+    pts.textContent = '';
+    for (const r of rows) pts.append(cells(el('tr'), [r.target, r.status, r.kp, r.ki, r.kd]));
+    const g = $('#at-dialog-gains tbody');
+    g.textContent = '';
+    for (const r of gains) g.append(cells(el('tr'), [r.name, r.current, r.next]));
+    dlg.returnValue = '';
+    dlg.onclose = () => {
+      if (dlg.returnValue === 'save') decideAutotune('apply');
+      else if (dlg.returnValue === 'cancel') decideAutotune('discard');
+      // Escape leaves the results in the panel.
+    };
+    if (!dlg.open) dlg.showModal();
+  }
+
+  function renderAutotune() {
+    const rep = S.at;
+    const d = S.data || {};
+    const running = !!(rep && rep.running) || d.Mode === 'Tuning';
+    const pts = rep && rep.plan ? A.pointList(rep.plan.points, rep.unit) : '';
+    const n = rep && rep.plan ? A.minutes(rep.plan.estimate) : null;
+    $('#at-plan').textContent = 'Heats to ' + (pts || 'a few test temperatures') + ', measures the response at each and ' +
+      'calculates PID gains' + (n ? '. About ' + n + ' min.' : '.') + ' Nothing changes until you save the results.';
+    $('#at-start').disabled = running || S.link !== 'open';
+    $('#at-start').hidden = running;
+    $('#at-stop').hidden = !running;
+    $('#at-error').textContent = S.atError;
+    const ended = rep && (rep.running || ['done', 'failed', 'aborted'].includes(rep.phase));
+    $('#at-run').hidden = !ended;
+    if (ended) {
+      $('#at-progress').value = A.fraction(rep);
+      $('#at-progress-text').textContent = A.progressText(rep);
+      const list = $('#at-steps');
+      list.textContent = '';
+      for (const st of A.steps(rep)) {
+        const li = el('li', { class: st.state }, st.label);
+        if (st.detail) li.append(el('span', { class: 'muted' }, ' · ' + st.detail));
+        list.append(li);
+      }
+    }
+    const rows = A.resultRows(rep);
+    $('#at-results').hidden = !rows.length;
+    const body = $('#at-table tbody');
+    body.textContent = '';
+    for (const r of rows) body.append(cells(el('tr'), [r.target, r.status, r.cycles, r.swing, r.period, r.ku, r.kp, r.ki, r.kd]));
+    const gains = A.gainRows(rep);
+    $('#at-choice').hidden = !gains;
+    $('#at-recommended').textContent = gains ? 'Recommended: ' + gains.map((g) => g.name + ' ' + g.next).join(', ') +
+      ' (now ' + gains.map((g) => g.current).join(' / ') + ').' : '';
+    const log = $('#at-log');
+    log.textContent = '';
+    for (const e of (rep && rep.log) || []) log.append(el('li', {}, A.clock(e.t) + '  ' + e.text));
+    $('#at-log-box').hidden = !(rep && rep.log && rep.log.length);
   }
 
   // ---------- wiring ----------
@@ -1479,6 +1596,10 @@
     $('#profile-load').addEventListener('click', loadProfile);
 
     // Device library
+    $('#at-start').addEventListener('click', startAutotune);
+    $('#at-review').addEventListener('click', showAutotuneDialog);
+    $('#at-discard').addEventListener('click', () => confirmThen('Discard the autotune results? The current gains stay.', () => decideAutotune('discard')));
+
     $('#lib-refresh').addEventListener('click', requestLibrary);
     $('#lib-save').addEventListener('click', () => {
       const res = editorProfile();
@@ -1549,6 +1670,10 @@
     const frame = () => { if (S.dirty && !document.hidden) render(); requestAnimationFrame(frame); };
     requestAnimationFrame(frame);
     setInterval(() => { if (!document.hidden) { renderClock(); if (S.tab !== 'live') S.dirty = true; } }, 1000);
+    setInterval(() => {
+      const every = A.pollMs(S.at);
+      if (S.info.controls && S.link === 'open' && every && Date.now() - S.atAskedAt >= every) askAutotune();
+    }, 1000);
   }
 
   async function start() {

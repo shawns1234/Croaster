@@ -74,6 +74,31 @@ ControlSettings defaults() {
     return d;
 }
 ControlPlugin plugin(controller);
+#include <app/AutotunePlugin.h>
+AutotunePlugin autotuner(controller, plugin); // autotune report, apply and discard (docs/autotune)
+static_assert(CPID_AUTOTUNE_RULE_ZN_PI == static_cast<int>(autotune::Rule::ZieglerNicholsPi) &&
+                  CPID_AUTOTUNE_RULE_TL_PI == static_cast<int>(autotune::Rule::TyreusLuybenPi) &&
+                  CPID_AUTOTUNE_RULE_TL_PID == static_cast<int>(autotune::Rule::TyreusLuybenPid) &&
+                  CPID_AUTOTUNE_RULE_SIMC_PI == static_cast<int>(autotune::Rule::SimcPi),
+              "config.h: CPID_AUTOTUNE_RULE_* values must match autotune::Rule");
+autotune::Config autotuneConfig() {
+    autotune::Config c;
+    const float pts[] = {CPID_AUTOTUNE_POINT1_C, CPID_AUTOTUNE_POINT2_C, CPID_AUTOTUNE_POINT3_C,
+                         CPID_AUTOTUNE_POINT4_C};
+    for (int i = 0; i < autotune::kMaxPoints; i++)
+        c.pointsC[i] = pts[i];
+    c.pointCount = autotune::kMaxPoints; // zeros are dropped by makePlan
+    c.relayStep = CPID_AUTOTUNE_RELAY_STEP;
+    c.hysteresisC = CPID_AUTOTUNE_HYSTERESIS_C;
+    c.minCycles = CPID_AUTOTUNE_MIN_CYCLES;
+    c.maxCycles = CPID_AUTOTUNE_MAX_CYCLES;
+    c.maxCv = CPID_AUTOTUNE_MAX_CV_PCT / 100.0f;
+    c.maxOvershootC = CPID_AUTOTUNE_OVERSHOOT_C;
+    c.abortAboveC = CPID_OVER_TEMP_C;
+    c.totalTimeoutS = CPID_AUTOTUNE_TIME_LIMIT_MIN * 60.0f;
+    c.rule = static_cast<autotune::Rule>(CPID_AUTOTUNE_RULE);
+    return c;
+}
 #include <app/RecipePlugin.h>
 RecipePlugin recipes(controller, plugin); // recipe steps run on the board (core/recipe.h)
 #if CPID_ENABLE_LIBRARY
@@ -97,7 +122,7 @@ WebUiServer webUi(webUiOptions()); // starts once WiFi is up (see WebUiServer::l
 // Header line for the SSD1306, at most 20 characters: "H50 Fan60 PID" or "TRIP overtemp Fan100".
 // "Fan" is spelled out so it can't be read as a Fahrenheit temperature. For
 // 10 s after the autotune status changes (including a refused start), the
-// header shows it instead ("AT: SV<212F"); a trip still takes precedence.
+// header shows it instead ("AT results ready"); a trip still takes precedence.
 constexpr uint32_t kAutotuneNoticeMs = 10000;
 String statusLine(const Snapshot& s) {
     static uint32_t seenSeq = 0, noticeSinceMs = 0;
@@ -105,7 +130,9 @@ String statusLine(const Snapshot& s) {
         seenSeq = s.autotuneStatusSeq;
         noticeSinceMs = millis();
     }
-    const bool notice = seenSeq != 0 && millis() - noticeSinceMs < kAutotuneNoticeMs;
+    // While autotune runs the header shows its step instead ("AT2/3 cyc3/6 350F").
+    const bool notice =
+        (seenSeq != 0 && millis() - noticeSinceMs < kAutotuneNoticeMs) || s.mode == Mode::Autotune;
     char line[24];
     if (s.trip != SafetyTrip::None) {
         snprintf(line, sizeof line, "TRIP %s Fan%.0f", tripName(s.trip), s.fanPct);
@@ -143,9 +170,11 @@ void setup() {
     fan.begin();
     probes.begin();
     const ControlSettings settings = ConfigStore::load(defaults()); // NVS is ready from here on
+    controller.configureAutotune(autotuneConfig());
     controller.begin(settings.gains, settings.gainsTuned, settings.pidInput, settings.cooldownFan.trip,
                      CPID_CONTROL_CORE, configMAX_PRIORITIES - 3);
     plugin.attach(app, settings);
+    autotuner.attach(app);
     recipes.attach(app);
 #if CPID_ENABLE_LIBRARY
     library.begin(); // mounts LittleFS; the outputs are already safe
@@ -173,6 +202,7 @@ void setup() {
 void loop() {
     app.loop();
     plugin.loop();
+    autotuner.loop();
     recipes.loop();
 #if CMON_ENABLE_WEBUI
     webUi.loop();

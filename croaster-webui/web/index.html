@@ -77,7 +77,7 @@
         <div class="chart-head">
           <div class="legend">
             <span class="key bt">BT</span><span class="key et">ET</span><span class="key ror">RoR</span>
-            <span class="key ror-et" id="key-ror-et">ET RoR</span><span class="key sv" data-field="SV">SV</span>
+            <span class="key ror-et" id="key-ror-et">ET RoR</span><span class="key sv" data-field="SV">SV</span><span class="key at" data-field="atTarget">Test point</span>
             <span class="key heat" data-field="BurnerVal">Heater</span><span class="key fan" data-field="FanVal">Fan</span>
           </div>
           <label class="toggle" title="Least-squares slope of BT over the last 30 s, times 60">
@@ -175,9 +175,7 @@
           <div class="row-buttons">
             <button type="button" class="stop-inline" data-cmd='{"command":"stop"}' data-confirm="Turn the heater off? The board switches to Manual and sets the fan to the cooldown speed. A recording in this page keeps running until STOP.">Heater off</button>
             <button type="button" data-cmd='{"command":"clearTrip"}'>Clear trip</button>
-            <button type="button" data-cmd='{"command":"autotune"}'>Autotune</button>
           </div>
-          <p class="small">Autotune: <span class="num" id="autotune-status">—</span></p>
           <form class="field wide" data-send="cooldownFan">
             <span>Cooldown fan %</span>
             <label>after stop <input type="number" name="stop" min="0" max="100" step="1" required></label>
@@ -190,6 +188,33 @@
             <label>timeout s <input type="number" name="timeout" min="2" max="600" step="1" required></label>
             <button type="submit">Save</button>
           </form>
+        </div>
+
+        <div class="card span2" id="autotune">
+          <h2>Autotune</h2>
+          <p class="muted small" id="at-plan">Measures how the roaster responds at a few test temperatures and calculates PID gains from it.</p>
+          <div class="row-buttons">
+            <button type="button" id="at-start">Start autotune</button>
+            <button type="button" id="at-stop" class="stop-inline" hidden data-cmd='{"command":"stop"}' data-confirm="Stop autotune? The heater turns off, the board switches to Manual and sets the fan to the cooldown speed. The gains are not changed.">Stop autotune</button>
+          </div>
+          <p class="small">Status: <span class="num" id="autotune-status">—</span> <span class="err-text" id="at-error"></span></p>
+          <div id="at-run" hidden>
+            <progress id="at-progress" max="1" value="0"></progress>
+            <p class="small" id="at-progress-text"></p>
+            <ol class="at-steps" id="at-steps"></ol>
+          </div>
+          <div id="at-results" hidden>
+            <table class="at-table" id="at-table">
+              <thead><tr><th>Test point</th><th>Result</th><th>Cycles</th><th>Swing</th><th>Period</th><th>Ku</th><th>Kp</th><th>Ki</th><th>Kd</th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <p class="small" id="at-recommended"></p>
+            <div class="row-buttons" id="at-choice">
+              <button type="button" id="at-review">Review and save…</button>
+              <button type="button" class="ghost" id="at-discard">Discard</button>
+            </div>
+          </div>
+          <details id="at-log-box" open><summary>Log</summary><ol class="at-log" id="at-log"></ol></details>
         </div>
 
         <div class="card span2">
@@ -308,6 +333,26 @@
   </form>
 </dialog>
 
+<dialog id="at-dialog" aria-labelledby="at-dialog-title">
+  <form method="dialog">
+    <h2 id="at-dialog-title">Autotune results</h2>
+    <p class="small" id="at-dialog-summary"></p>
+    <table class="at-table" id="at-dialog-points">
+      <thead><tr><th>Test point</th><th>Result</th><th>Kp</th><th>Ki</th><th>Kd</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <table class="at-table" id="at-dialog-gains">
+      <thead><tr><th></th><th>Current</th><th>New</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="muted small">Save applies the new gains and stores them on the board. Cancel keeps the current gains and discards these results.</p>
+    <div class="row-buttons">
+      <button value="cancel" class="ghost">Cancel</button>
+      <button value="save" autofocus>Save</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="appearance" class="sheet" aria-labelledby="appearance-title">
   <div class="sheet-head">
     <h2 id="appearance-title">Appearance</h2>
@@ -347,6 +392,7 @@
 
 <script src="roast.js"></script>
 <script src="library.js"></script>
+<script src="autotune.js"></script>
 <script src="link.js"></script>
 <script src="app.js"></script>
 </body>

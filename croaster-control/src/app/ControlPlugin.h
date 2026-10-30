@@ -49,6 +49,11 @@ public:
     void onData(std::function<void(JsonObject&)> fn) {
         dataWriter_ = fn;
     }
+    // Asked before {"command":"autotune"} starts a run; a non-null error code
+    // refuses it (reply {"ok":false,"error":code}). The recipe runner uses it.
+    void onAutotuneStart(std::function<const char*()> fn) {
+        autotuneGuard_ = fn;
+    }
 
 private:
     String handleNested(const JsonObject& json, const char* key);
@@ -67,4 +72,5 @@ private:
     float correctionBtC_ = 0, correctionEtC_ = 0;
     std::function<void()> stopListener_;
     std::function<void(JsonObject&)> dataWriter_;
+    std::function<const char*()> autotuneGuard_;
 };

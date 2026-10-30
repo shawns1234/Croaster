@@ -92,4 +92,25 @@ static_assert(CPID_MAINS_GRACE_MS >= 0 && CPID_MAINS_GRACE_MS <= 10000,
               "CPID_MAINS_GRACE_MS: 0..10000 (heat continues this long after the zero-cross is lost)");
 static_assert(CPID_WATCHDOG_TIMEOUT_S >= 2 && CPID_WATCHDOG_TIMEOUT_S <= 600,
               "CPID_WATCHDOG_TIMEOUT_S: 2..600 (WatchdogSettings limits)");
+constexpr bool autotunePointOk(float c) {
+    return c == 0 || (c >= 100 && c <= CPID_MAX_SETPOINT_C &&
+                      c < CPID_OVER_TEMP_C - 5 - CPID_AUTOTUNE_OVERSHOOT_C);
+}
+static_assert(autotunePointOk(CPID_AUTOTUNE_POINT1_C) && autotunePointOk(CPID_AUTOTUNE_POINT2_C) &&
+                  autotunePointOk(CPID_AUTOTUNE_POINT3_C) && autotunePointOk(CPID_AUTOTUNE_POINT4_C),
+              "config.h: CPID_AUTOTUNE_POINT*_C must be 0 or 100..CPID_MAX_SETPOINT_C and below "
+              "CPID_OVER_TEMP_C - 5 - CPID_AUTOTUNE_OVERSHOOT_C");
+static_assert(CPID_AUTOTUNE_POINT1_C > 0, "config.h: CPID_AUTOTUNE_POINT1_C must be set");
+static_assert(CPID_AUTOTUNE_RELAY_STEP >= 10 && CPID_AUTOTUNE_RELAY_STEP <= 50, "CPID_AUTOTUNE_RELAY_STEP: 10..50");
+static_assert(CPID_AUTOTUNE_HYSTERESIS_C >= 0.25f && CPID_AUTOTUNE_HYSTERESIS_C <= 5,
+              "CPID_AUTOTUNE_HYSTERESIS_C: 0.25..5");
+static_assert(CPID_AUTOTUNE_MIN_CYCLES >= 2 && CPID_AUTOTUNE_MIN_CYCLES <= CPID_AUTOTUNE_MAX_CYCLES &&
+                  CPID_AUTOTUNE_MAX_CYCLES <= 12,
+              "CPID_AUTOTUNE_MIN_CYCLES: 2..MAX_CYCLES, CPID_AUTOTUNE_MAX_CYCLES: up to 12");
+static_assert(CPID_AUTOTUNE_MAX_CV_PCT >= 2 && CPID_AUTOTUNE_MAX_CV_PCT <= 30, "CPID_AUTOTUNE_MAX_CV_PCT: 2..30");
+static_assert(CPID_AUTOTUNE_OVERSHOOT_C >= 10 && CPID_AUTOTUNE_OVERSHOOT_C <= 50, "CPID_AUTOTUNE_OVERSHOOT_C: 10..50");
+static_assert(CPID_AUTOTUNE_TIME_LIMIT_MIN >= 20 && CPID_AUTOTUNE_TIME_LIMIT_MIN <= 180,
+              "CPID_AUTOTUNE_TIME_LIMIT_MIN: 20..180");
+static_assert(CPID_AUTOTUNE_RULE >= CPID_AUTOTUNE_RULE_ZN_PI && CPID_AUTOTUNE_RULE <= CPID_AUTOTUNE_RULE_SIMC_PI,
+              "CPID_AUTOTUNE_RULE: one of CPID_AUTOTUNE_RULE_*");
 } // namespace configcheck

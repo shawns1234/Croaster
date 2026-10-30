@@ -23,6 +23,7 @@
 // Basic:
 //   {"command":"startProfile"} {"command":"stop"} {"command":"autotune"}
 //   {"command":"clearTrip"}    {"command":"getControl"}
+// Autotune results and apply/discard: autotune_protocol.h.
 // Several keys may be combined in one nested object.
 //
 // yaeger compatibility (same wire format as yaeger's CommandLoop.cpp, so its web

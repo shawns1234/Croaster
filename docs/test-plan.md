@@ -133,8 +133,8 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Autotune on BT on the real heater → gains that hold a BT setpoint. **untested** (needs BT probe and AC)
 
 ## Autotune entry, exit and gates
-- Autotune with SV below 212 °F → refused, mode stays Manual. **bench 2026-10-26**
-- Autotune with SV at or above 212 °F → mode Tuning, BurnerVal 100. **bench 2026-10-26**
+- Autotune with SV below 212 °F → refused, mode stays Manual. **bench 2026-10-26**; superseded by D29: autotune needs no setpoint
+- Autotune with SV at or above 212 °F → mode Tuning, BurnerVal 100. **bench 2026-10-26**; D29: any SV, mode Tuning, BurnerVal 100 while heating to the first point
 - Autotune with fan below 30 % → fan set to 60 %, autotune keeps running (the start rule is not a fan change). **host** (`test_output_command_stops_autotune`: only commands count); bench untested
 - Relay identifies a simulated roaster and the gains hold its setpoint. **host** `test_relay_autotune_identifies_and_controls`
 - Autotune → PID or Manual → starts from 0 %, not the relay's 100 % (fix in 067e316). **host** `test_leaving_autotune_starts_from_zero`; bench todo
@@ -144,13 +144,44 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 - Autotune with no probe on the PID input → "need a valid probe", OLED "AT: no probe". **untested**
 - Trip during autotune → `autotune` "aborted: <trip>"; OLED keeps the TRIP line. **untested**
 - Autotune fails → "failed: <reason>"; OLED "AT fail: ..." within 20 characters. **host** (text); bench untested
-- Autotune with no heat (no AC) → fails "timeout" after 30 min, heater 0. **untested**
-- Autotune completes on the real heater → new gains saved to NVS, Manual, heater 0, fan 30 %. **untested** (needs AC)
+- Autotune with no heat (no AC) → fails "no heat-up" after 180 s (D29), heater 0. **host** `test_at_abort_no_heat_up`; bench untested
+- Autotune completes on the real heater → Manual, heater 0, cooldown fan, results pending; gains saved to NVS only after Save (D29). **untested** (needs AC)
 - `{"command":{"pidInput":"ET"}}` during autotune on BT → `autotune` "aborted: input changed", OLED "AT abort: input", heater 0 (D23). **host** (`test_pv_step_stops_autotune_and_resets_pid`, text in `test_autotune_status_text`); bench untested
 - `{"command":{"fan":80}}` during autotune at fan 60 % → `autotune` "aborted: fan changed", OLED "AT abort: fan", heater 0, fan 80 %; `{"command":{"fan":60}}` at 60 % → keeps running (D23). **host** `test_output_command_stops_autotune`, text in `test_autotune_status_text`; bench todo (no AC needed: heater 100 on the relay is enough to see it drop to 0)
 - `{"command":{"burner":50}}` or an Artisan heater button during autotune → "aborted: heater changed", OLED "AT abort: heater", heater stays 0, Manual (D23). **host** `test_output_command_stops_autotune`; bench todo
 - `pidInput` change in PID → heater output continues without a jump; the same input again → nothing happens (D23). **host** `test_pv_step_stops_autotune_and_resets_pid`; bench untested
-- Autotune on the real heater → note the swing around SV and the time taken; compare with the README (simulated ±10 to ±45 °C, 4 to 14 min). **untested** (needs AC)
+- Autotune on the real heater → note the swing around SV and the time taken; compare with the README (simulated ±10 to ±45 °C, 4 to 14 min). **untested** (needs AC); superseded by "Multi-point autotune" below
+
+## Multi-point autotune (D29, T57)
+Process and limits: `docs/autotune/process.md`.
+
+- Three-point run on a simulated nonlinear drum → all points `ok`, recommendation holds a step, a 6 °C/min ramp and a hold (overshoot < 4 °C, ramp error < 5 °C, hold < 1 °C). **host** `test_at_multi_point_run`
+- Relay reads Ku within 30 % (and below) and Tu within 15 % of a FOPDT plant's analytic values. **host** `test_at_fopdt_ultimate_point`
+- Sensor fault, over temperature, overshoot, no heat-up, no oscillation, time limit, abort command → heater 0 from that step. **host** (`test_at_abort_*`)
+- Start above the first point + 30 °C → `failed: too hot to start`; empty plan → `failed: no test points`. **host**
+- `recipeStart` during autotune → `autotuneRunning`; `autotune` during a running recipe → `recipeRunning`; the page shows the message under Recipe and under Autotune. **untested**
+- Page: Start autotune → confirm with the points and minutes, nothing sent on Cancel; Stop autotune asks first and sends `stop`. **host** (`web_check.test.js`); bench untested
+- Page: step list, progress bar and log advance with the board; OLED shows `AT2/3 cyc3/6 350F` style lines. **untested**
+- Page: results dialog shows per-point results and current vs new gains; Save → `getControl` gains change and survive a reboot, `tuned` true; Cancel → gains unchanged, `autotune` "discarded"; Escape → results stay, Review and save… reopens; reload with results pending → dialog again. **untested**
+- Reboot with results pending → results gone, gains unchanged. **untested**
+
+Bench run on the Behmor 2000AB (needs AC; about 45 to 65 min):
+
+1. Empty drum, chaff tray in, drum turning. Roaster at room temperature.
+2. Board on its supply, BT probe reading, `getControl` `pidInput` BT. Fan
+   to the usual roast speed (a fan change during the run aborts it).
+3. Page > Controls > Autotune > Start autotune > OK. Start a recording in
+   Live to chart BT against the dashed test-point line.
+4. Check: heater 100 % until about 15 °C under 300 °F; then the heater
+   switches between two levels and BT cycles a few degrees around 300 °F;
+   the log adds one line per cycle (swing, period). Note each point's swing,
+   period and time.
+5. Check the stops once on a separate run: STOP during heating → heater 0
+   within 1 s, Manual, cooldown fan, `aborted: stop`.
+6. At the end: Save. Then PID mode at 350 °F and a short ramp profile; note
+   overshoot and lag. Compare with `docs/autotune/tuning-rules.md`.
+7. Record: total time, per-point Ku/Tu/bias, the recommended gains, and any
+   Behmor thermal cutoff or error code during the run.
 
 ## Autotune required (D24)
 - `CPID_REQUIRE_AUTOTUNE 1`, erased flash (`pio run -t erase`, then upload) → `getControl` `tuned` false; `{"command":{"mode":"pid"}}` → mode stays Manual, `autotune` "autotune required", OLED "Autotune first" for 10 s. **host** (gate and text, `test_autotune_required_gate`); bench todo

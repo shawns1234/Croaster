@@ -32,6 +32,8 @@ void RecipePlugin::attach(CroasterApp& app) {
     c.onCommand("roastEvent", [this](const JsonObject& json) { return event(json); });
     c.onCommand("recipeLoad", [this](const JsonObject& json) { return loadCommand(json); });
     c.onCommand("recipeStart", [this](const JsonObject&) {
+        if (controller_.snapshot().mode == Mode::Autotune) // T57: autotune and a recipe never run together
+            return simple("recipeStart", false, "autotuneRunning");
         const char* why = runner_.state() == recipe::State::Empty ? "empty" : "running";
         const bool ok = runner_.start();
         return simple("recipeStart", ok, why);
@@ -57,6 +59,7 @@ void RecipePlugin::attach(CroasterApp& app) {
     });
     c.onCommand("getRecipe", [this](const JsonObject&) { return status(); });
     control_.onStop([this]() { runner_.abort("stop"); });
+    control_.onAutotuneStart([this]() -> const char* { return running() ? "recipeRunning" : nullptr; });
     control_.onData([this](JsonObject& data) { writeData(data); });
 }
 

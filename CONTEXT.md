@@ -17,9 +17,9 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
 | `boards/esp32s3/` | ES3C28P 2.8" ILI9341 LCD — LVGL 9 UI + FT6336G touch (`src/ui/`) |
 | `boards/esp32s3-pid/` | Croaster PID **control** board (Lonely Binary S3 N16R8): SSR heater, AC-dimmer/PWM fan (always both), 2× MAX31855, OLED; master `src/config.h` + `ConfigCheck.h`; Artisan `.aset` in `artisan/` |
 | `boards/esp32s3-monitor/` | Croaster monitor (same S3 N16R8 hardware, D26): 2× MAX31855 or MAX6675 + OLED, no heater, fan or control task; `src/config.h` (`CMON_` only) + `ConfigCheck.h` |
-| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, relay autotune, profiles, profile library format, recipe runner, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `LibraryPlugin` + `library_storage` (profile library on LittleFS), `RecipePlugin` (recipe commands and tick), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
+| `croaster-control/` | Control add-on lib `CroasterControl` (D1). `src/core/`: pure logic (PID, multi-point autotune `autotune_sequence` + `autotune_protocol` and the older single-point relay, profiles, profile library format, recipe runner, MAX31855/MAX6675 decode, command protocol, safety rules), host tests in `boards/esp32s3-pid/test` (`pio test -e native`). `src/hw/`: ESP32 drivers (thermocouple SPI, SSR, dimmer/PWM fan) and `esp32s3_opi_pins.h` (ESP32-S3 octal-PSRAM pin rules both boards' `ConfigCheck.h` use). `src/app/`: control task, NVS settings, `ControlPlugin` (hooks into `CroasterApp`), `LibraryPlugin` + `library_storage` (profile library on LittleFS), `RecipePlugin` (recipe commands and tick), `AutotunePlugin` (`getAutotune`, apply/discard), `RoasterProbe` (Croaster PID) and `MonitorProbes` (Croaster monitor). `build_filter.py` limits native builds to `src/core` |
 | `croaster-webui/` | Browser UI lib `CroasterWebUi` (D27): `web/` page sources (`theme.js` colour schemes, T50), `embed_assets.py` (library extra script, gzips `web/` into the committed `src/webui_assets.h`), `src/WebUiServer` (ESP-IDF `esp_http_server` on `CMON_WEBUI_PORT`), host tests in `test/` (node + python) |
-| `docs/` | `design.md` (architecture + decisions D1–D28), `research/autotune.md` (relay autotune sources), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
+| `docs/` | `design.md` (architecture + decisions D1–D29), `autotune/` (multi-point autotune: goal, process, implementation, tuning rules), `research/autotune.md` (single-point relay sources, superseded), `tickets.md` (remaining work), `test-plan.md` (functional tests: host, bench or untested), `analysis.md` (yaeger + Croaster review), `how.md` (walkthrough), `architecture.md` (shape + open decisions), `control-parity.md` (yaeger vs ours), `artisan-settings.md` (every `.aset` setting with source) |
 | `tools/` | Build helpers: `force_include_deps.py` (pre: extra script; force-included `config.h` as a rebuild dependency, T47) |
 | `builds/` | gitignored firmware output of `./build_all.sh` |
 
@@ -59,10 +59,18 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   `Target`, `pidKp/Ki/Kd`, `wifiStrength`.
 - Autotune status (D17): the controller records an `AutotuneStatus` and reason
   in the snapshot; `core/autotune_status.h` turns it into text in the
-  display unit. Data and `getControl` carry `autotune` ("running", "done",
-  "failed: timeout", "aborted: comms", "need setpoint >= 212 F"); it holds
-  until the next change. The OLED header shows a 20-character form ("AT:
-  SV<212F") for 10 s after each change, refusals included; a trip line wins.
+  display unit. Data and `getControl` carry `autotune` ("running: cycle 3/6
+  at 350 F (2/3)", "results ready", "failed: no heat-up", "aborted: comms");
+  it holds until the next change. The OLED header shows a 20-character form
+  ("AT2/3 cyc3/6 350F") while running and for 10 s after each change; a trip
+  line wins.
+- Autotune (D29, `docs/autotune/`): no setpoint; runs the
+  `CPID_AUTOTUNE_POINT*_C` test points (300/350/400 °F), relay with bias
+  correction, cycles until they agree, ZN PI gains (most cautious over the
+  points). Results wait until `{"command":{"autotune":"apply"}}` (NVS) or
+  `"discard"`; `getAutotune` returns plan, progress, results and log; data
+  adds `atTarget`. Refused while a recipe runs (`recipeRunning`), and
+  `recipeStart` is refused during autotune (`autotuneRunning`).
 - PID input defaults to BT (D18, `CPID_PID_INPUT`); `pidInput` command and
   NVS key `in` still switch it, and a saved value overrides the default.
   Without a BT probe, PID mode trips `sensor`: send `pidInput` ET. Default
@@ -81,7 +89,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   112/113 for Heater/Fan/SV, Artisan's own PID buttons off. Extra curve 1 is
   the odd input (3, 5), curve 2 the even one (4, 6).
 - Leaving Autotune by any command starts the next mode with the heater at 0;
-  a setpoint change during Autotune aborts it. `Amb` is the cold-junction
+  a setpoint change during Autotune aborts it (the test points do not use the
+  setpoint). `Amb` is the cold-junction
   temperature of whichever MAX31855 answers (BT first).
 - Browser UI (D27, 2026-10-29): `WebUiServer` (both boards,
   `CMON_ENABLE_WEBUI`) serves `http://<ip>/` once STA is connected and the

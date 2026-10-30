@@ -15,7 +15,7 @@
 #include "core/mains_watch.h"
 #include "core/pid.h"
 #include "core/probe_correction.h"
-#include "core/relay_autotune.h"
+#include "core/autotune_sequence.h"
 #include "core/roast_profile.h"
 #include "hw/fan_output.h"
 #include "hw/heater_output.h"
@@ -49,6 +49,14 @@ public:
     Snapshot snapshot() const;
     // Copies a parsed profile in; takes effect on StartProfile. Network task only.
     bool loadProfile(const RoastProfile& p);
+    // Autotune test points and limits (docs/autotune). Call before begin(); the
+    // points are clamped to this controller's limits (autotune::makePlan).
+    void configureAutotune(const autotune::Config& c);
+    const autotune::Config& autotunePlan() const {
+        return atCfg_; // fixed after configureAutotune()
+    }
+    // Thread-safe copy of the last autotune run's results and log.
+    void autotuneReport(autotune::Report& out) const;
 
     static constexpr uint32_t kTickMs = 10;       // SSR timing resolution
     static constexpr uint32_t kControlEvery = 25; // => 250 ms sensor/PID period
@@ -76,7 +84,11 @@ private:
     FanOutput& fan_;
     SafetyLimits lim_;
     Pid pid_;
-    RelayAutotune autotune_;
+    autotune::Sequence autotune_;
+    autotune::Config atCfg_;
+    autotune::Report atReport_; // published copy, under mux_
+    autotune::Report scratchReport_; // control task; filled outside the critical section
+    uint32_t atReportSeq_ = 0;
     RoastProfile profile_, pendingProfile_;
     volatile bool profilePending_ = false;
     QueueHandle_t queue_ = nullptr;

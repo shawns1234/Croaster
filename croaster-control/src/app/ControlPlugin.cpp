@@ -131,6 +131,13 @@ String ControlPlugin::handleBasic(const char* name) {
             stop();
             if (stopListener_)
                 stopListener_();
+        } else if (const char* why = c.kind == Command::Kind::StartAutotune && autotuneGuard_ ? autotuneGuard_()
+                                                                                            : nullptr) {
+            JsonDocument doc;
+            JsonObject r = beginReply(doc, name);
+            r["ok"] = false;
+            r["error"] = why;
+            return finishReply(doc);
         } else {
             controller_.submit(c);
         }

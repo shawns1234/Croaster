@@ -1358,6 +1358,8 @@ void test_library_recipe_profiles() {
     TEST_ASSERT_EQUAL(2, sched.size());
 }
 
+void runAutotuneTests();
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_moving_average_seeds_with_first_sample);
@@ -1415,5 +1417,6 @@ int main() {
     RUN_TEST(test_recipe_setpoint_ramp_and_mixing);
     RUN_TEST(test_recipe_guided_and_aborts);
     RUN_TEST(test_library_recipe_profiles);
+    runAutotuneTests(); // test_autotune.cpp
     return UNITY_END();
 }

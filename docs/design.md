@@ -1413,6 +1413,50 @@ Decisions (Shawn approved 1 to 3 on 2026-10-29):
   (+13 141, budget 100 KB). Monitor: RAM +0, flash +13 204 (page only).
   Mount time is logged at boot (`# Library: LittleFS on "spiffs" in N ms`).
 
+### D29. Multi-point autotune — resolved 2026-10-29 (Shawn)
+The relay autotune (D17, D23, `RelayAutotune`) oscillated around the user's
+setpoint (at least 212 °F), switched the heater 100/0 % with no bias
+correction, averaged 4 cycles with no convergence check, applied
+Tyreus–Luyben PID gains and saved them on completion. The page showed only
+"running". Shawn asked for a one-click run that picks its own temperatures,
+measures at several of them, shows which step it is on, and documents the
+method.
+
+- **One command, no setpoint.** `{"command":"autotune"}` runs the
+  `CPID_AUTOTUNE_POINT*_C` test points (default 300/350/400 °F), clamped to
+  the setpoint and over-temperature limits. The 212 °F setpoint gate is gone
+  (`NeedSetpoint` stays in the enum, no longer raised).
+- **Per point:** heat at full request, relay with Marlin's bias correction to
+  settle, then cycles until the last 3 agree (CV < 10 %, at most 6); Ku, Tu,
+  a FOPDT model and gains. Recommended set: lowest Kp, longest Ti, median Td
+  over the points marked ok.
+- **Rule:** Ziegler–Nichols PI by default (`CPID_AUTOTUNE_RULE`), chosen in
+  simulation for ramp tracking with low heater noise; Tyreus–Luyben PI as the
+  cautious alternative. No gain scheduling: −8 % IAE in simulation did not
+  justify a second control path; per-point gains are reported.
+- **Nothing applied until accepted.** Results wait on the board (RAM) until
+  `{"command":{"autotune":"apply"}}` (gains to NVS, tuned) or `"discard"`.
+  The page opens a results dialog (current vs new gains, Save/Cancel), again
+  after a reload while results wait.
+- **Safety:** heater 0 on sensor fault, over temperature (below the board's
+  own trip), overshoot, no heat-up, no oscillation, a total time limit, STOP,
+  trips and the D23 abort commands. A finished run ends in Manual with the
+  stop cooldown fan.
+- **Progress:** phase, point, cycle and time left in the snapshot every
+  control step; status text and OLED show them; `getAutotune` returns the
+  full report and a 24-line log; data carries `atTarget`.
+- **Recipes:** autotune and a running recipe exclude each other
+  (`recipeRunning`, `autotuneRunning`).
+
+Docs: `docs/autotune/` (goal, process, implementation, tuning rules).
+New names, for Shawn to confirm: `autotune::Sequence` and its types,
+`autotuneproto`, `AutotunePlugin`, `Controller::configureAutotune`,
+`autotunePlan`, `autotuneReport`, `ControlPlugin::onAutotuneStart`,
+`AutotuneStatus::Pending`/`Discarded`, `Command::Kind::ApplyAutotune`/
+`DiscardAutotune`, `Snapshot::autotuneProgress`/`autotunePending`,
+`CPID_AUTOTUNE_*`, `getAutotune`, `{"autotune":"apply"|"discard"}`,
+`atTarget`, `recipeRunning`, `autotuneRunning`.
+
 ## Build platform and sdkconfig
 - Default: `platformio/espressif32 @ 8.0.0` (Arduino-ESP32 3.3.12, IDF 5.5).
   Arduino builds ignore `board_build.sdkconfig_path`; stock libs already have
@@ -1452,4 +1496,5 @@ See `boards/esp32s3-pid/README.md` (pins, power, probe isolation, IPEX).
 ## Related docs
 `how.md` (walkthrough), `architecture.md` (shape, red flags, open questions),
 `control-parity.md` (yaeger vs ours, item by item), `artisan-settings.md`
-(every `.aset` setting with its source).
+(every `.aset` setting with its source), `autotune/` (multi-point autotune,
+D29).

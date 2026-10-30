@@ -170,6 +170,8 @@ void writeDataFields(const Snapshot& s, char unit, JsonObject d) {
     char at[48];
     autotunetext::full(s, unit, at, sizeof at);
     d["autotune"] = at;
+    if (s.mode == Mode::Autotune) // the relay's target, for the chart overlay
+        putNum(d["atTarget"], fromCelsius(s.autotuneProgress.targetC, unit));
     d["pidKp"] = s.gains.kp;
     d["pidKi"] = s.gains.ki;
     d["pidKd"] = s.gains.kd;

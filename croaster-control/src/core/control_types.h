@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 
+#include "autotune_sequence.h"
 #include "pid.h"
 
 enum class Mode : uint8_t { Manual, Pid, Autotune, Profile };
@@ -60,20 +61,22 @@ inline float fromCelsius(float c, char unit) {
     return unit == 'F' ? c * 9.0f / 5.0f + 32.0f : (unit == 'K' ? c + 273.15f : c);
 }
 
-// Autotune refuses to start below this setpoint (100 C / 212 F). This rule is
-// ours: yaeger's autotune has no setpoint gate.
+// Lowest autotune test point (100 C / 212 F); autotune::makePlan clamps to it.
+// Before T57 autotune refused to start below this setpoint (NeedSetpoint).
 constexpr float kAutotuneMinSetpointC = 100;
 
 // Last autotune outcome, kept until the next one. Text: autotune_status.h.
 enum class AutotuneStatus : uint8_t {
     Idle, // no autotune since boot
     Running,
-    Done,         // new gains in use and saved
-    Failed,       // autotuneReason: RelayAutotune::failure()
+    Done,         // new gains in use and saved (ApplyAutotune)
+    Failed,       // autotuneReason: autotune::Sequence::failure()
     Aborted,      // left by a command or a trip; autotuneReason may say why
-    NeedSetpoint, // refused: setpoint below kAutotuneMinSetpointC
+    NeedSetpoint, // refused: setpoint below kAutotuneMinSetpointC (before T57; no longer raised)
     NeedProbe,    // refused: PID input probe unreadable
     Required,     // PID or Profile refused: no tuned gains yet (modeNeedsTuning)
+    Pending,      // finished; results held until ApplyAutotune or DiscardAutotune
+    Discarded,    // results dropped, gains unchanged
 };
 
 struct Command {
@@ -92,6 +95,8 @@ struct Command {
         Trip,         // a = (float)SafetyTrip; raised by the network side (comms, OTA)
         ClearTrip,
         SetCorrection, // a, b = BT, ET correction offsets, C differences (CroasterCore::correctionBtCelsius)
+        ApplyAutotune,   // pending autotune gains -> in use; autotuneSeq++ saves them
+        DiscardAutotune, // drop pending autotune results
     };
     Kind kind;
     float a = 0, b = 0, c = 0;
@@ -125,6 +130,8 @@ struct Snapshot {
     AutotuneStatus autotune = AutotuneStatus::Idle;
     const char* autotuneReason = ""; // string literal; "" when there is none
     uint32_t autotuneStatusSeq = 0;  // increments on every autotune status update
+    autotune::Progress autotuneProgress; // phase, point, cycle; valid while autotune runs
+    bool autotunePending = false;        // results waiting for apply or discard
     uint32_t uptimeMs = 0;
 };
 

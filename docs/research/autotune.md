@@ -1,5 +1,8 @@
 # Relay autotune: how it works, and how ours compares
 
+> Superseded 2026-10-29 by the multi-point autotune (D29): see
+> `docs/autotune/`. Kept for the sources and the single-point analysis.
+
 Researched 2026-10-26 for the Croaster PID board's `{"command":"autotune"}`. Code:
 `croaster-control/src/core/relay_autotune.{h,cpp}`. Simulation numbers are
 from a first-order-plus-dead-time (FOPDT) plant like the one in the host test

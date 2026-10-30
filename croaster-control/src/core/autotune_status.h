@@ -10,14 +10,40 @@
 
 namespace autotunetext {
 
-// Telemetry and getControl: "idle", "running", "done", "failed: timeout",
-// "aborted", "aborted: setpoint changed", "need setpoint >= 212 F",
+// Telemetry and getControl: "idle", "running: heating to 350 F (2/3)",
+// "running: cycle 3/6 at 350 F (2/3)", "results ready", "done", "discarded",
+// "failed: no oscillation", "aborted", "aborted: setpoint changed",
 // "need a valid probe", "autotune required".
 inline void full(const Snapshot& s, char unit, char* out, size_t n) {
     const char* r = s.autotuneReason;
+    const autotune::Progress& p = s.autotuneProgress;
+    const float t = fromCelsius(p.targetC, unit);
+    const int i = p.point + 1, k = p.pointCount;
     switch (s.autotune) {
     case AutotuneStatus::Running:
-        snprintf(out, n, "running");
+        switch (p.phase) {
+        case autotune::Phase::Heating:
+            snprintf(out, n, "running: heating to %.0f %c (%d/%d)", t, unit, i, k);
+            break;
+        case autotune::Phase::Settling:
+            snprintf(out, n, "running: settling %d/%d at %.0f %c (%d/%d)", p.cycle, p.cycleOf, t, unit, i, k);
+            break;
+        case autotune::Phase::Oscillating:
+            snprintf(out, n, "running: cycle %d/%d at %.0f %c (%d/%d)", p.cycle, p.cycleOf, t, unit, i, k);
+            break;
+        case autotune::Phase::Computing:
+            snprintf(out, n, "running: computing (%d/%d)", i, k);
+            break;
+        default:
+            snprintf(out, n, "running");
+            break;
+        }
+        break;
+    case AutotuneStatus::Pending:
+        snprintf(out, n, "results ready");
+        break;
+    case AutotuneStatus::Discarded:
+        snprintf(out, n, "discarded");
         break;
     case AutotuneStatus::Done:
         snprintf(out, n, "done");
@@ -43,7 +69,8 @@ inline void full(const Snapshot& s, char unit, char* out, size_t n) {
     }
 }
 
-// OLED header, at most 20 characters: "AT running", "AT done",
+// OLED header, at most 20 characters: "AT2/3 heat 350F",
+// "AT2/3 cyc3/6 350F", "AT results ready", "AT discarded", "AT done",
 // "AT fail: timeout", "AT aborted", "AT: SV<212F", "AT: no probe",
 // "Autotune first".
 inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
@@ -52,6 +79,11 @@ inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
         {"sensor fault", "sensor"},
         {"over temperature", "overtemp"},
         {"oscillation too small vs hysteresis", "small swing"},
+        {"no oscillation", "no cycle"},
+        {"no heat-up", "no heat"},
+        {"no consistent oscillation", "inconsistent"},
+        {"too hot to start", "too hot"},
+        {"time limit", "timeout"},
         {"setpoint changed", "SV change"},
         {"correction changed", "offset"},
         {"input changed", "input"},
@@ -63,9 +95,34 @@ inline void brief(const Snapshot& s, char unit, char* out, size_t n) {
         if (std::strcmp(r, m[0]) == 0)
             r = m[1];
     char line[48];
+    const autotune::Progress& p = s.autotuneProgress;
+    const float t = fromCelsius(p.targetC, unit);
+    const int i = p.point + 1, k = p.pointCount;
     switch (s.autotune) {
     case AutotuneStatus::Running:
-        snprintf(line, sizeof line, "AT running");
+        switch (p.phase) {
+        case autotune::Phase::Heating:
+            snprintf(line, sizeof line, "AT%d/%d heat %.0f%c", i, k, t, unit);
+            break;
+        case autotune::Phase::Settling:
+            snprintf(line, sizeof line, "AT%d/%d settle %.0f%c", i, k, t, unit);
+            break;
+        case autotune::Phase::Oscillating:
+            snprintf(line, sizeof line, "AT%d/%d cyc%d/%d %.0f%c", i, k, p.cycle, p.cycleOf, t, unit);
+            break;
+        case autotune::Phase::Computing:
+            snprintf(line, sizeof line, "AT%d/%d computing", i, k);
+            break;
+        default:
+            snprintf(line, sizeof line, "AT running");
+            break;
+        }
+        break;
+    case AutotuneStatus::Pending:
+        snprintf(line, sizeof line, "AT results ready");
+        break;
+    case AutotuneStatus::Discarded:
+        snprintf(line, sizeof line, "AT discarded");
         break;
     case AutotuneStatus::Done:
         snprintf(line, sizeof line, "AT done");
