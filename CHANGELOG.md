@@ -84,6 +84,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/artisan-settings.md`.
 
 ### Fixed
+- **Board reset on "Load to device" (T54).** Croaster PID restarted with
+  "Stack canary watchpoint triggered (loopTask)" while replying to a profile
+  load, and could do the same on `getControl`. Croaster runs a WebSocket
+  command inside the WebSockets library's nested read callbacks (about four
+  levels for a message over 125 bytes), and the plugin's replies copied a
+  finished JsonDocument into the reply envelope, which recurses through
+  ArduinoJson's copy code. Replies are now written straight into the
+  envelope, the profile parser no longer keeps a 512-byte copy of the steps
+  on the stack, and both S3 boards run `loop()` on a 16 KB stack instead of
+  8 KB. `getControl` reports `loopStackFree` (the smallest free loop stack
+  since boot, in bytes) and the boot log prints the loop stack size and free
+  bytes. The message itself was valid.
+- **Profile input checks (T54).** A profile is rejected unless every step is
+  an object with a numeric duration above 0 and up to 3600 s and a numeric
+  setpoint (-50 to 1000 °C after conversion); `fanValue`, if present, must be
+  0 to 100. A rejected load keeps the previously loaded profile. A profile
+  setpoint that is not a finite number now runs as 0 (heater off) instead of
+  passing `fminf` as the maximum setpoint. The page checks the same limits
+  before sending.
 - **Line endings.** A root `.gitattributes` stores and checks out text files
   with LF on every platform, whatever `core.autocrlf` is set to: C/C++,
   `.ino`, Python, JavaScript, JSON, HTML, CSS, SVG, Markdown, `.ini`, shell

@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <string>
 
 #include <ArduinoJson.h>
 
@@ -386,6 +387,75 @@ void test_protocol_profile() {
     TEST_ASSERT_TRUE(p.profileError);
 }
 
+// T54: the page's "Load to device" message (the board reset while replying to it).
+void test_protocol_profile_from_page() {
+    auto p = parse(R"({"command":{"profile":[{"duration":69,"setpoint":300,"interpolation":"linear"},)"
+                   R"({"duration":60,"setpoint":300,"interpolation":"linear"}]}})",
+                   'F', "profile");
+    TEST_ASSERT_TRUE(p.hasProfile);
+    TEST_ASSERT_FALSE(p.profileError);
+    TEST_ASSERT_EQUAL(2, (int)p.profile.size());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 129.0f, p.profile.totalDurationS());
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 148.8f, p.profile.at(30).setpointC); // 300 F
+    TEST_ASSERT_TRUE(std::isnan(p.profile.at(30).fanPct));
+}
+
+void test_protocol_profile_rejects_malformed() {
+    const char* bad[] = {
+        R"({"command":{"profile":[]}})",
+        R"({"command":{"profile":{}}})",
+        R"({"command":{"profile":true}})",
+        R"({"command":{"profile":42}})",
+        R"({"command":{"profile":[1,"x",null,[]]}})",
+        R"({"command":{"profile":[{"setpoint":200}]}})",                          // no duration
+        R"({"command":{"profile":[{"duration":60}]}})",                           // no setpoint
+        R"({"command":{"profile":[{"duration":"60","setpoint":200}]}})",          // string
+        R"({"command":{"profile":[{"duration":60,"setpoint":"hot"}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":{}}]}})",
+        R"({"command":{"profile":[{"duration":0,"setpoint":200}]}})",
+        R"({"command":{"profile":[{"duration":-5,"setpoint":200}]}})",
+        R"({"command":{"profile":[{"duration":3601,"setpoint":200}]}})",
+        R"({"command":{"profile":[{"duration":1e308,"setpoint":200}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":1e308}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":-1e308}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":2000}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":200,"fanValue":101}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":200,"fanValue":-1}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":200,"fanValue":"max"}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":200,"fanValue":1e308}]}})",
+        R"({"command":{"profile":[{"duration":60,"setpoint":200},{"duration":60}]}})", // one bad step
+    };
+    for (const char* json : bad) {
+        auto p = parse(json, 'C', "profile");
+        TEST_ASSERT_FALSE_MESSAGE(p.hasProfile, json);
+        TEST_ASSERT_TRUE_MESSAGE(p.profileError, json);
+        TEST_ASSERT_EQUAL_MESSAGE(0, (int)p.profile.size(), json);
+    }
+    // 33 steps: one over the limit; 32 are fine.
+    auto steps = [](int n) {
+        std::string m = "{\"command\":{\"profile\":[";
+        for (int i = 0; i < n; i++)
+            m += std::string(i ? "," : "") + "{\"duration\":10,\"setpoint\":100}";
+        return m + "]}}";
+    };
+    auto p = parse(steps(33).c_str(), 'C', "profile");
+    TEST_ASSERT_TRUE(p.profileError);
+    p = parse(steps(32).c_str(), 'C', "profile");
+    TEST_ASSERT_TRUE(p.hasProfile);
+    TEST_ASSERT_EQUAL(32, (int)p.profile.size());
+    // An unknown or non-string interpolation is linear.
+    p = parse(R"({"command":{"profile":[{"duration":60,"setpoint":200,"interpolation":7}]}})", 'C', "profile");
+    TEST_ASSERT_TRUE(p.hasProfile);
+}
+
+void test_profile_failed_load_keeps_previous() {
+    RoastProfile p;
+    TEST_ASSERT_TRUE(loadProfile(p, R"([{"duration":60,"setpoint":150}])"));
+    TEST_ASSERT_FALSE(loadProfile(p, R"([{"duration":60,"setpoint":150},{"duration":"x","setpoint":1}])"));
+    TEST_ASSERT_EQUAL(1, (int)p.size());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 150.0f, p.at(10).setpointC);
+}
+
 void test_protocol_basic_and_data() {
     Command c;
     TEST_ASSERT_TRUE(controlproto::basicCommand("startProfile", c));
@@ -764,6 +834,9 @@ int main() {
     RUN_TEST(test_protocol_cooldown_fan);
     RUN_TEST(test_protocol_only_key);
     RUN_TEST(test_protocol_profile);
+    RUN_TEST(test_protocol_profile_from_page);
+    RUN_TEST(test_protocol_profile_rejects_malformed);
+    RUN_TEST(test_profile_failed_load_keeps_previous);
     RUN_TEST(test_protocol_basic_and_data);
     RUN_TEST(test_protocol_yaeger_compat);
     RUN_TEST(test_autotune_status_text);

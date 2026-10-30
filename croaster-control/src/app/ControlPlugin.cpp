@@ -8,10 +8,16 @@
 #include <cstring>
 
 namespace {
-String reply(const char* command, const JsonDocument& response) {
-    JsonDocument doc; // same envelope as Croaster's genResponseCommand()
+// Replies use the same envelope as Croaster's genResponseCommand():
+// {"command":name,"response":{...}}. The response is written straight into the
+// envelope. Copying a finished JsonDocument into it (doc["response"] = other)
+// recurses through ArduinoJson's copy code; on top of the WebSockets library's
+// nested read callbacks that overflowed the 8 KB loop task stack (T54).
+JsonObject beginReply(JsonDocument& doc, const char* command) {
     doc["command"] = command;
-    doc["response"] = response;
+    return doc["response"].to<JsonObject>();
+}
+String finishReply(const JsonDocument& doc) {
     String out;
     serializeJson(doc, out);
     return out;
@@ -57,10 +63,11 @@ String ControlPlugin::handleNested(const JsonObject& json, const char* key) {
     controlproto::Parsed p = controlproto::parseNested(json, unit(), key);
     apply(p);
     if (p.hasProfile || p.profileError) {
-        JsonDocument r;
+        JsonDocument doc;
+        JsonObject r = beginReply(doc, "profile");
         r["loaded"] = p.hasProfile && controller_.loadProfile(p.profile);
         r["steps"] = p.profile.size();
-        return reply("profile", r);
+        return finishReply(doc);
     }
     return "";
 }
@@ -120,10 +127,12 @@ String ControlPlugin::handleBasic(const char* name) {
         }
         return "";
     }
-    JsonDocument r; // getControl
-    controlproto::writeControlInfo(controller_.snapshot(), settings_.cooldownFan, settings_.watchdog, unit(),
-                                   r.to<JsonObject>());
-    return reply(name, r);
+    JsonDocument doc; // getControl
+    JsonObject r = beginReply(doc, name);
+    controlproto::writeControlInfo(controller_.snapshot(), settings_.cooldownFan, settings_.watchdog, unit(), r);
+    // Smallest free loop task stack since boot, in bytes (ESP-IDF counts bytes).
+    r["loopStackFree"] = uxTaskGetStackHighWaterMark(nullptr);
+    return finishReply(doc);
 }
 
 void ControlPlugin::begin() {

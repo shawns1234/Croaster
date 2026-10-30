@@ -19,6 +19,7 @@
 //   {"command":{"watchdog":{"enabled":bool,"timeout":s}}} saved to NVS; either
 //                                            field alone works; timeout 2..600 s
 //   {"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%},...]}}
+//                                            limits in RoastProfile::loadJson
 // Basic:
 //   {"command":"startProfile"} {"command":"stop"} {"command":"autotune"}
 //   {"command":"clearTrip"}    {"command":"getControl"}

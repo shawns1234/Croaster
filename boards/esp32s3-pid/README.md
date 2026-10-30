@@ -152,7 +152,7 @@ it. The change is saved, so the board boots in that unit from then on. Limits an
 | `{"command":{"pid":{"kp":..,"ki":..,"kd":..}}}` | gains (saved; counts as tuned) |
 | `{"command":{"cooldownFan":{"stop":0..100,"trip":0..100}}}` | fan after `stop` (default 65) and when any safety trip starts (default 100); either field alone works; a plain number sets `stop` (saved) |
 | `{"command":{"watchdog":{"enabled":bool,"timeout":s}}}` | comms watchdog on/off and timeout, 2..600 s (saved; either field alone works) |
-| `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile |
+| `{"command":{"profile":[{"duration":s,"setpoint":T,"interpolation":"ease-out","fanValue":%}]}}` | load profile: 1 to 32 steps, duration above 0 and up to 3600 s, setpoint -50 to 1000 °C (in the current unit), `fanValue` 0..100 optional; replies `{"command":"profile","response":{"loaded":bool,"steps":n}}` |
 | `{"command":"startProfile"}` / `"stop"` / `"autotune"` / `"clearTrip"` / `"getControl"` | actions / query |
 
 yaeger's named commands also work (same parser, see `docs/control-parity.md`).

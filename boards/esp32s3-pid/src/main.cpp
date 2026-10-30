@@ -112,6 +112,12 @@ String statusLine(const Snapshot& s) {
     return String(line);
 }
 
+// Loop task stack: 16 KB instead of Arduino's 8 KB. Croaster handles WebSocket
+// commands inside the WebSockets library's nested read callbacks (about 4 levels
+// for a message over 125 bytes), so a command handler starts deep in the stack.
+// getControl reports the smallest free amount seen (loopStackFree).
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+
 void setup() {
     // Serial is the native USB port (HWCDC). Once a host has opened it, each log line
     // waits up to 20 x the TX timeout (100 ms by default, so about 2 s) when the host
@@ -146,6 +152,8 @@ void setup() {
     // After app.begin(): WiFi and BLE are up. Arduino keeps the setting for later WiFi restarts.
     Serial.println(WiFi.setSleep(false) ? "# WiFi sleep: off" : "# WiFi sleep: could not turn off");
 #endif
+    Serial.printf("# Loop stack: %u B, %u B free\n", (unsigned)getArduinoLoopTaskStackSize(),
+                  (unsigned)uxTaskGetStackHighWaterMark(nullptr));
 
     plugin.begin();
 }

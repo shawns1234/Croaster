@@ -25,9 +25,17 @@ struct ProfileTarget {
 class RoastProfile {
 public:
     static constexpr size_t kMaxSteps = 32;
+    // Limits for a loaded step. Anything outside them rejects the whole profile.
+    static constexpr float kMaxStepS = 3600;      // one step at most an hour
+    static constexpr float kMinSetpointC = -50;   // the controller clamps to 0..maxSetpointC
+    static constexpr float kMaxSetpointC = 1000;  // keeps the ramps finite
 
     bool load(const ProfileStep* steps, size_t n);
-    // Parses an array of steps; setpoints are in `unit` ('C', 'F', 'K'). False on error.
+    // Parses an array of steps; setpoints are in `unit` ('C', 'F', 'K'). False on error,
+    // and then the loaded profile is unchanged. Each step must be an object with a
+    // numeric duration (0 < s <= kMaxStepS) and setpoint (kMinSetpointC..kMaxSetpointC
+    // after conversion); fanValue is optional (0..100); interpolation is optional
+    // (unknown names are linear).
     bool loadJson(JsonArrayConst steps, char unit = 'C');
     ProfileTarget at(float elapsedS) const;
     size_t size() const {

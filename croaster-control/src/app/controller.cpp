@@ -233,7 +233,8 @@ void Controller::controlStep(uint32_t now) {
     case Mode::Profile: {
         st_.profileElapsedS = (now - profileStartMs_) / 1000.0f;
         const ProfileTarget t = profile_.at(st_.profileElapsedS);
-        st_.setpoint = fminf(t.setpointC, lim_.maxSetpointC);
+        // NaN would pass fminf as maxSetpointC; treat it as 0 (heater off) instead.
+        st_.setpoint = std::isfinite(t.setpointC) ? fmaxf(0, fminf(t.setpointC, lim_.maxSetpointC)) : 0;
         if (std::isfinite(t.fanPct))
             fan_.set(t.fanPct);
         out = pid_.update(st_.setpoint, pv);

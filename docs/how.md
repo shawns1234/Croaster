@@ -215,6 +215,12 @@ settings; see the board README, "Comms watchdog".
 | `croaster/src/` | Croaster library (WiFi, WebSocket, BLE, OTA, RoR) |
 
 ## Gotchas
+- **Stack depth in command handlers.** Croaster calls command handlers from
+  inside the WebSockets library's nested read callbacks, so a handler starts
+  several KB deep in the loop task stack (16 KB on the S3 boards). Write a
+  reply straight into its JsonDocument; don't copy one document into another
+  (`doc["response"] = other` recurses) and don't keep large arrays on the
+  stack. `getControl` `loopStackFree` shows the margin.
 - **Units.** Temperatures in commands use Croaster's unit setting (°F by
   default; a `tempUnit` change is saved and survives a reboot). Keep Artisan
   in the same unit as the board.

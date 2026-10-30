@@ -29,7 +29,7 @@
     DET: 'ET rate of rise', cBT: 'BT correction', cET: 'ET correction', temp: 'Unit', interval: 'Broadcast interval (s)',
     timer: 'Uptime (s)', BurnerVal: 'Heater (%)', FanVal: 'Fan (%)', SV: 'Setpoint', Mode: 'Mode', trip: 'Trip',
     Amb: 'Cold junction', Target: 'PID input', autotune: 'Autotune', pidKp: 'PID Kp', pidKi: 'PID Ki',
-    pidKd: 'PID Kd', wifiStrength: 'WiFi RSSI (dBm)',
+    pidKd: 'PID Kd', wifiStrength: 'WiFi RSSI (dBm)', loopStackFree: 'Loop stack free (bytes)',
     mode: 'Mode', pidInput: 'PID input', setpoint: 'Setpoint', burner: 'Heater (%)', fan: 'Fan (%)',
     'cooldownFan.stop': 'Cooldown fan after stop (%)', 'cooldownFan.trip': 'Cooldown fan after trip (%)',
     'watchdog.enabled': 'Comms watchdog', 'watchdog.timeout': 'Watchdog timeout (s)', 'pid.kp': 'PID Kp',
@@ -168,7 +168,7 @@
     if (msg.command === 'profile') {
       const r = msg.response || {};
       $('#profile-status').textContent = r.loaded ? 'Loaded ' + r.steps + ' steps.' :
-        'Not loaded: the board rejected the profile (' + (r.steps || 0) + ' steps read; 1 to 32 steps, each duration above 0).';
+        'Not loaded: the board rejected the profile (1 to 32 steps; each needs a duration up to 3600 s, a setpoint, and fan 0 to 100 % if set).';
     }
     logReply('in', '← ' + JSON.stringify(msg));
   }
@@ -777,12 +777,19 @@
     const steps = [];
     for (const [i, s] of S.profile.entries()) {
       const duration = Number(s.duration), setpoint = Number(s.setpoint);
-      if (!(duration > 0) || s.setpoint === '' || !isFinite(setpoint)) {
-        $('#profile-status').textContent = 'Step ' + (i + 1) + ': needs a duration above 0 and a setpoint.';
+      if (!(duration > 0 && duration <= 3600) || s.setpoint === '' || !isFinite(setpoint)) {
+        $('#profile-status').textContent = 'Step ' + (i + 1) + ': needs a duration above 0 and up to 3600 s, and a setpoint.';
         return;
       }
       const step = { duration, setpoint, interpolation: s.interpolation || 'linear' };
-      if (s.fanValue !== '' && s.fanValue !== undefined && isFinite(Number(s.fanValue))) step.fanValue = Number(s.fanValue);
+      if (s.fanValue !== '' && s.fanValue !== undefined) {
+        const fan = Number(s.fanValue);
+        if (!(fan >= 0 && fan <= 100)) {
+          $('#profile-status').textContent = 'Step ' + (i + 1) + ': fan must be 0 to 100 %.';
+          return;
+        }
+        step.fanValue = fan;
+      }
       steps.push(step);
     }
     if (!steps.length || steps.length > 32) {
