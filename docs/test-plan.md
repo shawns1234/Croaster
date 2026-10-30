@@ -155,7 +155,8 @@ Stock MAX6675 boards (`esp32s3`, `esp32c3`, `esp8266`) read probes through
 ## Multi-point autotune (D29, T57)
 Process and limits: `docs/autotune/process.md`.
 
-- Three-point run on a simulated nonlinear drum → all points `ok`, recommendation holds a step, a 6 °C/min ramp and a hold (overshoot < 4 °C, ramp error < 5 °C, hold < 1 °C). **host** `test_at_multi_point_run`
+- Default points 250, 300 and 350 °F (121.1, 148.9, 176.7 °C); top point plus the overshoot stop under 207 °C (405 °F). **host** `test_at_default_points`
+- Three-point run on a simulated nonlinear drum → all points `ok`, peak BT at least 4 °C under the overshoot stop, recommendation holds a step, a 6 °C/min ramp and a hold (overshoot < 4 °C, ramp error < 5 °C, hold < 1 °C). **host** `test_at_multi_point_run`
 - Relay reads Ku within 30 % (and below) and Tu within 15 % of a FOPDT plant's analytic values. **host** `test_at_fopdt_ultimate_point`
 - Sensor fault, over temperature, overshoot, no heat-up, no oscillation, time limit, abort command → heater 0 from that step. **host** (`test_at_abort_*`)
 - Start above the first point + 30 °C → `failed: too hot to start`; empty plan → `failed: no test points`. **host**
@@ -172,16 +173,18 @@ Bench run on the Behmor 2000AB (needs AC; about 45 to 65 min):
    to the usual roast speed (a fan change during the run aborts it).
 3. Page > Controls > Autotune > Start autotune > OK. Start a recording in
    Live to chart BT against the dashed test-point line.
-4. Check: heater 100 % until about 15 °C under 300 °F; then the heater
-   switches between two levels and BT cycles a few degrees around 300 °F;
+4. Check: heater 100 % until about 15 °C under 250 °F; then the heater
+   switches between two levels and BT cycles a few degrees around 250 °F
+   (expect a first peak up to about 295 °F, under the 304 °F overshoot stop);
    the log adds one line per cycle (swing, period). Note each point's swing,
    period and time.
 5. Check the stops once on a separate run: STOP during heating → heater 0
    within 1 s, Manual, cooldown fan, `aborted: stop`.
 6. At the end: Save. Then PID mode at 350 °F and a short ramp profile; note
    overshoot and lag. Compare with `docs/autotune/tuning-rules.md`.
-7. Record: total time, per-point Ku/Tu/bias, the recommended gains, and any
-   Behmor thermal cutoff or error code during the run.
+7. Record: total time, per-point Ku/Tu/bias, the recommended gains, and the
+   highest BT at each point (the run stops above 304, 354 and 404 °F). The
+   Behmor's own controls are bypassed, so stay with the roaster for the run.
 
 ## Autotune required (D24)
 - `CPID_REQUIRE_AUTOTUNE 1`, erased flash (`pio run -t erase`, then upload) → `getControl` `tuned` false; `{"command":{"mode":"pid"}}` → mode stays Manual, `autotune` "autotune required", OLED "Autotune first" for 10 s. **host** (gate and text, `test_autotune_required_gate`); bench todo

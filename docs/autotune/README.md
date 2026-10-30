@@ -22,8 +22,17 @@ Design decision: D29 in `docs/design.md`. Ticket: T57 in `docs/tickets.md`.
   different machine and are tuned for ET, see D18).
 - Measured over the roasting range, not at one temperature: a drum roaster
   loses more heat as it gets hotter, so its response changes with
-  temperature. The test covers three points by default, 300, 350 and
-  400 °F (148.9, 176.7 and 204.4 °C).
+  temperature. The test covers three points by default, 250, 300 and
+  350 °F (121.1, 148.9 and 176.7 °C), from the drying phase to the
+  middle of the roast.
+- No higher than it needs to go. The top point is 350 °F because this build
+  bypasses the roaster's own controls, its thermal cutoff included, so the
+  firmware's limits are the only protection while the drum runs empty and
+  unattended. The gains still apply through a whole roast: the response
+  changes slowly with temperature (about 10 % across the points on the
+  simulated drum), and the recommended set is the most cautious of the
+  points, so it keeps its margin above 350 °F
+  ([tuning-rules.md](tuning-rules.md#simulation)).
 - Visible: the page and the OLED show which point and which step the run is
   on, a progress bar with the time left, and a log of each measurement.
 - Safe: the heater goes to 0 on any fault or stop, the board never exceeds
@@ -35,8 +44,8 @@ Design decision: D29 in `docs/design.md`. Ticket: T57 in `docs/tickets.md`.
 
 1. Empty drum, drum turning, fan at the usual roast speed: set the fan
    before starting, because a fan change during the run stops it (D23).
-   Start with the roaster below the first test point (a cold or cooled
-   roaster).
+   Start with the roaster cold or cooled: BT must be under the first test
+   point plus 30 °C (about 300 °F) or the run refuses to start.
 2. Controls > Autotune > **Start autotune**. The confirm says what will happen
    and about how long it takes. Nothing starts until OK.
 3. Watch the step list and the log. STOP, Heater off or Stop autotune end the

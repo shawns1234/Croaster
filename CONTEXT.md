@@ -65,7 +65,8 @@ Flutter app (remote `git@github.com:IiemB/Croaster.git`) and is consumed via
   ("AT2/3 cyc3/6 350F") while running and for 10 s after each change; a trip
   line wins.
 - Autotune (D29, `docs/autotune/`): no setpoint; runs the
-  `CPID_AUTOTUNE_POINT*_C` test points (300/350/400 °F), relay with bias
+  `CPID_AUTOTUNE_POINT*_C` test points (250/300/350 °F; top point kept at
+  350 °F because the roaster's own cutoff is bypassed), relay with bias
   correction, cycles until they agree, ZN PI gains (most cautious over the
   points). Results wait until `{"command":{"autotune":"apply"}}` (NVS) or
   `"discard"`; `getAutotune` returns plan, progress, results and log; data

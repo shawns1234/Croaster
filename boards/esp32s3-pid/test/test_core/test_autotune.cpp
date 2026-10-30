@@ -154,12 +154,15 @@ void test_at_multi_point_run() {
     int lastPoint = 0;
     float pv = 25, t = 0;
     bool sawPhase[8] = {};
+    float peakAbove = 0; // highest BT above the current test point
     while (s.running() && t < 20000) {
         const float u = s.update(pv);
         pv = p.step(u);
         t += 0.25f;
         const Progress& g = s.progress();
         sawPhase[(int)g.phase] = true;
+        if (s.running())
+            peakAbove = std::max(peakAbove, pv - g.targetC);
         TEST_ASSERT_TRUE(g.point >= lastPoint); // points in order
         lastPoint = g.point;
         TEST_ASSERT_TRUE(g.remainingS >= 0);
@@ -168,6 +171,7 @@ void test_at_multi_point_run() {
     TEST_ASSERT_TRUE(sawPhase[(int)Phase::Heating] && sawPhase[(int)Phase::Settling] &&
                      sawPhase[(int)Phase::Oscillating]);
     TEST_ASSERT_TRUE(t < c.totalTimeoutS);
+    TEST_ASSERT_TRUE(peakAbove < c.maxOvershootC - 4); // margin to the overshoot stop
     TEST_ASSERT_EQUAL(3, s.pointsUsed());
     float tuMin = 1e9f;
     for (int i = 0; i < 3; i++) {
@@ -439,6 +443,20 @@ void test_at_status_text() {
     TEST_ASSERT_EQUAL_STRING("AT2/3 cyc12/12 464F", b);
 }
 
+// Default points: 250, 300 and 350 F; the run's ceiling (top point plus the
+// overshoot stop) stays near 400 F.
+void test_at_default_points() {
+    const Config c;
+    TEST_ASSERT_EQUAL(3, c.pointCount);
+    const int f[] = {250, 300, 350};
+    for (int i = 0; i < 3; i++)
+        TEST_ASSERT_EQUAL(f[i], (int)std::lround(c.pointsC[i] * 1.8f + 32));
+    TEST_ASSERT_TRUE(c.pointsC[2] + c.maxOvershootC < 207);
+    Config plan;
+    TEST_ASSERT_EQUAL(3, makePlan(c.pointsC, 3, 100, 250, plan));
+    TEST_ASSERT_EQUAL_FLOAT(c.pointsC[2], plan.pointsC[2]);
+}
+
 void test_at_protocol() {
     Command c;
     JsonDocument in;
@@ -471,13 +489,13 @@ void test_at_protocol() {
     TEST_ASSERT_TRUE(doc["pending"].as<bool>());
     TEST_ASSERT_FALSE(doc["running"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("done", doc["phase"]);
-    TEST_ASSERT_EQUAL(300, doc["plan"]["points"][0].as<int>());
-    TEST_ASSERT_EQUAL(400, doc["plan"]["points"][2].as<int>());
+    TEST_ASSERT_EQUAL(250, doc["plan"]["points"][0].as<int>());
+    TEST_ASSERT_EQUAL(350, doc["plan"]["points"][2].as<int>());
     TEST_ASSERT_EQUAL(1800, doc["plan"]["estimate"].as<int>());
     TEST_ASSERT_EQUAL_STRING("ziegler-nichols-pi", doc["plan"]["rule"]);
     TEST_ASSERT_TRUE(doc["progress"].isNull());
     TEST_ASSERT_EQUAL(3, doc["results"].size());
-    TEST_ASSERT_EQUAL(300, doc["results"][0]["target"].as<int>());
+    TEST_ASSERT_EQUAL(250, doc["results"][0]["target"].as<int>());
     TEST_ASSERT_EQUAL_STRING("ok", doc["results"][0]["status"]);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, r.points[0].amplitudeC * 1.8f, doc["results"][0]["amplitude"].as<float>());
     TEST_ASSERT_FLOAT_WITHIN(1e-3f * r.recommended.kp, r.recommended.kp, doc["recommended"]["kp"].as<float>());
@@ -493,7 +511,7 @@ void test_at_protocol() {
     run.start(cfg, 25);
     Drum q;
     float pv = 25;
-    for (int i = 0; i < 400; i++)
+    for (int i = 0; i < 200; i++)
         pv = q.step(run.update(pv));
     run.fillReport(r);
     s.mode = Mode::Autotune;
@@ -504,10 +522,10 @@ void test_at_protocol() {
     autotuneproto::writeReport(s, r, cfg, 1800, 'F', doc.to<JsonObject>());
     TEST_ASSERT_TRUE(doc["running"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("heating", doc["phase"]);
-    TEST_ASSERT_EQUAL(300, doc["progress"]["target"].as<int>());
+    TEST_ASSERT_EQUAL(250, doc["progress"]["target"].as<int>());
     TEST_ASSERT_EQUAL(0, doc["results"].size());
     TEST_ASSERT_TRUE(doc["recommended"].isNull());
-    TEST_ASSERT_EQUAL_STRING("point 1: heating to 300 F", doc["log"][0]["text"]);
+    TEST_ASSERT_EQUAL_STRING("point 1: heating to 250 F", doc["log"][0]["text"]);
 }
 
 void runAutotuneTests() {
@@ -523,6 +541,7 @@ void runAutotuneTests() {
     RUN_TEST(test_at_refuses_hot_start_and_empty_plan);
     RUN_TEST(test_at_inconsistent_cycles_fail);
     RUN_TEST(test_at_make_plan);
+    RUN_TEST(test_at_default_points);
     RUN_TEST(test_at_rules);
     RUN_TEST(test_at_estimate);
     RUN_TEST(test_at_status_text);

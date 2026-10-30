@@ -10,7 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - **Multi-point autotune (D29, T57).** `{"command":"autotune"}` needs no
   setpoint: the board heats to each test point (`CPID_AUTOTUNE_POINT*_C`,
-  default 300/350/400 °F), runs a relay with bias correction until three
+  default 250/300/350 °F), runs a relay with bias correction until three
   cycles agree, computes Ku, Tu, a FOPDT model and Ziegler–Nichols PI gains
   (`CPID_AUTOTUNE_RULE`), and recommends the most cautious set over the
   points. Results wait until `{"command":{"autotune":"apply"}}` (saved to
@@ -251,6 +251,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Autotune/Stop/Clear trip buttons; 1 s sampling; path `WebSocket`.
 
 ### Changed
+- **Autotune test points (T58).** Defaults lowered from 300/350/400 °F to
+  250/300/350 °F (`CPID_AUTOTUNE_POINT*_C` 121.1/148.9/176.7). The build
+  bypasses the roaster's own thermal cutoff, so the firmware's limits are the
+  only protection; the run's ceiling (top point plus the 30 °C overshoot
+  stop) is now 404 °F. The first point's relay bias starts at 30 % instead of
+  50 % so the first heating half stays clear of the overshoot stop at 250 °F.
 - **Autotune (D29).** Replaces the single-point relay around the setpoint
   (`RelayAutotune`, kept for its host tests): no 212 °F setpoint gate, no
   gains applied or saved until the user accepts them, the relay steps the

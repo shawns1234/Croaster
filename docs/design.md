@@ -1423,8 +1423,16 @@ measures at several of them, shows which step it is on, and documents the
 method.
 
 - **One command, no setpoint.** `{"command":"autotune"}` runs the
-  `CPID_AUTOTUNE_POINT*_C` test points (default 300/350/400 °F), clamped to
-  the setpoint and over-temperature limits. The 212 °F setpoint gate is gone
+  `CPID_AUTOTUNE_POINT*_C` test points (default 250/300/350 °F), clamped to
+  the setpoint and over-temperature limits. First set at 300/350/400 °F,
+  lowered the same day (T58): this build bypasses the roaster's own controls,
+  thermal cutoff included, so the firmware's limits are the only protection,
+  and the run's ceiling (top point + 30 °C overshoot stop) drops from 454 to
+  404 °F. Gains from these points still apply through a roast: the
+  recommended set is the most cautious of the points, and on the simulated
+  drum it is within 5 % of the set measured at 300/350/400 °F. The first
+  point's relay bias starts at 30 % (was 50 %) so the first heating half
+  does not overshoot 250 °F. The 212 °F setpoint gate is gone
   (`NeedSetpoint` stays in the enum, no longer raised).
 - **Per point:** heat at full request, relay with Marlin's bias correction to
   settle, then cycles until the last 3 agree (CV < 10 %, at most 6); Ku, Tu,
@@ -1432,7 +1440,7 @@ method.
   over the points marked ok.
 - **Rule:** Ziegler–Nichols PI by default (`CPID_AUTOTUNE_RULE`), chosen in
   simulation for ramp tracking with low heater noise; Tyreus–Luyben PI as the
-  cautious alternative. No gain scheduling: −8 % IAE in simulation did not
+  cautious alternative. No gain scheduling: −10 % IAE in simulation did not
   justify a second control path; per-point gains are reported.
 - **Nothing applied until accepted.** Results wait on the board (RAM) until
   `{"command":{"autotune":"apply"}}` (gains to NVS, tuned) or `"discard"`.

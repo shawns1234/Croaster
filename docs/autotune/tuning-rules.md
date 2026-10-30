@@ -76,26 +76,39 @@ three-point run identified:
 
 | Point | Ku (%/°C) | Tu | Bias | K (°C/%) |
 |---|---|---|---|---|
-| 149 °C | 4.05 | 136 s | 28.9 % | 4.29 |
-| 177 °C | 4.48 | 130 s | 44 % | 3.44 |
-| 204 °C | 4.43 | 129 s | 53 % | 3.37 |
+| 121 °C (250 °F) | 3.88 | 141 s | 19.8 % | 4.85 |
+| 149 °C (300 °F) | 4.43 | 131 s | 33.2 % | 3.74 |
+| 177 °C (350 °F) | 4.45 | 131 s | 42.2 % | 3.59 |
 
 Each rule's recommended set, run in closed loop: step from 25 to 177 °C,
-ramp 6 °C/min to 210 °C, hold. Output TV is total variation of the heater
+ramp 6 °C/min to 210 °C (410 °F), hold. The ramp and hold run above the top
+test point, as the end of a roast does. Output TV is total variation of the heater
 request (how much it moves), per minute.
 
 | Rule | Overshoot | Ramp error (mean) | Hold error | Output TV |
 |---|---|---|---|---|
-| ZN PI | 1.0 °C | 3.0 °C | 0.20 °C | 122 %/min |
-| TL PI | 0 | 7.8 °C | 0.79 °C | 84 %/min |
-| SIMC PI | 0 | 7.5 °C | — | — |
-| TL PID | 0 | 6.2 °C | — | ~3100 %/min |
-| ZN PID | 5.5 °C | 1.9 °C | — | ~3300 %/min |
+| ZN PI | 1.0 °C | 3.0 °C | 0.20 °C | 119 %/min |
+| TL PI | 0 | 7.6 °C | 0.67 °C | 82 %/min |
+| SIMC PI | 0 | 7.7 °C | — | — |
+| TL PID | 0 | 6.1 °C | — | ~3000 %/min |
+| ZN PID | 6.5 °C | 1.8 °C | — | ~3200 %/min |
 | Default gains 1/0.1/0.01 | 26.5 °C | 15.6 °C | 14.9 °C | — |
 
 Robustness of the ZN PI set when the drum differs from the test: time
-constant ×1.6 (a loaded drum) → overshoot 1.2 °C; dead time ×2 → 9.8 °C;
+constant ×1.6 (a loaded drum) → overshoot 1.5 °C; dead time ×2 → 9.2 °C;
 gain ×1.4 → 6.5 °C.
+
+The points run from 250 to 350 °F (see process.md for why not higher).
+Measured at 300, 350 and 400 °F, the same drum gave a ZN PI set within 5 %
+of this one (Kp 1.82 against 1.75) and the same 1.0 °C overshoot on this
+ramp; the lowest point sets the recommendation, so leaving out 400 °F costs
+no margin.
+
+The lowest point needs the least heat to hold (about 20 % on the simulated
+drum), so the relay starts the first point from a 30 % bias. From 50 %, as
+when the lowest point was 300 °F, the first heating half carried BT 30 °C
+past 250 °F and the run stopped on overshoot; from 30 % the peak is 21 to
+24 °C above the point.
 
 ### Choice
 
@@ -109,9 +122,11 @@ gain ×1.4 → 6.5 °C.
 
 ## Gain scheduling
 
-Per-point gains differ by about 10 % on the simulated drum. Switching gains
-by temperature (gain scheduling, Åström and Hägglund, *Advanced PID Control*,
-ISA 2006, ch. 12) improved the ramp error from 3.01 to 2.72 °C (IAE −8 %).
+Per-point gains differ by about 15 % on the simulated drum (Kp 1.75 to
+2.00). Switching gains by temperature (gain scheduling, Åström and Hägglund,
+*Advanced PID Control*, ISA 2006, ch. 12) improved the ramp error from 3.1 to
+2.6 °C (IAE −10 %) at the cost of a more active heater (137 against
+119 %/min).
 That is too small to justify a second control path, so it is not
 implemented; the per-point gains are reported so a schedule can be added
 later if a real drum shows a larger spread.

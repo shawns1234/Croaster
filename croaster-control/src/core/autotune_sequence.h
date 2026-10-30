@@ -29,12 +29,12 @@ const char* ruleName(Rule r);
 const char* pointStatusName(PointStatus s);
 
 struct Config {
-    float pointsC[kMaxPoints] = {148.9f, 176.7f, 204.4f, 0}; // 300, 350, 400 F; ascending, see makePlan()
+    float pointsC[kMaxPoints] = {121.1f, 148.9f, 176.7f, 0}; // 250, 300, 350 F; ascending, see makePlan()
     int pointCount = 3;
     float dtSeconds = 0.25f;
     float outputMax = 100;   // heater request while heating to a point
     float relayStep = 40;    // relay amplitude d (%), limited to bias and outputMax - bias
-    float initialBias = 50;  // relay centre (%) at the first point
+    float initialBias = 30;  // relay centre (%) at the first point; adapts from there
     float minBias = 10;      // bias limits while it adapts
     float hysteresisC = 1.0f; // relay band; wider than twice the PV noise
     float approachC = 15;    // full heat until PV >= point - approachC

@@ -13,7 +13,7 @@
   const isNum = (v) => typeof v === 'number' && isFinite(v);
   const deg = (unit) => (unit === 'K' ? ' K' : ' °' + (unit || 'C'));
 
-  // "300, 350 and 400 °F"
+  // "250, 300 and 350 °F"
   function pointList(points, unit) {
     const p = (points || []).map((v) => String(Math.round(v)));
     if (!p.length) return '';

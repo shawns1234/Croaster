@@ -260,7 +260,7 @@ with the load you roast with, at the fan speed you roast with.
 How it works (design D29; full description in
 [`docs/autotune/`](../../docs/autotune/README.md)): one command, no setpoint.
 The board heats to each test point in turn (`CPID_AUTOTUNE_POINT1_C` ..
-`POINT4_C`, default 300, 350 and 400 °F), switches the heater between two
+`POINT4_C`, default 250, 300 and 350 °F), switches the heater between two
 levels around it (a relay test, with the levels re-centred each cycle so the
 heating and cooling halves even out), and records cycles until the last three
 agree. From the swing and the period it computes the ultimate gain Ku and
@@ -269,7 +269,7 @@ and recommends the most cautious set over the points. Marlin and Klipper tune
 at one target; this runs several because BT sweeps the whole roast range.
 
 **Start**
-1. Empty drum, drum turning, roaster below the first test point. Set the fan
+1. Empty drum, drum turning, roaster cold or cooled (BT under about 300 °F). Set the fan
    to your roasting speed first (a fan change during the run stops it); below
    30 % the firmware raises it to 60 %.
 2. Page: Controls > Autotune > **Start autotune**, then OK in the confirm
@@ -291,8 +291,8 @@ when the roaster is already more than 30 °C above the first point
 - The page shows a progress bar with the time left, the steps (heat, settle,
   measure per point, then calculate) and the board's log, one line per cycle.
   `{"command":"getAutotune"}` returns the same report.
-- Duration: about 12 minutes per point on a simulated Behmor-like drum
-  (38.5 min for three points); expect 45 to 65 minutes on the roaster. The
+- Duration: about 13 minutes per point on a simulated Behmor-like drum
+  (39 min for three points); expect 45 to 65 minutes on the roaster. The
   limit is `CPID_AUTOTUNE_TIME_LIMIT_MIN` (90).
 - BT swings a few degrees around each point (the relay step is 40 %).
 

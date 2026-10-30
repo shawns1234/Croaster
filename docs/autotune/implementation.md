@@ -53,22 +53,22 @@ difference; gains per °C, as the controller uses them):
 
 ```json
 {
-  "status": "running: cycle 2/6 at 350 F (2/3)", "unit": "F",
+  "status": "running: cycle 2/6 at 300 F (2/3)", "unit": "F",
   "running": true, "pending": false, "phase": "oscillating", "failure": "",
-  "plan": { "points": [300, 350, 400], "settleCycles": 2, "minCycles": 3,
+  "plan": { "points": [250, 300, 350], "settleCycles": 2, "minCycles": 3,
             "maxCycles": 6, "maxCv": 10, "rule": "ziegler-nichols-pi",
-            "estimate": 3300, "timeLimit": 5400 },
-  "progress": { "point": 1, "points": 3, "cycle": 2, "cycleOf": 6, "target": 350,
-                "output": 84, "amplitude": 11.0, "period": 130,
-                "elapsed": 1600, "remaining": 1500 },
+            "estimate": 3667, "timeLimit": 5400 },
+  "progress": { "point": 1, "points": 3, "cycle": 2, "cycleOf": 6, "target": 300,
+                "output": 66, "amplitude": 17.2, "period": 131,
+                "elapsed": 1650, "remaining": 1000 },
   "current": { "kp": 1, "ki": 0.1, "kd": 0.01 },
-  "results": [ { "target": 300, "status": "ok", "cycles": 4, "amplitude": 11.0,
-                 "period": 136, "amplitudeCv": 0.031, "periodCv": 0.012,
-                 "bias": 28.9, "step": 28.9, "ku": 4.05, "tu": 136,
-                 "model": { "gain": 4.29, "tau": 376, "dead": 35 },
-                 "kp": 1.823, "ki": 0.01609, "kd": 0 } ],
-  "recommended": { "kp": 1.82, "ki": 0.0161, "kd": 0, "used": 3, "rule": "ziegler-nichols-pi" },
-  "log": [ { "t": 0, "text": "point 1: heating to 300 F" } ]
+  "results": [ { "target": 250, "status": "ok", "cycles": 3, "amplitude": 11.8,
+                 "period": 141, "amplitudeCv": 0.009, "periodCv": 0.008,
+                 "bias": 19.8, "step": 19.8, "ku": 3.88, "tu": 141,
+                 "model": { "gain": 4.85, "tau": 420, "dead": 36 },
+                 "kp": 1.745, "ki": 0.01489, "kd": 0 } ],
+  "recommended": { "kp": 1.745, "ki": 0.01489, "kd": 0, "used": 1, "rule": "ziegler-nichols-pi" },
+  "log": [ { "t": 0, "text": "point 1: heating to 250 F" } ]
 }
 ```
 
@@ -80,7 +80,7 @@ difference; gains per °C, as the controller uses them):
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `CPID_AUTOTUNE_POINT1_C` .. `POINT4_C` | 148.9, 176.7, 204.4, 0 | Test points in °C (0 = unused), 100..260 |
+| `CPID_AUTOTUNE_POINT1_C` .. `POINT4_C` | 121.1, 148.9, 176.7, 0 | Test points in °C (0 = unused), 100 to under 240 with the default limits |
 | `CPID_AUTOTUNE_RELAY_STEP` | 40 | Relay step either side of the bias, % |
 | `CPID_AUTOTUNE_HYSTERESIS_C` | 1.0 | Relay hysteresis, °C |
 | `CPID_AUTOTUNE_MIN_CYCLES` / `MAX_CYCLES` | 3 / 6 | Cycles that must agree / most cycles per point |
@@ -109,8 +109,10 @@ polls are read-only and kept out of the reply log.
 ## Tests
 
 - `pio test -e native` (`boards/esp32s3-pid/test/test_core/test_autotune.cpp`,
-  16 tests): FOPDT identification against analytic Ku/Tu, a full three-point
-  run on the nonlinear drum with closed-loop checks of the recommendation,
+  17 tests): FOPDT identification against analytic Ku/Tu, a full three-point
+  run on the nonlinear drum (peak BT at least 4 °C under the overshoot stop)
+  with closed-loop checks of the recommendation, the default points (250,
+  300 and 350 °F, top point plus overshoot margin under 207 °C),
   every abort (sensor, over temperature, overshoot, no heat-up, no
   oscillation, time limit, command), refusal of a hot start and an empty
   plan, inconsistent cycles, plan clamping, rules, estimate, status text and

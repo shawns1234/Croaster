@@ -124,9 +124,11 @@
 // the user saves them. Points in C on the PID input's corrected scale; 0 drops
 // one. Each must be at least 100 C and at most CPID_MAX_SETPOINT_C, and below
 // CPID_OVER_TEMP_C - 5 - CPID_AUTOTUNE_OVERSHOOT_C.
-#define CPID_AUTOTUNE_POINT1_C 148.9f // 300 F
-#define CPID_AUTOTUNE_POINT2_C 176.7f // 350 F
-#define CPID_AUTOTUNE_POINT3_C 204.4f // 400 F
+// The top point stays at 350 F: the roaster's own thermal cutoff is bypassed,
+// so these limits are the only protection during the run.
+#define CPID_AUTOTUNE_POINT1_C 121.1f // 250 F
+#define CPID_AUTOTUNE_POINT2_C 148.9f // 300 F
+#define CPID_AUTOTUNE_POINT3_C 176.7f // 350 F
 #define CPID_AUTOTUNE_POINT4_C 0   // unused
 #define CPID_AUTOTUNE_RELAY_STEP 40      // relay swing around its centre, heater %
 #define CPID_AUTOTUNE_HYSTERESIS_C 1.0f  // relay band; above twice the PV noise
